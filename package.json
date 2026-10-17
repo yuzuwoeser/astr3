@@ -1,0 +1,67 @@
+{
+  "name": "astr3",
+  "version": "0.1.0",
+  "description": "Explorable astrology wheels for the browser, built with Three.js.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "docs"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./model": {
+      "types": "./dist/model/index.d.ts",
+      "import": "./dist/model/index.js"
+    },
+    "./ephemeris": {
+      "types": "./dist/ephemeris/index.d.ts",
+      "import": "./dist/ephemeris/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "vite --config demo/vite.config.ts",
+    "build": "node scripts/build.mjs",
+    "build:demo": "vite build --config demo/vite.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:package": "node scripts/check-package.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm test && npm run build && npm run build:demo && npm run test:package",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "peerDependencies": {
+    "astronomy-engine": "^2.1.19",
+    "three": "^0.186.0"
+  },
+  "peerDependenciesMeta": {
+    "astronomy-engine": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/three": "^0.186.0",
+    "astronomy-engine": "^2.1.19",
+    "prettier": "^3.9.10",
+    "three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

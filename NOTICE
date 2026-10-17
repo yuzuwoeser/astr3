@@ -1,0 +1,14 @@
+astr3 is MIT licensed. The library build does not bundle dependency code.
+
+Three.js — https://github.com/mrdoob/three.js
+MIT License. Used as an external peer dependency.
+
+Astronomy Engine — https://github.com/cosinekitty/astronomy
+MIT License. Used only by the optional ephemeris entry.
+
+Each dependency's full license remains in its installed distribution. Retain its
+license notices when distributing applications that bundle these dependencies.
+
+Independent fixtures record numerical results from a separately installed Swiss
+Ephemeris 2.10.03. No implementation source or runtime is included or required by
+the library or tests.

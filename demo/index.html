@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111c20" />
+    <meta
+      name="description"
+      content="An explorable astrology wheel built with astr3, an open source TypeScript and Three.js library."
+    />
+    <title>astr3 — an explorable sky</title>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="wordmark" href="./" aria-label="astr3 home"
+        ><span class="mark" aria-hidden="true">✳</span> astr<span>3</span></a
+      >
+      <span class="masthead-note">OPEN SOURCE CHART EXPLORER</span>
+      <a
+        class="source-link"
+        href="https://github.com/cosinekitty/astronomy"
+        target="_blank"
+        rel="noreferrer"
+        >Powered by Astronomy Engine ↗</a
+      >
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="title">
+        <div>
+          <p class="eyebrow">THE WHEEL IS ONLY THE BEGINNING</p>
+          <h1 id="title">Follow the connections.</h1>
+          <p class="intro-copy">
+            A chart you can explore. Select a planet, trace an aspect, or step inside a
+            configuration.
+          </p>
+        </div>
+        <div class="intro-meta">
+          <span class="status-dot"></span> THREE.JS · TYPESCRIPT<br /><span
+            >Western natal wheels / v0.1</span
+          >
+        </div>
+      </section>
+      <div class="workspace">
+        <section class="wheel-panel" aria-label="Chart explorer">
+          <div class="wheel-toolbar">
+            <div>
+              <span class="section-number">01</span><span id="chart-title">Grand trine study</span>
+            </div>
+            <button id="theme-toggle" type="button" aria-label="Switch to light chart">
+              ☼ <span>Light</span>
+            </button>
+          </div>
+          <div id="chart"></div>
+          <div class="wheel-caption">
+            <span id="chart-caption">Supplied demonstration data · not a birth chart</span
+            ><span>SCROLL TO ZOOM · DRAG TO PAN</span>
+          </div>
+        </section>
+        <aside class="sidebar" aria-label="Chart details and settings">
+          <section class="inspector" aria-labelledby="inspector-heading">
+            <p class="eyebrow">02 / INSPECT</p>
+            <div id="details">
+              <h2 id="inspector-heading">Every point has a story.</h2>
+              <p class="muted">
+                Choose something on the wheel to see its position and the relationships around it.
+              </p>
+              <button class="primary" id="select-pattern" type="button">
+                Explore the grand trine <span>↗</span>
+              </button>
+              <div class="hint">
+                <span>↖</span>
+                <p>Planets, houses, aspect lines, and the shaded triangle are all selectable.</p>
+              </div>
+            </div>
+          </section>
+          <section class="settings" aria-labelledby="settings-heading">
+            <p class="eyebrow">03 / CONFIGURE</p>
+            <h2 id="settings-heading">Change the view.</h2>
+            <label for="preset">Chart source</label
+            ><select id="preset">
+              <option value="study">Grand trine study</option>
+              <option value="j2000">J2000 · London</option>
+              <option value="sydney">April 2024 · Sydney</option>
+              <option value="unknown">Unknown birth time</option>
+              <option value="custom">Calculate a chart…</option>
+            </select>
+            <form id="birth-form">
+              <div id="calculation-fields" hidden>
+                <label for="utc">Date &amp; time <span>UTC</span></label
+                ><input
+                  id="utc"
+                  type="datetime-local"
+                  value="2000-01-01T12:00"
+                  min="1900-01-01T00:00"
+                  max="2100-12-31T23:59"
+                  required
+                />
+                <div class="field-pair">
+                  <div>
+                    <label for="latitude">Latitude</label
+                    ><input
+                      id="latitude"
+                      type="number"
+                      value="51.5074"
+                      min="-90"
+                      max="90"
+                      step="any"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label for="longitude">Longitude <span>E+</span></label
+                    ><input
+                      id="longitude"
+                      type="number"
+                      value="-0.1278"
+                      min="-180"
+                      max="180"
+                      step="any"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              <label for="house-system">House system</label
+              ><select id="house-system">
+                <option value="placidus">Placidus</option>
+                <option value="whole-sign">Whole Sign</option>
+                <option value="equal">Equal</option>
+              </select>
+              <button id="calculate" class="secondary" type="submit">
+                Calculate in this browser <span>↗</span>
+              </button>
+            </form>
+            <p id="calculation-status" role="status" class="calculation-status">
+              No data leaves your browser.
+            </p>
+            <fieldset class="layers">
+              <legend>Visible layers</legend>
+              <label><input type="checkbox" data-layer="aspects" checked /> Aspects</label
+              ><label><input type="checkbox" data-layer="houses" checked /> Houses</label
+              ><label><input type="checkbox" data-layer="groups" checked /> Groups</label
+              ><label><input type="checkbox" data-layer="degrees" checked /> Degrees</label>
+            </fieldset>
+          </section>
+        </aside>
+      </div>
+      <section class="legend" aria-label="Aspect legend">
+        <span class="eyebrow">THE FIVE MAJOR ASPECTS</span
+        ><span><i class="conjunction"></i>Conjunction <small>0°</small></span
+        ><span><i class="sextile"></i>Sextile <small>60°</small></span
+        ><span><i class="square"></i>Square <small>90°</small></span
+        ><span><i class="trine"></i>Trine <small>120°</small></span
+        ><span><i class="opposition"></i>Opposition <small>180°</small></span>
+      </section>
+    </main>
+    <footer>
+      <span>astr3 <span class="footer-star">✳</span> The sky, connected.</span
+      ><span
+        ><a href="./THIRD_PARTY_LICENSES.txt" target="_blank" rel="noreferrer">MIT LICENSES</a> ·
+        BROWSER CALCULATION · FRAMEWORK NEUTRAL</span
+      >
+    </footer>
+    <div id="tooltip" role="tooltip" hidden></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
