@@ -89,7 +89,7 @@ Selection events include programmatic changes and selected-data refreshes. Rende
 
 Click/tap to select; click empty space or press Escape to clear. Drag to pan; scroll/pinch or use buttons to zoom. Ctrl/Cmd wheel is left to the browser. Default orientation puts the ascendant at left, or Aries at left when unknown. Zodiac longitude advances counterclockwise.
 
-The house circle and numbers sit toward the zodiac rim. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. There is no duplicated house-degree scale.
+The house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. There is no duplicated house-degree scale.
 
 Screen-space priority: body labels/markers → aspects → group interiors → houses. Aspect tolerance is 8 CSS pixels with mouse and 14 with touch. Ties at the highest matching priority produce a chooser. Three or more noncollinear group members define a convex interior; degenerate groups remain selectable in the list/API.
 
