@@ -1,8 +1,24 @@
 import { expect, it } from 'vitest';
 import { createModel } from '../../src/model/index.js';
-import { boxesOverlap, layoutBodies, polar } from '../../src/layout.js';
+import { WHEEL, boxesOverlap, layoutBodies, polar } from '../../src/layout.js';
+import type { BodyPlacement } from '../../src/layout.js';
+import { syntheticNatal } from '../fixtures/synthetic-chart.js';
 import { hitTest } from '../../src/picking.js';
 import type { HitTarget } from '../../src/picking.js';
+
+function expectWithinBand(placements: BodyPlacement[], scale: number) {
+  for (const { box } of placements) {
+    // The inner check uses the nearest point on the rectangle, which can be
+    // midway along an edge. Checking only its corners would miss crossings.
+    const near = Math.hypot(
+      Math.max(0, Math.abs(box.x) - box.width / 2),
+      Math.max(0, Math.abs(box.y) - box.height / 2),
+    );
+    const far = Math.hypot(Math.abs(box.x) + box.width / 2, Math.abs(box.y) + box.height / 2);
+    expect(near).toBeGreaterThanOrEqual(WHEEL.house + 4 / scale - 1e-6);
+    expect(far).toBeLessThanOrEqual(WHEEL.labelOuter - 4 / scale + 1e-6);
+  }
+}
 
 it('keeps tightly clustered glyphs separate at phone and desktop scale without moving markers', () => {
   const model = createModel({
@@ -13,13 +29,16 @@ it('keeps tightly clustered glyphs separate at phone and desktop scale without m
     })),
   });
   for (const scale of [0.5, 1.2]) {
-    const placements = layoutBodies(model.bodies, 10, scale);
+    const layout = layoutBodies(model.bodies, 10, scale);
+    const { placements } = layout;
+    expect(placements).toHaveLength(model.bodies.length);
+    expectWithinBand(placements, scale);
     for (const [i, a] of placements.entries()) {
       expect(a.marker).toEqual(polar(model.bodies.find((b) => b.id === a.id)!.longitude, 239, 10));
       for (const b of placements.slice(i + 1))
         expect(boxesOverlap(a.box, b.box, 3 / scale)).toBe(false);
     }
-    expect(layoutBodies([...model.bodies].reverse(), 10, scale)).toEqual(placements);
+    expect(layoutBodies([...model.bodies].reverse(), 10, scale)).toEqual(layout);
   }
 });
 
@@ -73,13 +92,15 @@ it('reserves house-label space without moving markers or mutating the reserved b
   });
   const reserved = [{ x: -184, y: 0, width: 24, height: 24 }];
   const original = structuredClone(reserved);
-  const placements = layoutBodies(
+  const { placements } = layoutBodies(
     model.bodies,
     0,
     0.5,
-    () => ({ width: 42, height: 44 }),
+    (_body, compact) => (compact ? { width: 26, height: 28 } : { width: 42, height: 44 }),
     reserved,
   );
+  expect(placements).toHaveLength(model.bodies.length);
+  expectWithinBand(placements, 0.5);
   for (const [i, placement] of placements.entries()) {
     expect(placement.marker).toEqual(
       polar(model.bodies.find((body) => body.id === placement.id)!.longitude, 239),
@@ -89,4 +110,49 @@ it('reserves house-label space without moving markers or mutating the reserved b
       expect(boxesOverlap(placement.box, other.box, 3 / 0.5)).toBe(false);
   }
   expect(reserved).toEqual(original);
+});
+
+it('keeps synthetic clustered bodies outside the house circle without changing their positions', () => {
+  const data = syntheticNatal;
+  const model = createModel(data);
+  const ascendant = model.angles.ascendant!;
+  const original = structuredClone(model);
+  for (const scale of [0.52, 0.57, 1.2, 1.8]) {
+    const { placements } = layoutBodies(model.bodies, ascendant, scale);
+    expect(placements).toHaveLength(10);
+    expectWithinBand(placements, scale);
+    for (const placement of placements)
+      expect(placement.marker).toEqual(
+        polar(
+          model.bodies.find((body) => body.id === placement.id)!.longitude,
+          WHEEL.marker,
+          ascendant,
+        ),
+      );
+  }
+  expect(model).toEqual(original);
+});
+
+it('uses measured compact labels when necessary and restores full labels when space returns', () => {
+  const model = createModel({ bodies: [{ id: 'mercury', name: 'Mercury', longitude: 45 }] });
+  const measure = (_body: unknown, compact: boolean) =>
+    compact ? { width: 22, height: 27 } : { width: 44, height: 48 };
+  const compact = layoutBodies(model.bodies, 0, 0.5, measure);
+  expect(compact.compact).toBe(true);
+  expect(compact.placements).toHaveLength(1);
+  expectWithinBand(compact.placements, 0.5);
+  const full = layoutBodies(model.bodies, 0, 1.5, measure);
+  expect(full.compact).toBe(false);
+  expect(full.placements).toHaveLength(1);
+  expectWithinBand(full.placements, 1.5);
+  expect(compact.placements[0]!.marker).toEqual(full.placements[0]!.marker);
+});
+
+it('omits unplaceable labels instead of using the house disk or unbounded outer lanes', () => {
+  const model = createModel({
+    bodies: [{ id: 'point', name: 'Very wide point', longitude: 60 }],
+  });
+  const layout = layoutBodies(model.bodies, 0, 0.5, () => ({ width: 1000, height: 1000 }));
+  expect(layout).toEqual({ compact: true, placements: [] });
+  expect(layoutBodies(model.bodies, 0, 0.05).placements).toEqual([]);
 });

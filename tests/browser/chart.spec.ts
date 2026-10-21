@@ -1,5 +1,7 @@
+import { syntheticNatal } from '../fixtures/synthetic-chart.js';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { WHEEL } from '../../src/layout.js';
 
 async function ready(page: Page) {
   await page.goto('/');
@@ -43,6 +45,36 @@ async function point(page: Page, x: number, y: number) {
 async function selectAt(page: Page, x: number, y: number) {
   const p = await point(page, x, y);
   await page.mouse.click(p.x, p.y);
+}
+
+async function planetBandViolations(page: Page, zoom = 1) {
+  return page.evaluate(
+    ({ house, outer, extent, zoom }) => {
+      const stage = document.querySelector('.astr3-stage')!.getBoundingClientRect();
+      const scale = (Math.min(stage.width, stage.height) / (2 * extent)) * zoom;
+      const cx = stage.x + stage.width / 2,
+        cy = stage.y + stage.height / 2;
+      return [...document.querySelectorAll<HTMLElement>('.astr3-body')].flatMap((element) => {
+        const rect = element.getBoundingClientRect();
+        const x = Math.abs(rect.x + rect.width / 2 - cx),
+          y = Math.abs(rect.y + rect.height / 2 - cy);
+        const near = Math.hypot(Math.max(0, x - rect.width / 2), Math.max(0, y - rect.height / 2));
+        const far = Math.hypot(x + rect.width / 2, y + rect.height / 2);
+        return near < house * scale + 3.9 || far > outer * scale - 3.9
+          ? [element.dataset.object]
+          : [];
+      });
+    },
+    { house: WHEEL.house, outer: WHEEL.labelOuter, extent: WHEEL.extent, zoom },
+  );
+}
+
+async function syntheticNatalChart(page: Page) {
+  await page.evaluate((data) => window.astr3.update(data), syntheticNatal);
+  await expect
+    .poll(() => page.evaluate(() => window.astr3.model.title))
+    .toBe('Synthetic clustered chart');
+  await page.evaluate(() => new Promise(requestAnimationFrame));
 }
 
 test('renders a real WebGL wheel and selects a planet with contextual highlighting', async ({
@@ -342,7 +374,11 @@ test('separates measured custom labels through responsive resize and zoom', asyn
       })),
     }),
   );
-  await expect(page.locator('.astr3-body')).toHaveCount(15);
+  // Five double-width glyphs exceed this phone's band capacity. Every ordinary
+  // symbol remains visible; overflow points retain markers and list entries.
+  await expect(page.locator('.astr3-access button[data-kind=body]')).toHaveCount(15);
+  await expect.poll(() => page.locator('.astr3-body').count()).toBeGreaterThanOrEqual(10);
+  await expect(page.locator('.astr3-body .astr3-symbol').filter({ hasText: '☉' })).toHaveCount(10);
   const overlaps = async () =>
     page.locator('.astr3-body').evaluateAll((elements) => {
       const boxes = elements.map((element) => element.getBoundingClientRect());
@@ -355,8 +391,11 @@ test('separates measured custom labels through responsive resize and zoom', asyn
       );
     });
   await expect.poll(overlaps).toHaveLength(0);
+  await expect.poll(() => planetBandViolations(page)).toEqual([]);
   await page.evaluate(() => window.astr3.zoomBy(1.4));
+  await expect(page.locator('.astr3-body')).toHaveCount(15);
   await expect.poll(overlaps).toHaveLength(0);
+  await expect.poll(() => planetBandViolations(page, 1.4)).toEqual([]);
   expect(await page.evaluate(() => window.astr3.model.bodies[0]!.longitude)).toBe(359);
 });
 
@@ -474,8 +513,13 @@ test('avoids house and custom planet label collisions at every weight after resi
     for (const weight of ['light', 'regular', 'bold'] as const) {
       await page.getByRole('combobox', { name: 'Chart weight', exact: true }).selectOption(weight);
       await expect.poll(overlaps).toBe(0);
+      await expect.poll(() => page.locator('.astr3-body').count()).toBeGreaterThanOrEqual(10);
+      await expect(page.locator('.astr3-access button[data-kind=body]')).toHaveCount(15);
+      await expect.poll(() => planetBandViolations(page)).toEqual([]);
       await page.evaluate(() => window.astr3.zoomBy(1.4));
+      await expect(page.locator('.astr3-body')).toHaveCount(15);
       await expect.poll(overlaps).toBe(0);
+      await expect.poll(() => planetBandViolations(page, 1.4)).toEqual([]);
       await page.evaluate(() => window.astr3.resetView());
     }
   }
@@ -483,10 +527,107 @@ test('avoids house and custom planet label collisions at every weight after resi
   await page.locator('input[data-layer=houses]').uncheck();
   await expect(page.locator('[data-object^="house:"]')).toHaveCount(0);
   await expect.poll(overlaps).toBe(0);
+  await expect.poll(() => planetBandViolations(page)).toEqual([]);
   await page.locator('#preset').selectOption('unknown');
   await expect.poll(() => page.evaluate(() => window.astr3.model.timeUncertain)).toBe(true);
   await page.locator('input[data-layer=houses]').check();
   await expect(page.locator('[data-object^="house:"]')).toHaveCount(0);
+  await expect.poll(() => planetBandViolations(page)).toEqual([]);
+});
+
+test('keeps synthetic clustered planet labels outside the house ring', async ({
+  page,
+  isMobile,
+}, info) => {
+  await ready(page);
+  await syntheticNatalChart(page);
+  const positions = await page.evaluate(() => JSON.stringify(window.astr3.model));
+  for (const width of isMobile ? [393, 360] : [1280, 900]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const weight of ['light', 'regular', 'bold']) {
+      await page.locator('#chart-weight').selectOption(weight);
+      await expect(page.locator('.astr3-body')).toHaveCount(10);
+      await expect.poll(() => planetBandViolations(page)).toEqual([]);
+    }
+  }
+  await expect(page.locator('.astr3-notice')).not.toContainText('Zoom in');
+  expect(await page.evaluate(() => JSON.stringify(window.astr3.model))).toBe(positions);
+  await page.evaluate(() => window.astr3.select({ kind: 'body', id: 'mercury' }));
+  await expect(page.locator('#inspector-heading')).toHaveText('Mercury');
+  await expect(page.locator('#details')).toContainText('14°15');
+  await page.locator('.wheel-panel').screenshot({
+    path: `test-results/natal-band-${info.project.name}.png`,
+  });
+});
+
+test('compacts planet labels and restores degrees without changing selection details', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.evaluate(() =>
+    window.astr3.update({
+      bodies: [
+        { id: 'mercury', name: 'Mercury', longitude: 194.25, retrograde: true },
+        { id: 'sun', name: 'Sun', longitude: 45 },
+        { id: 'moon', name: 'Moon', longitude: 90 },
+      ],
+    }),
+  );
+  await expect(page.locator('.astr3-body')).toHaveCount(3);
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-label-mode', 'compact');
+  await expect(page.locator('[data-object="body:mercury"] small')).toBeHidden();
+  const label = await page.locator('[data-object="body:mercury"]').boundingBox();
+  await page.mouse.click(label!.x + label!.width / 2, label!.y + label!.height / 2);
+  await expect(page.locator('#inspector-heading')).toHaveText('Mercury');
+  await expect(page.locator('#details')).toContainText('14°15');
+  await expect(page.locator('#details')).toContainText('Retrograde');
+  await expect.poll(() => planetBandViolations(page)).toEqual([]);
+  const details = await page.locator('#details').textContent();
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-label-mode', 'full');
+  await expect(page.locator('[data-object="body:mercury"] small')).toBeVisible();
+  await expect(page.locator('[data-object="body:mercury"]')).toHaveAttribute('data-active', 'true');
+  expect(await page.locator('#details').textContent()).toBe(details);
+  await expect.poll(() => planetBandViolations(page)).toEqual([]);
+});
+
+test('keeps overflow markers selectable and restores symbols after zooming in', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.evaluate(() => {
+    window.astr3.update({
+      bodies: [{ id: 'mercury', name: 'Mercury', longitude: 45, retrograde: true }],
+      timeUncertain: true,
+    });
+    window.astr3.zoomBy(0.1);
+  });
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-label-mode', 'markers');
+  await expect(page.locator('.astr3-body')).toHaveCount(0);
+  await expect(page.locator('.astr3-notice')).toContainText('birth time uncertain');
+  await expect(page.locator('.astr3-notice')).toContainText('Zoom in to reveal planet symbols');
+  const marker = await point(
+    page,
+    -WHEEL.marker * Math.SQRT1_2 * 0.6,
+    -WHEEL.marker * Math.SQRT1_2 * 0.6,
+  );
+  await page.mouse.click(marker.x, marker.y);
+  await expect
+    .poll(() => page.evaluate(() => window.astr3.selection))
+    .toEqual({
+      kind: 'body',
+      id: 'mercury',
+    });
+  await expect(page.locator('#details')).toContainText('Retrograde');
+  await page.locator('.astr3-access summary').click();
+  await expect(page.locator('.astr3-access button[data-kind=body]')).toContainText('Mercury');
+  await page.evaluate(() => window.astr3.zoomBy(3));
+  await expect(page.locator('.astr3-body')).toHaveCount(1);
+  await expect(page.locator('.astr3-notice')).not.toContainText('Zoom in');
+  await expect(page.locator('[data-object="body:mercury"]')).toHaveAttribute('data-active', 'true');
+  await expect.poll(() => planetBandViolations(page, 1.8)).toEqual([]);
 });
 
 test('keeps Light as the library default and increases rendered line coverage at higher weights', async ({

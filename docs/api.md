@@ -61,7 +61,7 @@ Nested option records patch by key. A per-aspect line-style object replaces that
 | Regular      |              1.5× |         500 |              0.15px |
 | Bold         |                2× |         650 |               0.3px |
 
-The multiplier also applies to `selectionEffects.lineWidth`, rings, cusps, ticks, leader lines, and markers. Symbols include built-in zodiac/planet glyphs and supplied custom glyph strings. Collision measurements include the selected font weight and symbol stroke. Planet labels avoid the measured house-number bounds.
+The multiplier also applies to `selectionEffects.lineWidth`, rings, cusps, ticks, leader lines, and markers. Symbols include built-in zodiac/planet glyphs and supplied custom glyph strings. Collision measurements include the selected font weight and symbol stroke. Planet labels avoid the measured house-number and degree-number bounds.
 
 ```ts
 import type { ChartWeight } from 'astr3';
@@ -90,6 +90,10 @@ Selection events include programmatic changes and selected-data refreshes. Rende
 Click/tap to select; click empty space or press Escape to clear. Drag to pan; scroll/pinch or use buttons to zoom. Ctrl/Cmd wheel is left to the browser. Default orientation puts the ascendant at left, or Aries at left when unknown. Zodiac longitude advances counterclockwise.
 
 The house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. There is no duplicated house-degree scale.
+
+The complete planet label stays between the house circle and the outer degree ticks, with a 4 CSS pixel clearance from the boundaries and other labels. Crowded labels may shift around this band; connecting lines lead back to their unchanged longitude markers. This boundary also applies when houses are unknown or hidden.
+
+When full labels cannot fit, the wheel uses compact symbols, hiding the degree/retrograde text without reducing symbol font size. Full labels return when resizing or zooming provides enough space. Position and retrograde information remain available in selection/hover details and **Explore chart objects**. If even a compact symbol cannot fit, its exact marker remains selectable and a “Zoom in to reveal planet symbols” hint appears. The object list always includes every body.
 
 Screen-space priority: body labels/markers → aspects → group interiors → houses. Aspect tolerance is 8 CSS pixels with mouse and 14 with touch. Ties at the highest matching priority produce a chooser. Three or more noncollinear group members define a convex interior; degenerate groups remain selectable in the list/API.
 

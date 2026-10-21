@@ -93,6 +93,7 @@ const STYLE = `
 .astr3-symbol{-webkit-text-stroke:var(--astr3-symbol-stroke) currentColor;paint-order:stroke fill}
 .astr3-body{min-width:34px;padding:2px 3px;border-radius:7px;background:var(--astr3-bg);border:1px solid transparent;font-size:23px}
 .astr3-body small{display:block;font-size:10px;letter-spacing:.01em;font-variant-numeric:tabular-nums;margin-top:2px}.astr3-body[data-active=true]{border-color:var(--astr3-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--astr3-accent) 18%,transparent)}
+.astr3-body[data-compact=true]{min-width:0}.astr3-body[data-compact=true] small{display:none}
 .astr3-label[data-dim=true]{opacity:var(--astr3-dim)}.astr3-controls{position:absolute;z-index:3;right:14px;bottom:14px;display:flex;gap:5px}
 .astr3 button{font:inherit;color:inherit;cursor:pointer;background:var(--astr3-bg);border:1px solid var(--astr3-ring);border-radius:7px;padding:7px 10px}.astr3 button:hover{border-color:var(--astr3-accent)}
 .astr3-controls button{min-width:36px;min-height:36px}.astr3 button[aria-pressed=true]{border-color:var(--astr3-accent);color:var(--astr3-accent)}
@@ -591,8 +592,13 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           0.65,
           major ? 0.9 : 0.35,
         );
-        if (major && pixelsPerUnit > 0.65)
-          label(polar(degree, 232, asc), String(degree % 30), 8, colors.muted);
+        if (major && pixelsPerUnit > 0.65) {
+          const point = polar(degree, 232, asc);
+          reservedLabels.push({
+            element: label(point, String(degree % 30), 8, colors.muted),
+            point,
+          });
+        }
       }
     if (visible.houses && model.houses.length) {
       circle(WHEEL.house, colors.ring, 0.6);
@@ -720,7 +726,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
         symbol.textContent = glyph(body);
         element.append(symbol);
         element.dataset.dim = String(opacity(active) < 1);
-        element.title = body.name;
+        element.title = describe({ kind: 'body', id: body.id });
         if (visible.degrees || body.retrograde) {
           const degree = doc.createElement('small');
           degree.textContent = `${visible.degrees ? formatPosition(body.longitude).split(' ')[0] : ''}${body.retrograde ? ' ℞' : ''}`;
@@ -728,43 +734,69 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
         }
         elements.set(body.id, element);
       }
-      const measurements = new Map(
-        [...elements].map(([id, element]) => [
-          id,
-          {
-            width: element.offsetWidth + visualWeight.symbolStroke,
-            height: element.offsetHeight + visualWeight.symbolStroke,
-          },
-        ]),
-      );
-      const reservedBoxes = reservedLabels.map(({ element, point }) => ({
-        ...point,
-        width: element.offsetWidth / pixelsPerUnit,
-        height: element.offsetHeight / pixelsPerUnit,
-      }));
-      const placements = layoutBodies(
+      const measureElements = () =>
+        new Map(
+          [...elements].map(([id, element]) => {
+            const rect = element.getBoundingClientRect();
+            return [
+              id,
+              {
+                width: rect.width + visualWeight.symbolStroke,
+                height: rect.height + visualWeight.symbolStroke,
+              },
+            ];
+          }),
+        );
+      const fullSizes = measureElements();
+      for (const element of elements.values()) element.dataset.compact = 'true';
+      const compactSizes = measureElements();
+      const reservedBoxes = reservedLabels.map(({ element, point }) => {
+        const rect = element.getBoundingClientRect();
+        return { ...point, width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
+      });
+      const layout = layoutBodies(
         model.bodies,
         asc,
         pixelsPerUnit,
-        (body) => measurements.get(body.id)!,
+        (body, compact) => (compact ? compactSizes : fullSizes).get(body.id)!,
         reservedBoxes,
       );
-      for (const placement of placements) {
-        const body = model.bodies.find((body) => body.id === placement.id)!,
-          active = activeBodies.has(body.id);
+      const placements = new Map(layout.placements.map((placement) => [placement.id, placement]));
+      const overflow = placements.size < model.bodies.length;
+      stage.dataset.labelMode = overflow ? 'markers' : layout.compact ? 'compact' : 'full';
+      if (overflow)
+        notice.textContent = [notice.textContent, 'Zoom in to reveal planet symbols']
+          .filter(Boolean)
+          .join(' · ');
+      for (const body of model.bodies) {
+        const placement = placements.get(body.id);
+        const marker = placement?.marker ?? polar(body.longitude, WHEEL.marker, asc);
+        const active = activeBodies.has(body.id);
         const color = active ? accent : colors.foreground,
           alpha = opacity(active);
         const selection: Selection = { kind: 'body', id: body.id };
-        stroke([placement.marker, placement.label], colors.muted, 0.7, alpha * 0.7);
+        if (placement) stroke([marker, placement.label], colors.muted, 0.7, alpha * 0.7);
         stroke(
           [polar(body.longitude, 236, asc), polar(body.longitude, 243, asc)],
           active ? accent : colors.foreground,
           active ? 2 : 1.5,
           alpha,
         );
-        circle(2.3 / pixelsPerUnit, color, alpha, placement.marker, 1.5);
-        const screen = project(placement.label);
+        circle(2.3 / pixelsPerUnit, color, alpha, marker, 1.5);
+        targets.push({
+          selection,
+          priority: 0,
+          shape: 'circle',
+          center: project(marker),
+          radius: 6,
+        });
         const element = elements.get(body.id)!;
+        if (!placement) {
+          element.remove();
+          continue;
+        }
+        element.dataset.compact = String(layout.compact);
+        const screen = project(placement.label);
         element.style.left = `${screen.x}px`;
         element.style.top = `${screen.y}px`;
         const box: Box = {
@@ -772,12 +804,9 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           width: placement.box.width * pixelsPerUnit,
           height: placement.box.height * pixelsPerUnit,
         };
-        targets.push(
-          { selection, priority: 0, shape: 'box', box },
-          { selection, priority: 0, shape: 'circle', center: project(placement.marker), radius: 6 },
-        );
+        targets.push({ selection, priority: 0, shape: 'box', box });
       }
-    }
+    } else delete stage.dataset.labelMode;
     if (renderer && !contextLost) renderer.render(scene, camera);
   }
   function requestDraw(): void {

@@ -81,7 +81,7 @@ chart.update(data);
 ## Included in v0.1
 
 - Western natal wheels, arbitrary supplied points/cusps, independent AC/MC axes, degree labels, retrograde indicators, and unknown-house support.
-- Collision-separated glyphs and leader lines with fixed longitude markers, with space reserved for house numbers inside the original inner house circle.
+- Collision-separated glyphs and leader lines with fixed longitude markers. Planet labels stay outside the original inner house circle and clear of the outer degree scale; crowded views use compact symbols with full information available through selection.
 - Five configurable major aspects; supplied groups with selectable interiors and accessible entries.
 - Pointer/touch selection, overlap chooser, relationship highlights, application HTML tooltip events, and programmatic selection.
 - Zoom/pan/reset, keyboard controls, an accessible HTML object list, and reduced-motion behavior.

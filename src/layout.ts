@@ -16,10 +16,15 @@ export interface BodyPlacement {
   box: Box;
   displaced: boolean;
 }
+export interface BodyLayout {
+  placements: BodyPlacement[];
+  compact: boolean;
+}
 export const WHEEL = {
   outer: 286,
   zodiacInner: 252,
   marker: 239,
+  labelOuter: 242,
   house: 148,
   houseLabel: 133,
   aspect: 140,
@@ -38,37 +43,82 @@ export function boxesOverlap(a: Box, b: Box, padding = 3): boolean {
   );
 }
 
-/** Screen-sized labels, deterministic across input order. Marker positions never move. */
+/** Nearest distance of an entire rectangle from the wheel center. */
+function nearestRadius(box: Box): number {
+  const x = Math.abs(box.x),
+    y = Math.abs(box.y);
+  return Math.hypot(Math.max(0, x - box.width / 2), Math.max(0, y - box.height / 2));
+}
+
+/** Screen-sized labels stay in the planet band. Exact longitude markers never move. */
 export function layoutBodies(
   bodies: readonly Body[],
   ascendant: number,
   pixelsPerUnit: number,
-  measure?: (body: Body) => { width: number; height: number },
+  measure: (body: Body, compact: boolean) => { width: number; height: number } = (
+    _body,
+    compact,
+  ) => ({ width: compact ? 26 : 34, height: compact ? 28 : 40 }),
   reservedBoxes: readonly Box[] = [],
-): BodyPlacement[] {
-  const occupied: Box[] = [...reservedBoxes];
+): BodyLayout {
   const scale = Math.max(pixelsPerUnit, 0.05);
-  return [...bodies]
-    .sort(
-      (a, b) =>
-        normalize(a.longitude - ascendant) - normalize(b.longitude - ascendant) ||
-        a.id.localeCompare(b.id),
-    )
-    .map((body) => {
-      const size = measure?.(body) ?? { width: 34, height: 40 };
+  const padding = 4 / scale;
+  const inner = WHEEL.house + padding,
+    outer = WHEEL.labelOuter - padding;
+  const sorted = [...bodies].sort(
+    (a, b) =>
+      normalize(a.longitude - ascendant) - normalize(b.longitude - ascendant) ||
+      a.id.localeCompare(b.id),
+  );
+  function place(compact: boolean, largestFirst = false): BodyPlacement[] {
+    const occupied: Box[] = [...reservedBoxes];
+    const placements: BodyPlacement[] = [];
+    // Wide custom glyphs have fewer valid angles. On a second pass, give them
+    // those positions before smaller labels consume the available space.
+    const ordered = largestFirst
+      ? [...sorted].sort((a, b) => {
+          const first = measure(a, compact),
+            second = measure(b, compact);
+          return second.width * second.height - first.width * first.height;
+        })
+      : sorted;
+    for (const body of ordered) {
+      const size = measure(body, compact);
       const width = size.width / scale,
         height = size.height / scale;
       let chosen: Box | undefined;
       let displacement = 0;
-      // Spiral search combines angular separation and radial lanes. Additional
-      // inner lanes handle custom points without changing exact longitude ticks.
-      for (let step = 0; step <= 180 && !chosen; step++) {
+      // Search nearby angles first. Derive the usable radial interval from the
+      // whole label rectangle, not its center or just its corners at the inner rim.
+      for (let step = 0; step <= 90 && !chosen; step++) {
         const offsets = step === 0 ? [0] : [step * 2, -step * 2];
         for (const offset of offsets) {
-          for (const radius of [214, 184, 154, 124, 94, 64, 34]) {
+          const direction = polar(body.longitude + offset, 1, ascendant);
+          const projection = (Math.abs(direction.x) * width + Math.abs(direction.y) * height) / 2;
+          const discriminant = projection ** 2 + outer ** 2 - (width ** 2 + height ** 2) / 4;
+          if (outer <= inner || discriminant <= 0) continue;
+          const maxRadius = Math.sqrt(discriminant) - projection;
+          const nearAt = (radius: number) =>
+            nearestRadius({ x: direction.x * radius, y: direction.y * radius, width, height });
+          if (maxRadius <= 0 || nearAt(maxRadius) < inner) continue;
+          // Distance to a rectangle is monotonic along this ray. Find its first
+          // position clearing the inner circle, then sample only this valid band.
+          let low = 0,
+            high = maxRadius;
+          for (let iteration = 0; iteration < 24; iteration++) {
+            const mid = (low + high) / 2;
+            if (nearAt(mid) < inner) low = mid;
+            else high = mid;
+          }
+          const minRadius = high;
+          const preferred = Math.max(minRadius, Math.min(214, maxRadius));
+          const radii = [preferred, maxRadius, minRadius];
+          for (let radius = maxRadius - 6 / scale; radius > minRadius; radius -= 6 / scale)
+            radii.push(radius);
+          for (const radius of radii) {
             const point = polar(body.longitude + offset, radius, ascendant);
             const box = { ...point, width, height };
-            if (!occupied.some((other) => boxesOverlap(box, other, 4 / scale))) {
+            if (!occupied.some((other) => boxesOverlap(box, other, padding))) {
               chosen = box;
               displacement = offset;
               break;
@@ -77,26 +127,32 @@ export function layoutBodies(
           if (chosen) break;
         }
       }
-      // For pathological data sets, continue into outer lanes rather than overlap.
-      if (!chosen) {
-        let radius = 320;
-        while (!chosen) {
-          const point = polar(body.longitude, radius, ascendant);
-          const candidate = { ...point, width, height };
-          if (!occupied.some((other) => boxesOverlap(candidate, other, 4 / scale)))
-            chosen = candidate;
-          radius += height + 6 / scale;
-        }
-      }
+      // A bounded search may run out of space. The renderer keeps that body's
+      // marker selectable instead of placing its label inside a ring or offscreen.
+      if (!chosen) continue;
       occupied.push(chosen);
-      return {
+      placements.push({
         id: body.id,
         marker: polar(body.longitude, WHEEL.marker, ascendant),
         label: { x: chosen.x, y: chosen.y },
         box: chosen,
-        displaced: displacement !== 0 || Math.hypot(chosen.x, chosen.y) < 210,
-      };
-    });
+        displaced: displacement !== 0 || Math.abs(Math.hypot(chosen.x, chosen.y) - 214) > 1,
+      });
+    }
+    return placements;
+  }
+  function fit(compact: boolean): BodyPlacement[] {
+    const first = place(compact);
+    if (first.length === bodies.length) return first;
+    const retry = place(compact, true);
+    const best = retry.length > first.length ? retry : first;
+    const indices = new Map(sorted.map((body, i) => [body.id, i]));
+    return best.sort((a, b) => indices.get(a.id)! - indices.get(b.id)!);
+  }
+  const full = fit(false);
+  return full.length === bodies.length
+    ? { placements: full, compact: false }
+    : { placements: fit(true), compact: true };
 }
 
 export function distanceToSegment(point: Point, a: Point, b: Point): number {
