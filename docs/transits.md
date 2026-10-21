@@ -28,9 +28,9 @@ Omitted aspect lists calculate contacts. A supplied list, including `[]`, is aut
 
 ## Layout and accessibility
 
-The natal wheel keeps its geometry; transits occupy a separate band outside the zodiac. Fitting both bands makes the natal portion smaller on screen. Each band measures its own full/compact labels and retains exact selectable markers when symbols cannot fit. Zoom in or use **Explore chart objects** for dense phone views.
+The natal wheel keeps its geometry; transit labels sit outside the zodiac without a separate transit circle. Their longitude markers and outward leader lines pin to the zodiac's outside edge. The degree scale has ticks on both sides, with degree numbers when space permits. Fitting both label bands makes the natal portion smaller on screen. Each band measures its own full/compact labels and retains exact selectable markers when symbols cannot fit. Zoom in or use **Explore chart objects** for dense phone views.
 
-Both sets have exact-longitude anchors in the central aspect area. Natal anchors use the house circle; transit anchors use an inner track with screen-space separation. All aspect families and supplied group outlines join these anchors. Dots, glyphs, outer longitude markers, and accessible buttons select the same source-qualified object. Mouse/touch picking tolerances and overlap choosers match natal charts. Houses/axes come solely from natal data. Unknown birth time does not fabricate houses.
+Both sets project to the same house circle at their exact longitudes. All three aspect families and supplied group outlines join those shared-radius anchors. Filled natal dots and outlined transit diamonds distinguish sources; coincident anchors offer both objects in the chooser. Dots, glyphs, zodiac-edge longitude markers, and accessible buttons select the same source-qualified object. Mouse/touch picking tolerances and overlap choosers match natal charts. Houses/axes come solely from natal data. Unknown birth time does not fabricate houses.
 
 ## Provider and demo time controls
 

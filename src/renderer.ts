@@ -42,11 +42,10 @@ export interface WheelPresentation {
 }
 export const TRANSIT_WHEEL = {
   extent: 464,
-  inner: 296,
-  outer: 402,
-  marker: 412,
+  inner: 318,
+  outer: 422,
+  marker: WHEEL.outer + 12,
   preferred: 350,
-  rim: 420,
   axis: 440,
 } as const;
 
@@ -610,10 +609,7 @@ export function createWheel(
     const p = presentation?.();
     const isTransit = (id: string) => p?.bodyRefs.get(id)?.chart === 'transit';
     const transitColor = p?.transitColor ?? colors.group;
-    const transitAnchor = Math.max(
-      50,
-      WHEEL.house - Math.max(18, 10 / Math.max(pixelsPerUnit, 0.05)),
-    );
+    const axisRadius = p ? TRANSIT_WHEEL.axis : visible.degrees ? 318 : 305;
     const shownBodies = model.bodies.filter(
       (body) => !p || p.bodies[isTransit(body.id) ? 'transit' : 'natal'],
     );
@@ -622,10 +618,7 @@ export function createWheel(
     const activeBodies = new Set(details?.bodies.map((body) => body.id));
     const activeAspects = new Set(details?.aspects.map((aspect) => aspect.id));
     const bodyAnchors = new Map(
-      model.bodies.map((body) => [
-        body.id,
-        polar(body.longitude, isTransit(body.id) ? transitAnchor : WHEEL.house, asc),
-      ]),
+      model.bodies.map((body) => [body.id, polar(body.longitude, WHEEL.house, asc)]),
     );
     const dim = options.selectionEffects?.dimOpacity ?? 0.22;
     const opacity = (active: boolean) =>
@@ -678,12 +671,39 @@ export function createWheel(
           0.65,
           major ? 0.9 : 0.35,
         );
+        stroke(
+          [
+            polar(degree, WHEEL.outer + 2, asc),
+            polar(degree, WHEEL.outer + (major ? 10 : minor ? 7 : 4), asc),
+          ],
+          colors.muted,
+          0.65,
+          major ? 0.9 : 0.35,
+        );
         if (major && pixelsPerUnit > 0.65) {
-          const point = polar(degree, 232, asc);
-          reservedLabels.push({
-            element: label(point, String(degree % 30), 8, colors.muted),
-            point,
-          });
+          for (const [side, radius] of [
+            ['inside', 232],
+            ['outside', WHEEL.outer + 30],
+          ] as const) {
+            const point = polar(degree, radius, asc);
+            // Leave room for axis captions where they meet the outside scale.
+            if (
+              side === 'outside' &&
+              visible.axes &&
+              [model.angles.ascendant, model.angles.midheaven].some(
+                (value) =>
+                  value !== undefined &&
+                  [value, value + 180].some((angle) => {
+                    const axis = polar(angle, axisRadius, asc);
+                    return Math.hypot(axis.x - point.x, axis.y - point.y) < 16 / pixelsPerUnit;
+                  }),
+              )
+            )
+              continue;
+            const element = label(point, String(degree % 30), 8, colors.muted, 'astr3-degree');
+            element.dataset.scale = side;
+            reservedLabels.push({ element, point });
+          }
         }
       }
     if (visible.houses && model.houses.length) {
@@ -711,7 +731,7 @@ export function createWheel(
         const houseRadius = p
           ? Math.max(
               20,
-              Math.min(WHEEL.houseLabel, transitAnchor - 10 / Math.max(pixelsPerUnit, 0.05)),
+              Math.min(WHEEL.houseLabel, WHEEL.house - 10 / Math.max(pixelsPerUnit, 0.05)),
             )
           : WHEEL.houseLabel;
         let labelPoint = polar(house.longitude + span / 2, houseRadius, asc);
@@ -756,28 +776,15 @@ export function createWheel(
       ] as const) {
         if (value === undefined) continue;
         stroke(
-          [
-            polar(value, p ? TRANSIT_WHEEL.axis - 4 : 301, asc),
-            polar(value + 180, p ? TRANSIT_WHEEL.axis - 4 : 301, asc),
-          ],
+          [polar(value, axisRadius - 4, asc), polar(value + 180, axisRadius - 4, asc)],
           colors.muted,
           1,
           0.55,
           [5, 5],
         );
-        label(polar(value, p ? TRANSIT_WHEEL.axis : 305, asc), name, 10, accent);
-        label(
-          polar(value + 180, p ? TRANSIT_WHEEL.axis : 305, asc),
-          name === 'AC' ? 'DC' : 'IC',
-          10,
-          colors.muted,
-        );
+        label(polar(value, axisRadius, asc), name, 10, accent);
+        label(polar(value + 180, axisRadius, asc), name === 'AC' ? 'DC' : 'IC', 10, colors.muted);
       }
-    if (p) {
-      circle(TRANSIT_WHEEL.inner, colors.ring, 0.6);
-      circle(TRANSIT_WHEEL.rim, colors.ring, 0.8);
-      circle(transitAnchor, transitColor, 0.3, { x: 0, y: 0 }, 0.6);
-    }
     if (visible.groups)
       for (const group of model.groups) {
         const ids = new Set(group.bodyIds);
@@ -918,7 +925,7 @@ export function createWheel(
         if (placement) stroke([marker, placement.label], colors.muted, 0.7, alpha * 0.7);
         stroke(
           [
-            polar(body.longitude, markerRadius - 3, asc),
+            polar(body.longitude, isTransit(body.id) ? WHEEL.outer : markerRadius - 3, asc),
             polar(body.longitude, markerRadius + 4, asc),
           ],
           active ? accent : colors.foreground,

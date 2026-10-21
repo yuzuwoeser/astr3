@@ -91,7 +91,7 @@ Selection events include programmatic changes and selected-data refreshes. Rende
 
 Click/tap to select; click empty space or press Escape to clear. Drag to pan; scroll/pinch or use buttons to zoom. Ctrl/Cmd wheel is left to the browser. Default orientation puts the ascendant at left, or Aries at left when unknown. Zodiac longitude advances counterclockwise.
 
-The house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. There is no duplicated house-degree scale.
+The house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. The zodiac has degree ticks on both inside and outside edges, with numbers when space permits. There is no duplicated house-degree scale.
 
 Every planet or supplied point has a filled anchor dot on this circle at its exact longitude, including bodies without aspects. Aspect lines and supplied group outlines meet those anchors. Nearby or coincident aspect endpoints form a small inward loop so conjunctions remain visible and selectable. The outer longitude markers remain in place; moving a label never moves either marker.
 

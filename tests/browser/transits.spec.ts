@@ -66,6 +66,108 @@ test('selects independently scoped planets from the outer band and accessible li
   expect(errors).toEqual([]);
 });
 
+test('shares house-ring anchors and aspect geometry across all three families', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.evaluate(() => {
+    const bodies = [
+      { id: 'sun', name: 'Sun', longitude: 0 },
+      { id: 'moon', name: 'Moon', longitude: 120 },
+    ];
+    window.astr3Transit!.update({
+      natal: { bodies, aspects: [{ id: 'n', type: 'trine', bodyIds: ['sun', 'moon'] }] },
+      transit: { bodies, aspects: [{ id: 't', type: 'trine', bodyIds: ['sun', 'moon'] }] },
+      crossAspects: [
+        {
+          id: 'c',
+          type: 'trine',
+          bodyRefs: [
+            { chart: 'natal', id: 'sun' },
+            { chart: 'transit', id: 'moon' },
+          ],
+        },
+      ],
+    });
+    window.astr3Transit!.setOptions({
+      layers: { natalAspects: true, transitAspects: true, crossAspects: true },
+    });
+  });
+  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(4);
+  const anchor = await screenPoint(page, 0, WHEEL.house);
+  await page.mouse.click(anchor.x, anchor.y);
+  await expect(page.locator('#transit-chart .astr3-chooser button')).toHaveCount(2);
+  await expect(page.locator('#transit-chart .astr3-chooser')).toContainText('Natal Sun');
+  await expect(page.locator('#transit-chart .astr3-chooser')).toContainText('Transiting Sun');
+  await page
+    .locator('#transit-chart .astr3-chooser button')
+    .filter({ hasText: 'Transiting Sun' })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => window.astr3Transit!.selection))
+    .toEqual({ chart: 'transit', kind: 'body', id: 'sun' });
+  // All three chords must coincide, not just look close on a narrow screen.
+  const midpoint = await screenPoint(page, 60, WHEEL.house / 2);
+  await page.mouse.click(midpoint.x, midpoint.y);
+  await expect(page.locator('#transit-chart .astr3-chooser button')).toHaveCount(3);
+});
+
+test('pins transits outside a two-sided zodiac scale without separate transit circles', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.evaluate(() =>
+    window.astr3Transit!.update({
+      natal: { bodies: [] },
+      transit: { bodies: [{ id: 'mars', name: 'Mars', longitude: 60 }] },
+      crossAspects: [],
+    }),
+  );
+  await expect(page.locator('#transit-chart .astr3-degree[data-scale=inside]')).toHaveCount(36);
+  await expect(page.locator('#transit-chart .astr3-degree[data-scale=outside]')).toHaveCount(36);
+  const marker = await screenPoint(page, 60, WHEEL.outer + 12);
+  await page.mouse.click(marker.x, marker.y);
+  await expect
+    .poll(() => page.evaluate(() => window.astr3Transit!.selection))
+    .toEqual({ chart: 'transit', kind: 'body', id: 'mars' });
+  const pixels = await page.evaluate(async () => {
+    const chart = window.astr3Transit!;
+    chart.update({ natal: { bodies: [] }, transit: { bodies: [] } });
+    chart.setOptions({
+      layers: {
+        zodiac: false,
+        degrees: false,
+        houses: false,
+        axes: false,
+        groups: false,
+        aspects: false,
+      },
+    });
+    return new Promise<{ background: number[]; painted: number }>((resolve) =>
+      requestAnimationFrame(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>('#transit-chart canvas')!;
+        const gl = canvas.getContext('webgl2')!;
+        const values = new Uint8Array(canvas.width * canvas.height * 4);
+        gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, values);
+        let painted = 0;
+        for (let i = 0; i < values.length; i += 4)
+          if (values[i] !== values[0] || values[i + 1] !== values[1] || values[i + 2] !== values[2])
+            painted++;
+        resolve({ background: [...values.slice(0, 3)], painted });
+      }),
+    );
+  });
+  expect(pixels).toEqual({ background: [17, 28, 32], painted: 0 });
+  await expect(page.locator('#transit-chart .astr3-degree')).toHaveCount(0);
+  await page.locator('#chart-view').selectOption('natal');
+  await expect(page.locator('#chart .astr3-degree[data-scale=inside]')).toHaveCount(36);
+  await expect
+    .poll(() => page.locator('#chart .astr3-degree[data-scale=outside]').count())
+    .toBeGreaterThan(25);
+});
+
 test('customizes three independent orb families and retains them across view switches', async ({
   page,
 }) => {
