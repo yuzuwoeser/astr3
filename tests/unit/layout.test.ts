@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { createModel } from '../../src/model/index.js';
-import { WHEEL, boxesOverlap, layoutBodies, polar } from '../../src/layout.js';
+import { WHEEL, aspectPath, boxesOverlap, layoutBodies, polar } from '../../src/layout.js';
 import type { BodyPlacement } from '../../src/layout.js';
 import { syntheticNatal } from '../fixtures/synthetic-chart.js';
 import { hitTest } from '../../src/picking.js';
@@ -155,4 +155,22 @@ it('omits unplaceable labels instead of using the house disk or unbounded outer 
   const layout = layoutBodies(model.bodies, 0, 0.5, () => ({ width: 1000, height: 1000 }));
   expect(layout).toEqual({ compact: true, placements: [] });
   expect(layoutBodies(model.bodies, 0, 0.05).placements).toEqual([]);
+});
+
+it('joins exact ring anchors for ordinary aspects and visible conjunction loops', () => {
+  const start = polar(0, WHEEL.house);
+  const end = polar(120, WHEEL.house);
+  expect(aspectPath(start, end, 1)).toEqual([start, end]);
+  for (const scale of [0.5, 1.2]) {
+    for (const longitude of [0, 0.1, 359.9]) {
+      const close = polar(longitude, WHEEL.house);
+      const path = aspectPath(start, close, scale);
+      expect(path[0]).toEqual(start);
+      expect(path.at(-1)).toEqual(close);
+      const middle = path[Math.floor(path.length / 2)]!;
+      expect(Math.hypot(middle.x - start.x, middle.y - start.y) * scale).toBeGreaterThan(14);
+      for (const point of path)
+        expect(Math.hypot(point.x, point.y)).toBeLessThanOrEqual(WHEEL.house + 1e-8);
+    }
+  }
 });

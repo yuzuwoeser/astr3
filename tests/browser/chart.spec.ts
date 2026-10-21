@@ -1,7 +1,9 @@
 import { syntheticNatal } from '../fixtures/synthetic-chart.js';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { WHEEL } from '../../src/layout.js';
+import { WHEEL, polar } from '../../src/layout.js';
+import type { Point } from '../../src/layout.js';
+import type { Selection } from '../../src/index.js';
 
 async function ready(page: Page) {
   await page.goto('/');
@@ -45,6 +47,32 @@ async function point(page: Page, x: number, y: number) {
 async function selectAt(page: Page, x: number, y: number) {
   const p = await point(page, x, y);
   await page.mouse.click(p.x, p.y);
+}
+
+async function anchorPixels(page: Page, points: Point[], selection: Selection | null) {
+  return page.evaluate(
+    ({ points, selection, extent }) => {
+      window.astr3.select(selection);
+      return new Promise<number[][]>((resolve) =>
+        requestAnimationFrame(() => {
+          const canvas = document.querySelector<HTMLCanvasElement>('.astr3 canvas')!;
+          const stage = document.querySelector('.astr3-stage')!.getBoundingClientRect();
+          const scale = Math.min(stage.width, stage.height) / (2 * extent);
+          const gl = canvas.getContext('webgl2')!;
+          resolve(
+            points.map((point) => {
+              const x = ((stage.width / 2 + point.x * scale) * canvas.width) / stage.width;
+              const y = ((stage.height / 2 + point.y * scale) * canvas.height) / stage.height;
+              const pixel = new Uint8Array(4);
+              gl.readPixels(Math.floor(x), Math.floor(y), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+              return [...pixel].slice(0, 3);
+            }),
+          );
+        }),
+      );
+    },
+    { points, selection, extent: WHEEL.extent },
+  );
 }
 
 async function planetBandViolations(page: Page, zoom = 1) {
@@ -104,8 +132,8 @@ test('selects aspect lines with invisible tolerance, group interiors, and the ba
 }) => {
   await ready(page);
   await simpleChart(page);
-  // Line from (-140,0) to (70,-121.24), offset by ~5px perpendicular.
-  const p = await point(page, -35, -60.62);
+  // Offset the midpoint of the Sun/Moon chord by a few screen pixels.
+  const p = await point(page, -WHEEL.house / 4, (-WHEEL.house * Math.sqrt(3)) / 4);
   await page.mouse.click(p.x + 2, p.y - 2);
   await expect
     .poll(() => page.evaluate(() => window.astr3.selection))
@@ -137,12 +165,112 @@ test('offers a chooser for overlapping aspects instead of arbitrarily selecting 
     }),
   );
   await expect(page.locator('.astr3-body')).toHaveCount(2);
-  await selectAt(page, -35, -60.62);
+  await selectAt(page, -WHEEL.house / 4, (-WHEEL.house * Math.sqrt(3)) / 4);
   await expect(page.getByRole('group', { name: 'Overlapping chart objects' })).toBeVisible();
   await page.locator('.astr3-chooser button').nth(1).click();
   await expect
     .poll(() => page.evaluate(() => window.astr3.selection))
     .toEqual({ kind: 'aspect', id: 'second' });
+});
+
+test('renders every planet anchor and links its selection and highlighting to the aspect network', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await page.evaluate(() =>
+    window.astr3.update({
+      bodies: [
+        { id: 'sun', name: 'Sun', longitude: 0 },
+        { id: 'moon', name: 'Moon', longitude: 120 },
+        { id: 'pluto', name: 'Pluto', longitude: 240 },
+      ],
+      aspects: [{ id: 'trine', type: 'trine', bodyIds: ['sun', 'moon'] }],
+    }),
+  );
+  await expect(page.locator('.astr3-body')).toHaveCount(3);
+  await page.mouse.move(0, 0);
+  const anchors = [0, 120, 240].map((longitude) => polar(longitude, WHEEL.house));
+  const pixels = await anchorPixels(page, anchors, null);
+  for (const pixel of pixels)
+    pixel.forEach((value, channel) => expect(value).toBeCloseTo([233, 237, 229][channel]!, -1));
+  const highlighted = await anchorPixels(page, anchors, { kind: 'aspect', id: 'trine' });
+  for (const pixel of highlighted.slice(0, 2))
+    pixel.forEach((value, channel) => expect(value).toBeCloseTo([234, 203, 146][channel]!, -1));
+  expect(highlighted[2]!.every((value, i) => value < pixels[2]![i]!)).toBe(true);
+  await expect(page.locator('[data-object="body:sun"]')).toHaveCSS('color', 'rgb(234, 203, 146)');
+  await expect(page.locator('[data-object="body:moon"]')).toHaveCSS('color', 'rgb(234, 203, 146)');
+  // This planet has no aspects, so its dot also proves the anchors are independent.
+  const p = await point(page, anchors[2]!.x, anchors[2]!.y);
+  if (isMobile) await page.touchscreen.tap(p.x, p.y);
+  else {
+    await page.mouse.move(p.x, p.y);
+    await expect(page.locator('#tooltip')).toContainText('Pluto');
+    await page.mouse.click(p.x, p.y);
+  }
+  await expect
+    .poll(() => page.evaluate(() => window.astr3.selection))
+    .toEqual({ kind: 'body', id: 'pluto' });
+  await expect(page.locator('#inspector-heading')).toHaveText('Pluto');
+  await expect(page.locator('[data-object="body:pluto"]')).toHaveAttribute('data-active', 'true');
+  // Bodies keep their anchors with the aspects layer disabled, even without houses.
+  await page.locator('input[data-layer=aspects]').uncheck();
+  await page.evaluate(() => window.astr3.clearSelection());
+  const sun = await point(page, anchors[0]!.x, anchors[0]!.y);
+  if (isMobile) await page.touchscreen.tap(sun.x + 8, sun.y);
+  else await page.mouse.click(sun.x + 5, sun.y);
+  await expect
+    .poll(() => page.evaluate(() => window.astr3.selection))
+    .toEqual({ kind: 'body', id: 'sun' });
+  // Hiding bodies removes their hit targets as well as the drawn dots.
+  await page.evaluate(() => window.astr3.setOptions({ layers: { bodies: false } }));
+  await expect(page.locator('.astr3-body')).toHaveCount(0);
+  await selectAt(page, anchors[0]!.x, anchors[0]!.y);
+  await expect.poll(() => page.evaluate(() => window.astr3.selection)).toBeNull();
+});
+
+test('keeps coincident ring anchors selectable and conjunction loops pickable', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await page.evaluate(() =>
+    window.astr3.update({
+      bodies: [
+        { id: 'sun', name: 'Sun', longitude: 0 },
+        { id: 'moon', name: 'Moon', longitude: 0 },
+      ],
+      aspects: [{ id: 'conjunction', type: 'conjunction', bodyIds: ['sun', 'moon'] }],
+    }),
+  );
+  await expect(page.locator('.astr3-body')).toHaveCount(2);
+  const anchor = await point(page, -WHEEL.house, 0);
+  if (isMobile) await page.touchscreen.tap(anchor.x, anchor.y);
+  else await page.mouse.click(anchor.x, anchor.y);
+  await expect(page.getByRole('group', { name: 'Overlapping chart objects' })).toBeVisible();
+  await expect(page.locator('.astr3-chooser button')).toHaveCount(2);
+  await page.locator('.astr3-chooser button').filter({ hasText: 'Moon' }).click();
+  await expect(page.locator('#inspector-heading')).toHaveText('Moon');
+  const stage = await page.locator('.astr3-stage').boundingBox();
+  const scale = Math.min(stage!.width, stage!.height) / (2 * WHEEL.extent);
+  const inside = await point(page, -WHEEL.house + 15 / scale, 0);
+  if (isMobile) await page.touchscreen.tap(inside.x, inside.y);
+  else await page.mouse.click(inside.x, inside.y);
+  await expect
+    .poll(() => page.evaluate(() => window.astr3.selection))
+    .toEqual({ kind: 'aspect', id: 'conjunction' });
+  // Zoom/pan must project the anchor targets with the camera, just like the lines.
+  await page.evaluate(() => window.astr3.zoomBy(1.25));
+  await expect(page.locator('.astr3-body')).toHaveCount(2);
+  const zoomed = await point(page, -WHEEL.house * 1.25, 0);
+  const center = await point(page, 0, 0);
+  await page.mouse.move(center.x, center.y);
+  await page.mouse.down();
+  await page.mouse.move(center.x + 28, center.y + 20, { steps: 3 });
+  await page.mouse.up();
+  await page.mouse.click(zoomed.x + 28, zoomed.y + 20);
+  await expect(page.getByRole('group', { name: 'Overlapping chart objects' })).toBeVisible();
+  await expect(page.locator('.astr3-chooser button')).toHaveCount(2);
 });
 
 test('selects houses directly and from a keyboard-accessible list', async ({ page }) => {

@@ -1,5 +1,6 @@
 import {
   BufferGeometry,
+  CircleGeometry,
   Color,
   DoubleSide,
   Float32BufferAttribute,
@@ -26,7 +27,7 @@ import type {
   ChartWeight,
   LineStyle,
 } from './types.js';
-import { WHEEL, convexHull, layoutBodies, polar } from './layout.js';
+import { WHEEL, aspectPath, convexHull, layoutBodies, polar } from './layout.js';
 import type { Box, Point } from './layout.js';
 import { hitTest } from './picking.js';
 import type { HitTarget } from './picking.js';
@@ -548,6 +549,9 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
     const details = primary ? getSelectionDetails(model, primary) : null;
     const activeBodies = new Set(details?.bodies.map((body) => body.id));
     const activeAspects = new Set(details?.aspects.map((aspect) => aspect.id));
+    const bodyAnchors = new Map(
+      model.bodies.map((body) => [body.id, polar(body.longitude, WHEEL.house, asc)]),
+    );
     const dim = options.selectionEffects?.dimOpacity ?? 0.22;
     const opacity = (active: boolean) =>
       !primary || active || options.dimUnrelated === false ? 1 : dim;
@@ -658,9 +662,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           for (const bodyId of model.aspects.find((aspect) => aspect.id === id)!.bodyIds)
             ids.add(bodyId);
         const polygon = convexHull(
-          model.bodies
-            .filter((body) => ids.has(body.id))
-            .map((body) => polar(body.longitude, WHEEL.aspect, asc)),
+          model.bodies.filter((body) => ids.has(body.id)).map((body) => bodyAnchors.get(body.id)!),
         );
         const active = primary?.kind === 'group' && primary.id === group.id;
         if (polygon.length >= 3) {
@@ -676,21 +678,14 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       }
     if (visible.aspects)
       for (const aspect of model.aspects) {
-        const a = model.bodies.find((body) => body.id === aspect.bodyIds[0])!,
-          b = model.bodies.find((body) => body.id === aspect.bodyIds[1])!;
         const active = !!primary && activeAspects.has(aspect.id);
         const style: LineStyle = options.lineStyles?.[aspect.type] ?? {};
         const color = active ? accent : colors.aspects[aspect.type];
-        const start = polar(a.longitude, WHEEL.aspect, asc),
-          end = polar(b.longitude, WHEEL.aspect, asc);
-        // Conjunctions still have a visible/pickable arc when endpoints coincide.
-        const line =
-          Math.hypot(start.x - end.x, start.y - end.y) < 8
-            ? [
-                polar(a.longitude - 2, WHEEL.aspect - 5, asc),
-                polar(b.longitude + 2, WHEEL.aspect - 5, asc),
-              ]
-            : [start, end];
+        const line = aspectPath(
+          bodyAnchors.get(aspect.bodyIds[0])!,
+          bodyAnchors.get(aspect.bodyIds[1])!,
+          pixelsPerUnit,
+        );
         stroke(
           line,
           color,
@@ -698,13 +693,14 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           opacity(activeAspects.has(aspect.id)) * 0.85,
           style.dash,
         );
-        targets.push({
-          selection: { kind: 'aspect', id: aspect.id },
-          priority: 1,
-          shape: 'line',
-          a: project(line[0]!),
-          b: project(line[1]!),
-        });
+        for (let i = 1; i < line.length; i++)
+          targets.push({
+            selection: { kind: 'aspect', id: aspect.id },
+            priority: 1,
+            shape: 'line',
+            a: project(line[i - 1]!),
+            b: project(line[i]!),
+          });
       }
     if (visible.bodies) {
       const fontSize = Math.max(18, Math.min(25, pixelsPerUnit * 32));
@@ -805,6 +801,24 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           height: placement.box.height * pixelsPerUnit,
         };
         targets.push({ selection, priority: 0, shape: 'box', box });
+      }
+      // Draw every planet's anchor above the aspect network and leader lines.
+      // Anchors remain available when symbols compact or overflow the label band.
+      for (const body of model.bodies) {
+        const anchor = bodyAnchors.get(body.id)!;
+        const active = activeBodies.has(body.id);
+        const radius =
+          (2.5 * Math.sqrt(visualWeight.strokeMultiplier) + (active ? 0.5 : 0)) / pixelsPerUnit;
+        const geometry = new CircleGeometry(radius, 24);
+        geometry.translate(anchor.x, anchor.y, 0);
+        mesh(geometry, active ? accent : colors.foreground, opacity(active));
+        targets.push({
+          selection: { kind: 'body', id: body.id },
+          priority: 0,
+          shape: 'circle',
+          center: project(anchor),
+          radius: 6,
+        });
       }
     } else delete stage.dataset.labelMode;
     if (renderer && !contextLost) renderer.render(scene, camera);

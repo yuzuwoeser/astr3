@@ -27,7 +27,6 @@ export const WHEEL = {
   labelOuter: 242,
   house: 148,
   houseLabel: 133,
-  aspect: 140,
   extent: 330,
 } as const;
 
@@ -35,6 +34,33 @@ export const WHEEL = {
 export function polar(longitude: number, radius: number, ascendant = 0): Point {
   const angle = ((180 + longitude - ascendant) * Math.PI) / 180;
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+}
+
+/** Close or coincident endpoints need a visible loop that still joins both anchors. */
+export function aspectPath(start: Point, end: Point, pixelsPerUnit: number): Point[] {
+  const scale = Math.max(pixelsPerUnit, 0.05);
+  if (Math.hypot(end.x - start.x, end.y - start.y) * scale >= 8) return [start, end];
+  const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  const radius = Math.hypot(middle.x, middle.y);
+  const inward = { x: -middle.x / radius, y: -middle.y / radius };
+  const depth = 20 / scale,
+    spread = 8 / scale;
+  const first = {
+    x: start.x + inward.x * depth - inward.y * spread,
+    y: start.y + inward.y * depth + inward.x * spread,
+  };
+  const second = {
+    x: end.x + inward.x * depth + inward.y * spread,
+    y: end.y + inward.y * depth - inward.x * spread,
+  };
+  return Array.from({ length: 17 }, (_, i) => {
+    const t = i / 16,
+      u = 1 - t;
+    return {
+      x: u ** 3 * start.x + 3 * u ** 2 * t * first.x + 3 * u * t ** 2 * second.x + t ** 3 * end.x,
+      y: u ** 3 * start.y + 3 * u ** 2 * t * first.y + 3 * u * t ** 2 * second.y + t ** 3 * end.y,
+    };
+  });
 }
 export function boxesOverlap(a: Box, b: Box, padding = 3): boolean {
   return (

@@ -91,6 +91,10 @@ Click/tap to select; click empty space or press Escape to clear. Drag to pan; sc
 
 The house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. There is no duplicated house-degree scale.
 
+Every planet or supplied point has a filled anchor dot on this circle at its exact longitude, including bodies without aspects. Aspect lines and supplied group outlines meet those anchors. Nearby or coincident aspect endpoints form a small inward loop so conjunctions remain visible and selectable. The outer longitude markers remain in place; moving a label never moves either marker.
+
+Anchor dots select the same body and expose the same hover/selection details as its symbol. They share relationship highlighting, dimming, theme colors, and chart weight, with a 6 CSS pixel picking radius for mouse and 12 for touch. Overlapping dots open the object chooser. The `bodies` layer controls the dots alongside symbols and outer markers; dots remain at the same radius when houses are hidden or unknown and when aspects are hidden.
+
 The complete planet label stays between the house circle and the outer degree ticks, with a 4 CSS pixel clearance from the boundaries and other labels. Crowded labels may shift around this band; connecting lines lead back to their unchanged longitude markers. This boundary also applies when houses are unknown or hidden.
 
 When full labels cannot fit, the wheel uses compact symbols, hiding the degree/retrograde text without reducing symbol font size. Full labels return when resizing or zooming provides enough space. Position and retrograde information remain available in selection/hover details and **Explore chart objects**. If even a compact symbol cannot fit, its exact marker remains selectable and a “Zoom in to reveal planet symbols” hint appears. The object list always includes every body.
