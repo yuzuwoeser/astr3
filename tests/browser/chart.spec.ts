@@ -127,7 +127,10 @@ test('selects houses directly and from a keyboard-accessible list', async ({ pag
     }),
   );
   await expect(page.locator('.astr3-body')).toHaveCount(1);
-  await selectAt(page, -90, -22);
+  const houseLabel = page.locator('[data-object="house:house-1"]');
+  await houseLabel.scrollIntoViewIfNeeded();
+  const houseBox = await houseLabel.boundingBox();
+  await page.mouse.click(houseBox!.x + houseBox!.width / 2, houseBox!.y + houseBox!.height / 2);
   await expect
     .poll(() => page.evaluate(() => window.astr3.selection))
     .toEqual({ kind: 'house', id: 'house-1' });
@@ -376,4 +379,169 @@ test('patches orb options without resetting earlier limits and clears removed se
     return { selection, count: chart.model.aspects.length };
   });
   expect(result).toEqual({ selection: null, count: 0 });
+});
+
+test('changes chart weight across themes while retaining sizes and selection', async ({
+  page,
+}, info) => {
+  await ready(page);
+  const weightControl = page.getByRole('combobox', { name: 'Chart weight', exact: true });
+  await expect(weightControl).toHaveValue('regular');
+  await page.evaluate(() => window.astr3.select({ kind: 'body', id: 'sun' }));
+  const labelStyles = () =>
+    page.evaluate(() => {
+      const element = document.querySelector('[data-object="body:sun"]')!;
+      return {
+        body: getComputedStyle(element).fontSize,
+        degree: getComputedStyle(element.querySelector('small')!).fontSize,
+        weight: getComputedStyle(element).fontWeight,
+        stroke: getComputedStyle(element.querySelector('.astr3-symbol')!).webkitTextStrokeWidth,
+      };
+    });
+  const sizes = await labelStyles();
+  for (const theme of ['dark', 'light'] as const) {
+    if (theme === 'light')
+      await page.getByRole('button', { name: 'Switch to light chart' }).click();
+    for (const [weight, fontWeight, symbolStroke] of [
+      ['light', '400', '0px'],
+      ['regular', '500', '0.15px'],
+      ['bold', '650', '0.3px'],
+    ] as const) {
+      await weightControl.selectOption(weight);
+      // Read the current labels together: a scheduled redraw replaces old nodes.
+      await expect
+        .poll(labelStyles)
+        .toEqual({ ...sizes, weight: fontWeight, stroke: symbolStroke });
+      expect(await page.evaluate(() => window.astr3.selection)).toEqual({
+        kind: 'body',
+        id: 'sun',
+      });
+      await page.screenshot({
+        path: `test-results/weight-${info.project.name}-${theme}-${weight}.png`,
+        fullPage: true,
+      });
+    }
+  }
+  // The same control is operable with the keyboard.
+  await weightControl.focus();
+  await weightControl.press('l');
+  await weightControl.press('Enter');
+  await expect(weightControl).toHaveValue('light');
+});
+
+test('avoids house and custom planet label collisions at every weight after resizing and zooming', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await page.evaluate(() =>
+    window.astr3.update({
+      bodies: Array.from({ length: 15 }, (_, i) => ({
+        id: `point-${i}`,
+        name: `Point ${i}`,
+        longitude: (359 + i / 5) % 360,
+        glyph: i % 3 === 0 ? 'WW' : '☉',
+        retrograde: i % 2 === 0,
+      })),
+      houses: Array.from({ length: 12 }, (_, i) => ({
+        id: `house-${i + 1}`,
+        number: i + 1,
+        longitude: (345 + i * 30) % 360,
+      })),
+    }),
+  );
+  await expect(page.locator('.astr3-body')).toHaveCount(15);
+  const overlaps = async () =>
+    page.locator('.astr3-label').evaluateAll((elements) => {
+      const bodies = elements
+        .filter((element) => element.classList.contains('astr3-body'))
+        .map((element) => element.getBoundingClientRect());
+      const houses = elements
+        .filter((element) => (element as HTMLElement).dataset.object?.startsWith('house:'))
+        .map((element) => element.getBoundingClientRect());
+      const intersects = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      return bodies.reduce(
+        (count, box, i) =>
+          count +
+          houses.filter((house) => intersects(box, house)).length +
+          bodies.slice(i + 1).filter((other) => intersects(box, other)).length,
+        0,
+      );
+    });
+  for (const viewportWidth of [isMobile ? 393 : 1000, 360]) {
+    await page.setViewportSize({ width: viewportWidth, height: 900 });
+    for (const weight of ['light', 'regular', 'bold'] as const) {
+      await page.getByRole('combobox', { name: 'Chart weight', exact: true }).selectOption(weight);
+      await expect.poll(overlaps).toBe(0);
+      await page.evaluate(() => window.astr3.zoomBy(1.4));
+      await expect.poll(overlaps).toBe(0);
+      await page.evaluate(() => window.astr3.resetView());
+    }
+  }
+  expect(await page.evaluate(() => window.astr3.model.bodies[0]!.longitude)).toBe(359);
+  await page.locator('input[data-layer=houses]').uncheck();
+  await expect(page.locator('[data-object^="house:"]')).toHaveCount(0);
+  await expect.poll(overlaps).toBe(0);
+  await page.locator('#preset').selectOption('unknown');
+  await expect.poll(() => page.evaluate(() => window.astr3.model.timeUncertain)).toBe(true);
+  await page.locator('input[data-layer=houses]').check();
+  await expect(page.locator('[data-object^="house:"]')).toHaveCount(0);
+});
+
+test('keeps Light as the library default and increases rendered line coverage at higher weights', async ({
+  page,
+}) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const modulePath = '/library.ts';
+    const { createChart } = (await import(modulePath)) as typeof import('../../src/index.js');
+    const host = document.createElement('div');
+    host.style.width = '400px';
+    document.body.append(host);
+    const chart = createChart(host, { data: { bodies: [] }, layers: { degrees: false } });
+    const currentTextWeight = () =>
+      getComputedStyle(chart.element).getPropertyValue('--astr3-label-weight');
+    const initial = currentTextWeight();
+    const coverage: number[] = [];
+    for (const chartWeight of ['light', 'regular', 'bold'] as const) {
+      chart.setOptions({ chartWeight });
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => {
+          const canvas = chart.element.querySelector('canvas')!;
+          const gl = canvas.getContext('webgl2')!;
+          const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+          gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          let count = 0;
+          for (let i = 0; i < pixels.length; i += 4)
+            if (
+              Math.max(
+                Math.abs(pixels[i]! - pixels[0]!),
+                Math.abs(pixels[i + 1]! - pixels[1]!),
+                Math.abs(pixels[i + 2]! - pixels[2]!),
+              ) > 8
+            )
+              count++;
+          coverage.push(count);
+          resolve();
+        }),
+      );
+    }
+    let rejected = false;
+    try {
+      chart.setOptions({ chartWeight: 'heavy' as import('../../src/index.js').ChartWeight });
+    } catch (error) {
+      rejected = error instanceof RangeError;
+    }
+    const afterInvalid = currentTextWeight();
+    chart.dispose();
+    host.remove();
+    return { initial, coverage, rejected, afterInvalid };
+  });
+  expect(result.initial.trim()).toBe('400');
+  expect(result.coverage[0]).toBeGreaterThan(0);
+  expect(result.coverage[1]).toBeGreaterThan(result.coverage[0]!);
+  expect(result.coverage[2]).toBeGreaterThan(result.coverage[1]!);
+  expect(result.rejected).toBe(true);
+  expect(result.afterInvalid.trim()).toBe('650');
 });

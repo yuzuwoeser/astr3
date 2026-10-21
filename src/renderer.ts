@@ -23,6 +23,7 @@ import type {
   ChartLayers,
   ChartOptions,
   ChartTheme,
+  ChartWeight,
   LineStyle,
 } from './types.js';
 import { WHEEL, convexHull, layoutBodies, polar } from './layout.js';
@@ -71,12 +72,25 @@ const LAYERS: ChartLayers = {
   groups: true,
   degrees: true,
 };
+const WEIGHT_PROFILES = {
+  light: { strokeMultiplier: 1, fontWeight: 400, symbolStroke: 0 },
+  regular: { strokeMultiplier: 1.5, fontWeight: 500, symbolStroke: 0.15 },
+  bold: { strokeMultiplier: 2, fontWeight: 650, symbolStroke: 0.3 },
+} as const;
+
+function weightProfile(weight: ChartWeight = 'light') {
+  if (!Object.hasOwn(WEIGHT_PROFILES, weight)) {
+    throw new RangeError('chartWeight must be light, regular, or bold.');
+  }
+  return WEIGHT_PROFILES[weight];
+}
 const STYLE = `
 .astr3{position:relative;isolation:isolate;font-family:system-ui,sans-serif;color:var(--astr3-fg);background:var(--astr3-bg);width:100%;min-width:0;border-radius:inherit}
 .astr3 *{box-sizing:border-box}.astr3-stage{position:relative;width:100%;height:100%;min-height:280px;overflow:hidden;touch-action:none;border-radius:inherit;outline-offset:-3px}
 .astr3-stage:focus-visible,.astr3 button:focus-visible,.astr3 summary:focus-visible{outline:2px solid var(--astr3-accent);outline-offset:3px}
 .astr3 canvas{display:block;position:absolute;inset:0;width:100%;height:100%}.astr3-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.astr3-label{position:absolute;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;line-height:1.15;user-select:none}
+.astr3-label{position:absolute;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;line-height:1.15;user-select:none;font-weight:var(--astr3-label-weight)}
+.astr3-symbol{-webkit-text-stroke:var(--astr3-symbol-stroke) currentColor;paint-order:stroke fill}
 .astr3-body{min-width:34px;padding:2px 3px;border-radius:7px;background:var(--astr3-bg);border:1px solid transparent;font-size:23px}
 .astr3-body small{display:block;font-size:10px;letter-spacing:.01em;font-variant-numeric:tabular-nums;margin-top:2px}.astr3-body[data-active=true]{border-color:var(--astr3-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--astr3-accent) 18%,transparent)}
 .astr3-label[data-dim=true]{opacity:var(--astr3-dim)}.astr3-controls{position:absolute;z-index:3;right:14px;bottom:14px;display:flex;gap:5px}
@@ -96,6 +110,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
   const win = doc.defaultView;
   if (!win) throw new Error('createChart requires a browser document.');
   let options = { ...initialOptions };
+  let visualWeight = weightProfile(options.chartWeight);
   let model = createModel(options.data, options);
   let selected: Selection | null = null,
     hovered: Selection | null = null;
@@ -202,6 +217,8 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       ring: colors.ring,
       accent: options.selectionEffects?.color ?? colors.accent,
       dim: String(options.selectionEffects?.dimOpacity ?? 0.22),
+      'label-weight': String(visualWeight.fontWeight),
+      'symbol-stroke': `${visualWeight.symbolStroke}px`,
     }))
       root.style.setProperty(`--astr3-${name}`, value);
     access.setAttribute('aria-label', options.ariaLabel ?? model.title);
@@ -419,7 +436,8 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
     dash?: readonly [number, number],
   ): void {
     const vertices: number[] = [];
-    const thickness = Math.max(0.25, lineWidth) / Math.max(pixelsPerUnit, 0.01) / 2;
+    const thickness =
+      Math.max(0.25, lineWidth * visualWeight.strokeMultiplier) / Math.max(pixelsPerUnit, 0.01) / 2;
     let travelled = 0;
     const add = (a: Point, b: Point) => {
       const length = Math.hypot(b.x - a.x, b.y - a.y);
@@ -534,6 +552,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       !primary || active || options.dimUnrelated === false ? 1 : dim;
     const accent = options.selectionEffects?.color ?? colors.accent;
     const activeWidth = options.selectionEffects?.lineWidth ?? 2.5;
+    const reservedLabels: { element: HTMLElement; point: Point }[] = [];
     notice.textContent = chartError
       ? chartError.message
       : model.timeUncertain
@@ -558,6 +577,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           SIGN_GLYPHS[sign]!,
           Math.max(16, Math.min(25, pixelsPerUnit * 31)),
           color,
+          'astr3-symbol',
         ).title = SIGNS[sign]!;
       }
     }
@@ -596,14 +616,16 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           active ? 1.6 : 0.75,
           0.65,
         );
-        label(
-          polar(house.longitude + span / 2, 133, asc),
+        const labelPoint = polar(house.longitude + span / 2, WHEEL.houseLabel, asc);
+        const houseLabel = label(
+          labelPoint,
           String(house.number),
           10,
           active ? accent : colors.muted,
           '',
           selection,
         );
+        reservedLabels.push({ element: houseLabel, point: labelPoint });
         targets.push({ selection, priority: 3, shape: 'polygon', points: polygon.map(project) });
       }
     }
@@ -687,12 +709,16 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
         const active = activeBodies.has(body.id);
         const element = label(
           { x: 0, y: 0 },
-          glyph(body),
+          '',
           fontSize,
           active ? accent : colors.foreground,
           'astr3-body',
           { kind: 'body', id: body.id },
         );
+        const symbol = doc.createElement('span');
+        symbol.className = 'astr3-symbol';
+        symbol.textContent = glyph(body);
+        element.append(symbol);
         element.dataset.dim = String(opacity(active) < 1);
         element.title = body.name;
         if (visible.degrees || body.retrograde) {
@@ -705,11 +731,23 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       const measurements = new Map(
         [...elements].map(([id, element]) => [
           id,
-          { width: element.offsetWidth, height: element.offsetHeight },
+          {
+            width: element.offsetWidth + visualWeight.symbolStroke,
+            height: element.offsetHeight + visualWeight.symbolStroke,
+          },
         ]),
       );
-      const placements = layoutBodies(model.bodies, asc, pixelsPerUnit, (body) =>
-        measurements.get(body.id)!,
+      const reservedBoxes = reservedLabels.map(({ element, point }) => ({
+        ...point,
+        width: element.offsetWidth / pixelsPerUnit,
+        height: element.offsetHeight / pixelsPerUnit,
+      }));
+      const placements = layoutBodies(
+        model.bodies,
+        asc,
+        pixelsPerUnit,
+        (body) => measurements.get(body.id)!,
+        reservedBoxes,
       );
       for (const placement of placements) {
         const body = model.bodies.find((body) => body.id === placement.id)!,
@@ -981,8 +1019,10 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
         lineStyles: { ...options.lineStyles, ...patch.lineStyles },
         selectionEffects: { ...options.selectionEffects, ...patch.selectionEffects },
       };
+      const nextWeight = weightProfile(nextOptions.chartWeight);
       const nextModel = createModel(options.data, nextOptions);
       options = nextOptions;
+      visualWeight = nextWeight;
       model = nextModel;
       clearHover();
       if (selected && !hasSelection(model, selected)) setSelection(null, 'update');

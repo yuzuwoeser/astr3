@@ -62,3 +62,31 @@ it('prioritizes labels, provides screen-pixel line tolerance, and offers overlap
   expect(hitTest(targets.slice(0, 1), { x: 30, y: 14 }, true)).toHaveLength(1);
   expect(hitTest(targets, { x: 50, y: 50 })).toEqual([{ kind: 'group', id: 'group' }]);
 });
+
+it('reserves house-label space without moving markers or mutating the reserved boxes', () => {
+  const model = createModel({
+    bodies: Array.from({ length: 8 }, (_, i) => ({
+      id: `body${i}`,
+      name: `Body ${i}`,
+      longitude: i / 4,
+    })),
+  });
+  const reserved = [{ x: -184, y: 0, width: 24, height: 24 }];
+  const original = structuredClone(reserved);
+  const placements = layoutBodies(
+    model.bodies,
+    0,
+    0.5,
+    () => ({ width: 42, height: 44 }),
+    reserved,
+  );
+  for (const [i, placement] of placements.entries()) {
+    expect(placement.marker).toEqual(
+      polar(model.bodies.find((body) => body.id === placement.id)!.longitude, 239),
+    );
+    expect(boxesOverlap(placement.box, reserved[0]!, 3 / 0.5)).toBe(false);
+    for (const other of placements.slice(i + 1))
+      expect(boxesOverlap(placement.box, other.box, 3 / 0.5)).toBe(false);
+  }
+  expect(reserved).toEqual(original);
+});

@@ -20,7 +20,8 @@ export const WHEEL = {
   outer: 286,
   zodiacInner: 252,
   marker: 239,
-  house: 148,
+  house: 198,
+  houseLabel: 184,
   aspect: 140,
   extent: 330,
 } as const;
@@ -43,8 +44,9 @@ export function layoutBodies(
   ascendant: number,
   pixelsPerUnit: number,
   measure?: (body: Body) => { width: number; height: number },
+  reservedBoxes: readonly Box[] = [],
 ): BodyPlacement[] {
-  const occupied: Box[] = [];
+  const occupied: Box[] = [...reservedBoxes];
   const scale = Math.max(pixelsPerUnit, 0.05);
   return [...bodies]
     .sort(
@@ -58,12 +60,15 @@ export function layoutBodies(
         height = size.height / scale;
       let chosen: Box | undefined;
       let displacement = 0;
-      // Spiral search combines angular separation and radial lanes. Additional
-      // inner lanes handle custom points without changing exact longitude ticks.
+      // Try small angular shifts in the outer lanes before moving labels inward.
+      // This leaves room for house numbers without crowding the aspect area.
+      const radii = [214, 184, 154, 124, 94, 64, 34];
       for (let step = 0; step <= 180 && !chosen; step++) {
-        const offsets = step === 0 ? [0] : [step * 2, -step * 2];
-        for (const offset of offsets) {
-          for (const radius of [214, 184, 154, 124, 94, 64, 34]) {
+        for (const [lane, radius] of radii.entries()) {
+          const angularStep = step - lane * 16;
+          if (angularStep < 0) continue;
+          const offsets = angularStep === 0 ? [0] : [angularStep * 2, -angularStep * 2];
+          for (const offset of offsets) {
             const point = polar(body.longitude + offset, radius, ascendant);
             const box = { ...point, width, height };
             if (!occupied.some((other) => boxesOverlap(box, other, 4 / scale))) {

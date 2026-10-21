@@ -33,8 +33,11 @@ export interface LineStyle {
 export type ThemeOptions = Partial<Omit<ChartTheme, 'aspects'>> & {
   aspects?: Partial<ChartTheme['aspects']>;
 };
+export type ChartWeight = 'light' | 'regular' | 'bold';
 export interface ChartOptions extends ModelOptions {
   data: ChartInput;
+  /** Visual stroke/text weight. Defaults to light for existing integrations. */
+  chartWeight?: ChartWeight;
   theme?: ThemeOptions;
   glyphs?: Readonly<Record<string, string>>;
   layers?: Partial<ChartLayers>;

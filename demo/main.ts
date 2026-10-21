@@ -3,6 +3,7 @@ import type {
   Chart,
   ChartInput,
   ChartLayers,
+  ChartWeight,
   HouseSystem,
   Selection,
   SelectionDetails,
@@ -16,7 +17,7 @@ declare global {
   }
 }
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const chart = createChart($('chart'), { data: study });
+const chart = createChart($('chart'), { data: study, chartWeight: 'regular' });
 window.astr3 = chart;
 const details = $('details');
 const preset = $<HTMLSelectElement>('preset');
@@ -271,6 +272,11 @@ $('theme-toggle').addEventListener('click', () => {
   );
   $('theme-toggle').replaceChildren(document.createTextNode(light ? '☾ Dark' : '☼ Light'));
   document.querySelector('.wheel-panel')?.classList.toggle('light', light);
+});
+$<HTMLSelectElement>('chart-weight').addEventListener('change', (event) => {
+  chart.setOptions({
+    chartWeight: (event.currentTarget as HTMLSelectElement).value as ChartWeight,
+  });
 });
 document.querySelectorAll<HTMLInputElement>('[data-layer]').forEach((input) =>
   input.addEventListener('change', () =>

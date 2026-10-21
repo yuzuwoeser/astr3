@@ -37,14 +37,16 @@ try {
   writeFileSync(
     join(directory, 'consumer.ts'),
     `
-import { createChart, type Selection, type ChartInput } from 'astr3';
+import { createChart, type Selection, type ChartInput, type ChartWeight } from 'astr3';
 import { createModel } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
 const selection: Selection = { kind: 'body', id: 'sun' };
 const model = createModel(input);
 const chartFactory: typeof createChart = createChart;
-void [selection, model, chartFactory, createAstronomyProvider];
+const chartWeight: ChartWeight = 'regular';
+const options: Parameters<typeof createChart>[1] = { data: input, chartWeight };
+void [selection, model, chartFactory, createAstronomyProvider, options];
 `,
   );
   writeFileSync(

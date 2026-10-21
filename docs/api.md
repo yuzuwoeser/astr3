@@ -44,15 +44,32 @@ Override limits with `orbs: { trine: 5 }`. Boundaries are inclusive. Overlapping
 
 Options:
 
+- `chartWeight`: `light` (library default), `regular`, or `bold`. Changes chart strokes, label weight, and symbol strokes without changing font sizes, colors, or dimming. The demo starts at Regular and provides a Chart weight selector. Invalid values throw `RangeError`; invalid option updates leave the previous settings intact.
 - `theme`: patch background, foreground, muted, ring, accent, group, the four element colors, and per-type aspect colors. Exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
 - `glyphs`: body-ID-to-text overrides, falling back to the body's glyph, built-in symbol, or two name characters. Strings are text, never injected HTML. Use short glyphs.
 - `layers`: patch `zodiac`, `bodies`, `houses`, `axes`, `aspects`, `groups`, `degrees`; all default true. Hidden layers remain available in the model and accessible list.
-- `lineStyles`: per aspect type `{ width?, dash?: [onPixels, offPixels] }`, in CSS pixels.
+- `lineStyles`: per aspect type `{ width?, dash?: [onPixels, offPixels] }`, in CSS pixels. Width is the baseline before the chart-weight multiplier; dash lengths stay constant.
 - `selectionEffects`: `{ color?, dimOpacity?, lineWidth? }`, defaulting to theme accent, `0.22`, and `2.5` pixels. Use opacity in `[0, 1]` and positive widths.
 - `dimUnrelated: false`: keep unrelated objects at normal opacity.
 - `ariaLabel`: accessible chart name; defaults to title.
 
 Nested option records patch by key. A per-aspect line-style object replaces that aspect's previous style. Primary selection takes precedence over transient hover highlighting.
+
+| Chart weight | Stroke multiplier | Text weight | Extra symbol stroke |
+| ------------ | ----------------: | ----------: | ------------------: |
+| Light        |                1× |         400 |                 0px |
+| Regular      |              1.5× |         500 |              0.15px |
+| Bold         |                2× |         650 |               0.3px |
+
+The multiplier also applies to `selectionEffects.lineWidth`, rings, cusps, ticks, leader lines, and markers. Symbols include built-in zodiac/planet glyphs and supplied custom glyph strings. Collision measurements include the selected font weight and symbol stroke. Planet labels avoid the measured house-number bounds.
+
+```ts
+import type { ChartWeight } from 'astr3';
+
+const chartWeight: ChartWeight = 'bold';
+chart.setOptions({ chartWeight });
+chart.setOptions({ chartWeight: 'regular', glyphs: { sun: '☉' } });
+```
 
 ## Events and details
 
@@ -71,6 +88,8 @@ Selection events include programmatic changes and selected-data refreshes. Rende
 ## Input and accessibility
 
 Click/tap to select; click empty space or press Escape to clear. Drag to pan; scroll/pinch or use buttons to zoom. Ctrl/Cmd wheel is left to the browser. Default orientation puts the ascendant at left, or Aries at left when unknown. Zodiac longitude advances counterclockwise.
+
+The house circle and numbers sit toward the zodiac rim. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. There is no duplicated house-degree scale.
 
 Screen-space priority: body labels/markers → aspects → group interiors → houses. Aspect tolerance is 8 CSS pixels with mouse and 14 with touch. Ties at the highest matching priority produce a chooser. Three or more noncollinear group members define a convex interior; degenerate groups remain selectable in the list/API.
 

@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. The initial wheel uses synthetic teaching data with a supplied grand trine. Choose a calculated preset or enter a UTC date/time and coordinates to use Astronomy Engine. House systems: Placidus, Whole Sign, Equal. Birth information is never sent to a service. The demo also includes an unknown-time reference snapshot.
+Open the local URL printed by Vite. The initial wheel uses synthetic teaching data with a supplied grand trine. Choose a calculated preset or enter a UTC date/time and coordinates to use Astronomy Engine. House systems: Placidus, Whole Sign, Equal. Birth information is never sent to a service. The demo also includes an unknown-time reference snapshot and a **Chart weight** selector: Light, Regular (demo default), and Bold.
 
 ## Use the library
 
@@ -27,6 +27,7 @@ npm install /path/to/astr3/astr3-0.1.0.tgz three
 import { createChart } from 'astr3';
 
 const chart = createChart(document.querySelector<HTMLElement>('#wheel')!, {
+  chartWeight: 'regular', // Omit to preserve the library's original Light styling.
   data: {
     bodies: [
       { id: 'sun', name: 'Sun', longitude: 78.4 },
@@ -80,11 +81,11 @@ chart.update(data);
 ## Included in v0.1
 
 - Western natal wheels, arbitrary supplied points/cusps, independent AC/MC axes, degree labels, retrograde indicators, and unknown-house support.
-- Collision-separated glyphs and leader lines with fixed longitude markers.
+- Collision-separated glyphs and leader lines with fixed longitude markers, with space reserved for house numbers near the zodiac rim.
 - Five configurable major aspects; supplied groups with selectable interiors and accessible entries.
 - Pointer/touch selection, overlap chooser, relationship highlights, application HTML tooltip events, and programmatic selection.
 - Zoom/pan/reset, keyboard controls, an accessible HTML object list, and reduced-motion behavior.
-- Dark/light themes, custom glyph strings, aspect line widths/dashes, layers, dimming, and selection styles.
+- Dark/light themes, Light/Regular/Bold chart weight, custom glyph strings, aspect line widths/dashes, layers, dimming, and selection styles.
 - Validated data updates, resource disposal, and recovery after WebGL context restoration.
 
 The initial API is versioned 0.x and may change before 1.0. Automatic patterns, transit/synastry wheels, multi-selection, time playback, export, 3D presentation, and framework wrappers are deferred.
