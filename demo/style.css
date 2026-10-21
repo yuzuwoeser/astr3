@@ -304,6 +304,45 @@ input[type='datetime-local'] {
   gap: 10px;
   min-width: 0;
 }
+.transit-navigation {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  align-items: center;
+}
+.transit-navigation select {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.transit-navigation button {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+#transit-controls {
+  margin: 16px 0 24px;
+}
+.orb-inputs {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.orb-inputs label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+}
+.orb-inputs input {
+  width: 68px;
+  margin: 0 0 0 auto;
+  padding: 7px;
+}
 .field-pair > div {
   width: 50%;
   min-width: 0;

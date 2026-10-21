@@ -37,9 +37,14 @@ export function polar(longitude: number, radius: number, ascendant = 0): Point {
 }
 
 /** Close or coincident endpoints need a visible loop that still joins both anchors. */
-export function aspectPath(start: Point, end: Point, pixelsPerUnit: number): Point[] {
+export function aspectPath(
+  start: Point,
+  end: Point,
+  pixelsPerUnit: number,
+  minimumLength = 8,
+): Point[] {
   const scale = Math.max(pixelsPerUnit, 0.05);
-  if (Math.hypot(end.x - start.x, end.y - start.y) * scale >= 8) return [start, end];
+  if (Math.hypot(end.x - start.x, end.y - start.y) * scale >= minimumLength) return [start, end];
   const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
   const radius = Math.hypot(middle.x, middle.y);
   const inward = { x: -middle.x / radius, y: -middle.y / radius };
@@ -86,11 +91,17 @@ export function layoutBodies(
     compact,
   ) => ({ width: compact ? 26 : 34, height: compact ? 28 : 40 }),
   reservedBoxes: readonly Box[] = [],
+  band: { inner: number; outer: number; marker: number; preferred: number } = {
+    inner: WHEEL.house,
+    outer: WHEEL.labelOuter,
+    marker: WHEEL.marker,
+    preferred: 214,
+  },
 ): BodyLayout {
   const scale = Math.max(pixelsPerUnit, 0.05);
   const padding = 4 / scale;
-  const inner = WHEEL.house + padding,
-    outer = WHEEL.labelOuter - padding;
+  const inner = band.inner + padding,
+    outer = band.outer - padding;
   const sorted = [...bodies].sort(
     (a, b) =>
       normalize(a.longitude - ascendant) - normalize(b.longitude - ascendant) ||
@@ -137,7 +148,7 @@ export function layoutBodies(
             else high = mid;
           }
           const minRadius = high;
-          const preferred = Math.max(minRadius, Math.min(214, maxRadius));
+          const preferred = Math.max(minRadius, Math.min(band.preferred, maxRadius));
           const radii = [preferred, maxRadius, minRadius];
           for (let radius = maxRadius - 6 / scale; radius > minRadius; radius -= 6 / scale)
             radii.push(radius);
@@ -159,10 +170,11 @@ export function layoutBodies(
       occupied.push(chosen);
       placements.push({
         id: body.id,
-        marker: polar(body.longitude, WHEEL.marker, ascendant),
+        marker: polar(body.longitude, band.marker, ascendant),
         label: { x: chosen.x, y: chosen.y },
         box: chosen,
-        displaced: displacement !== 0 || Math.abs(Math.hypot(chosen.x, chosen.y) - 214) > 1,
+        displaced:
+          displacement !== 0 || Math.abs(Math.hypot(chosen.x, chosen.y) - band.preferred) > 1,
       });
     }
     return placements;

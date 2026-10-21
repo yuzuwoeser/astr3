@@ -1,4 +1,13 @@
-import { createChart, DARK_THEME, LIGHT_THEME, formatPosition } from '../src/index.js';
+import {
+  createChart,
+  createTransitChart,
+  DARK_THEME,
+  LIGHT_THEME,
+  DEFAULT_ORBS,
+  formatPosition,
+  getSelectionDetails,
+  getTransitSelectionDetails,
+} from '../src/index.js';
 import type {
   Chart,
   ChartInput,
@@ -7,23 +16,47 @@ import type {
   HouseSystem,
   Selection,
   SelectionDetails,
+  TransitChart,
+  TransitSelection,
+  TransitSelectionDetails,
+  TransitLayers,
+  AspectFamily,
+  AspectType,
+  TransitOrbs,
 } from '../src/index.js';
 import { study } from './fixtures.js';
 import './style.css';
+import { stepTransitTime } from './transit-time.js';
+import type { TimeStep } from './transit-time.js';
 
 declare global {
   interface Window {
     astr3: Chart;
+    astr3Transit?: TransitChart;
   }
 }
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const chart = createChart($('chart'), { data: study, chartWeight: 'regular' });
+let natalData: ChartInput = study;
 window.astr3 = chart;
 const details = $('details');
 const preset = $<HTMLSelectElement>('preset');
 const houseSystem = $<HTMLSelectElement>('house-system');
 let abort: AbortController | undefined;
 let revision = 0;
+let transitChart: TransitChart | undefined;
+let transitData: ChartInput = { bodies: [] };
+let transitAbort: AbortController | undefined;
+let transitRevision = 0;
+let transitMode = false;
+let natalCaption = $('chart-caption').textContent ?? '';
+const orbLimits: Required<TransitOrbs> = {
+  natal: { ...DEFAULT_ORBS },
+  cross: { ...DEFAULT_ORBS },
+  transit: { ...DEFAULT_ORBS },
+};
+const transitTime = $<HTMLInputElement>('transit-utc');
+transitTime.value = new Date().toISOString().slice(0, 16);
 
 const create = <K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -35,10 +68,15 @@ const create = <K extends keyof HTMLElementTagNameMap>(
   if (className) element.className = className;
   return element;
 };
-function selectionButton(content: string, selection: Selection): HTMLButtonElement {
+function selectionButton(
+  content: string,
+  selection: Selection | TransitSelection,
+): HTMLButtonElement {
   const button = create('button', content, 'relationship');
   button.type = 'button';
-  button.addEventListener('click', () => chart.select(selection));
+  button.addEventListener('click', () =>
+    'chart' in selection ? transitChart?.select(selection) : chart.select(selection),
+  );
   return button;
 }
 function field(label: string, value: string): HTMLElement {
@@ -46,7 +84,7 @@ function field(label: string, value: string): HTMLElement {
   row.append(create('span', label), create('strong', value));
   return row;
 }
-function inspect(data: SelectionDetails | null): void {
+function inspect(data: SelectionDetails | TransitSelectionDetails | null): void {
   details.replaceChildren();
   const heading = create(
     'h2',
@@ -59,6 +97,8 @@ function inspect(data: SelectionDetails | null): void {
       : 'Every point has a story.',
   );
   heading.id = 'inspector-heading';
+  if (data && 'chart' in data.selection)
+    heading.textContent = `${data.selection.chart === 'natal' ? 'Natal' : data.selection.chart === 'transit' ? 'Transiting' : 'Transit-to-natal'} ${heading.textContent}`;
   details.append(heading);
   if (!data) {
     details.append(
@@ -73,6 +113,7 @@ function inspect(data: SelectionDetails | null): void {
       const button = selectionButton(`Explore ${firstGroup.name} ↗`, {
         kind: 'group',
         id: firstGroup.id,
+        ...(transitMode ? { chart: 'natal' as const } : {}),
       });
       button.className = 'primary';
       details.append(button);
@@ -91,7 +132,14 @@ function inspect(data: SelectionDetails | null): void {
     details.append(field('Position', formatPosition(data.object.longitude)));
   if ('retrograde' in data.object)
     details.append(field('Motion', data.object.retrograde ? 'Retrograde ℞' : 'Direct'));
-  if ('house' in data.object)
+  if ('natalHouse' in data.object)
+    details.append(
+      field(
+        'Natal house',
+        data.object.natalHouse === undefined ? 'Unknown' : String(data.object.natalHouse),
+      ),
+    );
+  else if ('house' in data.object)
     details.append(
       field('House', data.object.house === undefined ? 'Unknown' : String(data.object.house)),
     );
@@ -104,7 +152,12 @@ function inspect(data: SelectionDetails | null): void {
   if (typeof data.object.metadata?.description === 'string')
     details.append(create('p', data.object.metadata.description, 'muted'));
   const others = data.bodies.filter(
-    (body) => !(data.selection.kind === 'body' && body.id === data.selection.id),
+    (body) =>
+      !(
+        data.selection.kind === 'body' &&
+        body.id === data.selection.id &&
+        (!('chart' in data.selection) || ('chart' in body && body.chart === data.selection.chart))
+      ),
   );
   if (others.length) {
     details.append(
@@ -120,39 +173,53 @@ function inspect(data: SelectionDetails | null): void {
     for (const body of others)
       details.append(
         selectionButton(
-          `${body.name} · ${formatPosition(body.longitude)}${body.house ? ` · H${body.house}` : ''}`,
-          { kind: 'body', id: body.id },
+          `${'chart' in body ? (body.chart === 'natal' ? 'Natal ' : 'Transiting ') : ''}${body.name} · ${formatPosition(body.longitude)}${('natalHouse' in body ? body.natalHouse : body.house) ? ` · H${'natalHouse' in body ? body.natalHouse : body.house}` : ''}`,
+          { kind: 'body', id: body.id, ...('chart' in body ? { chart: body.chart } : {}) },
         ),
       );
   }
   if (data.aspects.length && data.selection.kind !== 'aspect') {
     details.append(create('h3', 'Aspect geometry'));
     for (const aspect of data.aspects) {
-      const names = aspect.bodyIds.map(
-        (id) => chart.model.bodies.find((body) => body.id === id)!.name,
-      );
+      const names =
+        'bodyRefs' in aspect
+          ? aspect.bodyRefs.map(
+              (ref) =>
+                `${ref.chart === 'natal' ? 'Natal' : 'Transiting'} ${transitChart!.model[ref.chart].bodies.find((body) => body.id === ref.id)!.name}`,
+            )
+          : aspect.bodyIds.map((id) => chart.model.bodies.find((body) => body.id === id)!.name);
       details.append(
         selectionButton(`${names.join(' / ')} · ${aspect.type} · ${aspect.orb.toFixed(2)}° orb`, {
           kind: 'aspect',
           id: aspect.id,
+          ...('chart' in aspect ? { chart: aspect.chart } : {}),
         }),
       );
     }
   }
   if (data.selection.kind !== 'group')
     for (const group of data.groups)
-      details.append(selectionButton(`Explore ${group.name} ↗`, { kind: 'group', id: group.id }));
+      details.append(
+        selectionButton(`Explore ${group.name} ↗`, {
+          kind: 'group',
+          id: group.id,
+          ...('chart' in group ? { chart: group.chart } : {}),
+        }),
+      );
   const clear = create('button', 'Clear selection ×', 'clear-selection');
   clear.type = 'button';
   clear.addEventListener('click', () => chart.clearSelection());
   details.append(clear);
 }
-chart.on('selection', (event) => inspect(event.details));
+chart.on('selection', (event) => {
+  if (!transitMode) inspect(event.details);
+});
 chart.on('error', (error) => {
   $('calculation-status').textContent = error.message;
 });
 const tooltip = $('tooltip');
 chart.on('hover', (event) => {
+  if (transitMode) return;
   if (!event.details) {
     tooltip.hidden = true;
     return;
@@ -169,10 +236,13 @@ chart.on('hover', (event) => {
   tooltip.style.top = `${Math.max(8, Math.min(window.innerHeight - tooltip.offsetHeight - 8, event.y - 40))}px`;
 });
 function show(data: ChartInput, caption: string): void {
+  natalData = data;
   chart.update(data);
   $('chart-title').textContent = data.title ?? 'Natal chart';
-  $('chart-caption').textContent = caption;
-  if (!chart.selection) inspect(null);
+  natalCaption = caption;
+  if (transitChart) transitChart.update({ natal: natalData, transit: transitData });
+  updateCaptions();
+  if (!transitMode && !chart.selection) inspect(null);
   tooltip.hidden = true;
 }
 async function calculate(): Promise<void> {
@@ -266,6 +336,7 @@ let light = false;
 $('theme-toggle').addEventListener('click', () => {
   light = !light;
   chart.setOptions({ theme: light ? LIGHT_THEME : DARK_THEME });
+  transitChart?.setOptions({ theme: light ? LIGHT_THEME : DARK_THEME });
   $('theme-toggle').setAttribute(
     'aria-label',
     light ? 'Switch to dark chart' : 'Switch to light chart',
@@ -277,20 +348,161 @@ $<HTMLSelectElement>('chart-weight').addEventListener('change', (event) => {
   chart.setOptions({
     chartWeight: (event.currentTarget as HTMLSelectElement).value as ChartWeight,
   });
+  transitChart?.setOptions({
+    chartWeight: $<HTMLSelectElement>('chart-weight').value as ChartWeight,
+  });
 });
 document.querySelectorAll<HTMLInputElement>('[data-layer]').forEach((input) =>
-  input.addEventListener('change', () =>
-    chart.setOptions({
-      layers: { [input.dataset.layer!]: input.checked } as Partial<ChartLayers>,
-    }),
-  ),
+  input.addEventListener('change', () => {
+    const layers = { [input.dataset.layer!]: input.checked } as Partial<ChartLayers>;
+    chart.setOptions({ layers });
+    transitChart?.setOptions({ layers });
+  }),
 );
 window.addEventListener('pagehide', (event) => {
   if (!event.persisted) {
     abort?.abort();
     chart.dispose();
+    transitAbort?.abort();
+    transitChart?.dispose();
   }
 });
 chart.on('update', () => {
-  $('chart-title').textContent = chart.model.title;
+  if (!transitMode) $('chart-title').textContent = chart.model.title;
 });
+
+function updateCaptions(): void {
+  $('chart-title').textContent = `${chart.model.title}${transitMode ? ' + transits' : ''}`;
+  $('chart-caption').textContent =
+    `${natalCaption}${transitMode && transitData.metadata?.utc ? ` · Transits ${transitData.metadata.utc}` : ''}`;
+}
+async function calculateTransit(): Promise<void> {
+  transitAbort?.abort();
+  transitAbort = new AbortController();
+  const ownRevision = ++transitRevision;
+  $('transit-status').textContent = 'Calculating transits…';
+  try {
+    if (!transitTime.value || !transitTime.checkValidity())
+      throw new RangeError('Choose a valid transit UTC time from 1900 through 2100.');
+    const { createAstronomyProvider } = await import('../src/ephemeris/index.js');
+    if (ownRevision !== transitRevision) return;
+    const data = await createAstronomyProvider().calculateTransits(
+      { utc: `${transitTime.value}Z` },
+      { signal: transitAbort.signal },
+    );
+    if (ownRevision !== transitRevision) return;
+    transitChart!.updateTransit(data);
+    transitData = data;
+    $('transit-status').textContent = 'Transits calculated locally. No data leaves your browser.';
+    updateCaptions();
+  } catch (error) {
+    if (
+      ownRevision !== transitRevision ||
+      (error instanceof DOMException && error.name === 'AbortError')
+    )
+      return;
+    $('transit-status').textContent =
+      error instanceof Error ? error.message : 'Transit calculation failed.';
+  }
+}
+$('chart-view').addEventListener('change', () => {
+  transitMode = $<HTMLSelectElement>('chart-view').value === 'transit';
+  if (transitMode && !transitChart) {
+    const layers = Object.fromEntries(
+      [...document.querySelectorAll<HTMLInputElement>('[data-layer], [data-transit-layer]')].map(
+        (input) => [input.dataset.layer ?? input.dataset.transitLayer, input.checked],
+      ),
+    );
+    transitChart = createTransitChart($('transit-chart'), {
+      data: { natal: natalData, transit: transitData },
+      chartWeight: $<HTMLSelectElement>('chart-weight').value as ChartWeight,
+      theme: light ? LIGHT_THEME : DARK_THEME,
+      orbs: orbLimits,
+      layers,
+    });
+    window.astr3Transit = transitChart;
+    transitChart.on('selection', (event) => {
+      if (transitMode) inspect(event.details);
+    });
+    transitChart.on('hover', (event) => {
+      if (!transitMode || !event.details) {
+        tooltip.hidden = true;
+        return;
+      }
+      const object = event.details.object;
+      tooltip.textContent = `${event.details.selection.chart === 'natal' ? 'Natal' : event.details.selection.chart === 'transit' ? 'Transiting' : 'Transit-to-natal'} ${'name' in object ? object.name : 'type' in object ? `${object.type} · ${object.orb.toFixed(2)}° orb` : `House ${object.number}`}`;
+      tooltip.hidden = false;
+      tooltip.style.left = `${Math.max(8, Math.min(innerWidth - tooltip.offsetWidth - 12, event.x + 16))}px`;
+      tooltip.style.top = `${Math.max(8, event.y - 40)}px`;
+    });
+  }
+  $('chart').hidden = transitMode;
+  $('transit-chart').hidden = !transitMode;
+  $('transit-controls').hidden = !transitMode;
+  for (const option of $<HTMLSelectElement>('orb-family').options)
+    option.disabled = !transitMode && option.value !== 'natal';
+  $<HTMLSelectElement>('orb-family').value = transitMode ? 'cross' : 'natal';
+  renderOrbInputs();
+  tooltip.hidden = true;
+  inspect(
+    transitMode
+      ? transitChart!.selection
+        ? getTransitSelectionDetails(transitChart!.model, transitChart!.selection)
+        : null
+      : chart.selection
+        ? getSelectionDetails(chart.model, chart.selection)
+        : null,
+  );
+  updateCaptions();
+  if (transitMode && !transitData.bodies.length) void calculateTransit();
+});
+transitTime.addEventListener('change', () => {
+  void calculateTransit();
+});
+for (const [id, direction] of [
+  ['transit-prev', -1],
+  ['transit-next', 1],
+] as const)
+  $(id).addEventListener('click', () => {
+    try {
+      transitTime.value = stepTransitTime(
+        `${transitTime.value}Z`,
+        $<HTMLSelectElement>('transit-step').value as TimeStep,
+        direction,
+      ).slice(0, 16);
+      void calculateTransit();
+    } catch (error) {
+      $('transit-status').textContent = (error as Error).message;
+    }
+  });
+$('transit-now').addEventListener('click', () => {
+  transitTime.value = new Date().toISOString().slice(0, 16);
+  void calculateTransit();
+});
+document.querySelectorAll<HTMLInputElement>('[data-transit-layer]').forEach((input) =>
+  input.addEventListener('change', () =>
+    transitChart?.setOptions({
+      layers: { [input.dataset.transitLayer!]: input.checked } as Partial<TransitLayers>,
+    }),
+  ),
+);
+function renderOrbInputs() {
+  const family = $<HTMLSelectElement>('orb-family').value as AspectFamily;
+  document.querySelectorAll<HTMLInputElement>('[data-orb]').forEach((input) => {
+    input.value = String(orbLimits[family][input.dataset.orb as AspectType]);
+  });
+}
+$('orb-family').addEventListener('change', renderOrbInputs);
+document.querySelectorAll<HTMLInputElement>('[data-orb]').forEach((input) =>
+  input.addEventListener('change', () => {
+    if (!input.value || !input.checkValidity()) {
+      $('orb-status').textContent = 'Orb limits must be numbers from 0° to 180°.';
+      return;
+    }
+    const family = $<HTMLSelectElement>('orb-family').value as AspectFamily;
+    orbLimits[family][input.dataset.orb as AspectType] = input.valueAsNumber;
+    if (family === 'natal') chart.setOptions({ orbs: orbLimits.natal });
+    transitChart?.setOptions({ orbs: { [family]: { ...orbLimits[family] } } });
+    $('orb-status').textContent = 'Orb limits updated.';
+  }),
+);

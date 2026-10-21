@@ -27,10 +27,28 @@ import type {
   ChartWeight,
   LineStyle,
 } from './types.js';
-import { WHEEL, aspectPath, convexHull, layoutBodies, polar } from './layout.js';
+import { WHEEL, aspectPath, boxesOverlap, convexHull, layoutBodies, polar } from './layout.js';
 import type { Box, Point } from './layout.js';
 import { hitTest } from './picking.js';
 import type { HitTarget } from './picking.js';
+import type { AspectFamily, BodyReference, ChartSide } from './model/transits.js';
+
+export interface WheelPresentation {
+  bodyRefs: ReadonlyMap<string, BodyReference>;
+  aspectFamilies: ReadonlyMap<string, AspectFamily>;
+  bodies: Record<ChartSide, boolean>;
+  aspects: Record<AspectFamily, boolean>;
+  transitColor?: string;
+}
+export const TRANSIT_WHEEL = {
+  extent: 464,
+  inner: 296,
+  outer: 402,
+  marker: 412,
+  preferred: 350,
+  rim: 420,
+  axis: 440,
+} as const;
 
 export const DARK_THEME: ChartTheme = {
   background: '#111c20',
@@ -108,6 +126,15 @@ const STYLE = `
 
 /** Mounts a wheel. All DOM and GPU work is deferred until this call. */
 export function createChart(container: HTMLElement, initialOptions: ChartOptions): Chart {
+  return createWheel(container, initialOptions);
+}
+
+/** Internal shared renderer; the transit adapter supplies scoped display information. */
+export function createWheel(
+  container: HTMLElement,
+  initialOptions: ChartOptions,
+  presentation?: () => WheelPresentation,
+): Chart {
   const doc = container.ownerDocument;
   const win = doc.defaultView;
   if (!win) throw new Error('createChart requires a browser document.');
@@ -229,7 +256,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
   function describe(selection: Selection): string {
     if (selection.kind === 'body') {
       const body = model.bodies.find((body) => body.id === selection.id)!;
-      return `${body.name} · ${formatPosition(body.longitude)}${body.retrograde ? ' · retrograde' : ''}${body.house ? ` · house ${body.house}` : ''}`;
+      return `${body.name} · ${formatPosition(body.longitude)}${body.retrograde ? ' · retrograde' : ''}${body.house ? ` · ${presentation?.().bodyRefs.get(body.id)?.chart === 'transit' ? 'natal house' : 'house'} ${body.house}` : ''}`;
     }
     if (selection.kind === 'aspect') {
       const aspect = model.aspects.find((aspect) => aspect.id === selection.id)!;
@@ -279,12 +306,41 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       ].join(' ');
       objectList.append(warning);
     }
-    for (const [heading, kind, objects] of [
-      ['Planets and points', 'body', model.bodies],
-      ['Aspects', 'aspect', model.aspects],
-      ['Houses', 'house', model.houses],
-      ['Supplied groups', 'group', model.groups],
-    ] as const) {
+    const p = presentation?.();
+    const sections: readonly (readonly [string, Selection['kind'], readonly { id: string }[]])[] = p
+      ? [
+          [
+            'Natal planets and points',
+            'body',
+            model.bodies.filter((body) => p.bodyRefs.get(body.id)?.chart === 'natal'),
+          ],
+          [
+            'Transiting planets and points',
+            'body',
+            model.bodies.filter((body) => p.bodyRefs.get(body.id)?.chart === 'transit'),
+          ],
+          ...(['cross', 'natal', 'transit'] as const).map(
+            (family) =>
+              [
+                family === 'cross'
+                  ? 'Transit-to-natal aspects'
+                  : family === 'natal'
+                    ? 'Natal aspects'
+                    : 'Transit-to-transit aspects',
+                'aspect' as const,
+                model.aspects.filter((aspect) => p.aspectFamilies.get(aspect.id) === family),
+              ] as const,
+          ),
+          ['Natal houses', 'house', model.houses],
+          ['Supplied groups', 'group', model.groups],
+        ]
+      : [
+          ['Planets and points', 'body', model.bodies],
+          ['Aspects', 'aspect', model.aspects],
+          ['Houses', 'house', model.houses],
+          ['Supplied groups', 'group', model.groups],
+        ];
+    for (const [heading, kind, objects] of sections) {
       if (!objects.length) continue;
       const h = doc.createElement('h4');
       h.textContent = heading;
@@ -298,6 +354,11 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
         button.textContent = describe(selection);
         button.dataset.selection = selectionKey(selection);
         button.dataset.kind = kind;
+        const ref = p?.bodyRefs.get(object.id);
+        if (ref) {
+          button.dataset.chart = ref.chart;
+          button.dataset.bodyId = ref.id;
+        }
         button.addEventListener('click', (event) =>
           setSelection(selection, event.detail === 0 ? 'keyboard' : 'pointer'),
         );
@@ -376,8 +437,9 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
     const rect = stage.getBoundingClientRect();
     width = Math.max(1, rect.width);
     height = Math.max(1, rect.height);
-    const extentX = WHEEL.extent * Math.max(1, width / height),
-      extentY = WHEEL.extent * Math.max(1, height / width);
+    const extent = presentation ? TRANSIT_WHEEL.extent : WHEEL.extent;
+    const extentX = extent * Math.max(1, width / height),
+      extentY = extent * Math.max(1, height / width);
     camera.left = -extentX;
     camera.right = extentX;
     camera.top = extentY;
@@ -386,7 +448,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
     camera.position.set(pan.x, pan.y, 10);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
-    pixelsPerUnit = (Math.min(width, height) / (2 * WHEEL.extent)) * zoom;
+    pixelsPerUnit = (Math.min(width, height) / (2 * extent)) * zoom;
     if (renderer && !contextLost) {
       renderer.setPixelRatio(Math.min(win!.devicePixelRatio || 1, 2));
       renderer.setSize(width, height, false);
@@ -545,12 +607,25 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
     const colors = theme(),
       visible = layers(),
       asc = model.angles.ascendant ?? 0;
+    const p = presentation?.();
+    const isTransit = (id: string) => p?.bodyRefs.get(id)?.chart === 'transit';
+    const transitColor = p?.transitColor ?? colors.group;
+    const transitAnchor = Math.max(
+      50,
+      WHEEL.house - Math.max(18, 10 / Math.max(pixelsPerUnit, 0.05)),
+    );
+    const shownBodies = model.bodies.filter(
+      (body) => !p || p.bodies[isTransit(body.id) ? 'transit' : 'natal'],
+    );
     const primary = selected ?? hovered;
     const details = primary ? getSelectionDetails(model, primary) : null;
     const activeBodies = new Set(details?.bodies.map((body) => body.id));
     const activeAspects = new Set(details?.aspects.map((aspect) => aspect.id));
     const bodyAnchors = new Map(
-      model.bodies.map((body) => [body.id, polar(body.longitude, WHEEL.house, asc)]),
+      model.bodies.map((body) => [
+        body.id,
+        polar(body.longitude, isTransit(body.id) ? transitAnchor : WHEEL.house, asc),
+      ]),
     );
     const dim = options.selectionEffects?.dimOpacity ?? 0.22;
     const opacity = (active: boolean) =>
@@ -558,6 +633,13 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
     const accent = options.selectionEffects?.color ?? colors.accent;
     const activeWidth = options.selectionEffects?.lineWidth ?? 2.5;
     const reservedLabels: { element: HTMLElement; point: Point }[] = [];
+    const houseNumberSpace: Box[] = p
+      ? [...bodyAnchors.values()].map((point) => ({
+          ...point,
+          width: 9 / pixelsPerUnit,
+          height: 9 / pixelsPerUnit,
+        }))
+      : [];
     notice.textContent = chartError
       ? chartError.message
       : model.timeUncertain
@@ -626,15 +708,43 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           active ? 1.6 : 0.75,
           0.65,
         );
-        const labelPoint = polar(house.longitude + span / 2, WHEEL.houseLabel, asc);
+        const houseRadius = p
+          ? Math.max(
+              20,
+              Math.min(WHEEL.houseLabel, transitAnchor - 10 / Math.max(pixelsPerUnit, 0.05)),
+            )
+          : WHEEL.houseLabel;
+        let labelPoint = polar(house.longitude + span / 2, houseRadius, asc);
         const houseLabel = label(
           labelPoint,
           String(house.number),
-          10,
+          p && pixelsPerUnit < 0.65 ? 8 : 10,
           active ? accent : colors.muted,
           '',
           selection,
         );
+        if (p) {
+          const rect = houseLabel.getBoundingClientRect();
+          const size = { width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
+          // Keep the number within its own sector; stagger it inward when the
+          // compact bi-wheel makes neighboring house labels or anchors collide.
+          for (
+            let radius = houseRadius;
+            radius >= 5 / pixelsPerUnit;
+            radius -= (rect.height + 3) / pixelsPerUnit
+          ) {
+            const candidate = polar(house.longitude + span / 2, radius, asc);
+            const box = { ...candidate, ...size };
+            if (!houseNumberSpace.some((other) => boxesOverlap(box, other, 2 / pixelsPerUnit))) {
+              labelPoint = candidate;
+              break;
+            }
+          }
+          houseNumberSpace.push({ ...labelPoint, ...size });
+          const position = project(labelPoint);
+          houseLabel.style.left = `${position.x}px`;
+          houseLabel.style.top = `${position.y}px`;
+        }
         reservedLabels.push({ element: houseLabel, point: labelPoint });
         targets.push({ selection, priority: 3, shape: 'polygon', points: polygon.map(project) });
       }
@@ -646,15 +756,28 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       ] as const) {
         if (value === undefined) continue;
         stroke(
-          [polar(value, 301, asc), polar(value + 180, 301, asc)],
+          [
+            polar(value, p ? TRANSIT_WHEEL.axis - 4 : 301, asc),
+            polar(value + 180, p ? TRANSIT_WHEEL.axis - 4 : 301, asc),
+          ],
           colors.muted,
           1,
           0.55,
           [5, 5],
         );
-        label(polar(value, 305, asc), name, 10, accent);
-        label(polar(value + 180, 305, asc), name === 'AC' ? 'DC' : 'IC', 10, colors.muted);
+        label(polar(value, p ? TRANSIT_WHEEL.axis : 305, asc), name, 10, accent);
+        label(
+          polar(value + 180, p ? TRANSIT_WHEEL.axis : 305, asc),
+          name === 'AC' ? 'DC' : 'IC',
+          10,
+          colors.muted,
+        );
       }
+    if (p) {
+      circle(TRANSIT_WHEEL.inner, colors.ring, 0.6);
+      circle(TRANSIT_WHEEL.rim, colors.ring, 0.8);
+      circle(transitAnchor, transitColor, 0.3, { x: 0, y: 0 }, 0.6);
+    }
     if (visible.groups)
       for (const group of model.groups) {
         const ids = new Set(group.bodyIds);
@@ -678,6 +801,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       }
     if (visible.aspects)
       for (const aspect of model.aspects) {
+        if (p && !p.aspects[p.aspectFamilies.get(aspect.id)!]) continue;
         const active = !!primary && activeAspects.has(aspect.id);
         const style: LineStyle = options.lineStyles?.[aspect.type] ?? {};
         const color = active ? accent : colors.aspects[aspect.type];
@@ -685,6 +809,7 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           bodyAnchors.get(aspect.bodyIds[0])!,
           bodyAnchors.get(aspect.bodyIds[1])!,
           pixelsPerUnit,
+          p ? 24 : 8,
         );
         stroke(
           line,
@@ -707,16 +832,21 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       const elements = new Map<string, HTMLElement>();
       // Batch DOM writes before measuring. Real glyph/degree dimensions also
       // cover custom fonts, retrograde labels, and OS symbol substitutions.
-      for (const body of model.bodies) {
+      for (const body of shownBodies) {
         const active = activeBodies.has(body.id);
         const element = label(
           { x: 0, y: 0 },
           '',
           fontSize,
-          active ? accent : colors.foreground,
+          active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
           'astr3-body',
           { kind: 'body', id: body.id },
         );
+        const ref = p?.bodyRefs.get(body.id);
+        if (ref) {
+          element.dataset.chart = ref.chart;
+          element.dataset.bodyId = ref.id;
+        }
         const symbol = doc.createElement('span');
         symbol.className = 'astr3-symbol';
         symbol.textContent = glyph(body);
@@ -750,30 +880,47 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
         const rect = element.getBoundingClientRect();
         return { ...point, width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
       });
-      const layout = layoutBodies(
-        model.bodies,
-        asc,
-        pixelsPerUnit,
-        (body, compact) => (compact ? compactSizes : fullSizes).get(body.id)!,
-        reservedBoxes,
+      const placeBand = (bodies: readonly Body[], transit = false) =>
+        layoutBodies(
+          bodies,
+          asc,
+          pixelsPerUnit,
+          (body, compact) => (compact ? compactSizes : fullSizes).get(body.id)!,
+          reservedBoxes,
+          transit
+            ? { ...TRANSIT_WHEEL, marker: TRANSIT_WHEEL.marker, preferred: TRANSIT_WHEEL.preferred }
+            : undefined,
+        );
+      const natalLayout = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
+      const transitLayout = placeBand(
+        shownBodies.filter((body) => isTransit(body.id)),
+        true,
       );
+      const layout = {
+        placements: [...natalLayout.placements, ...transitLayout.placements],
+        compact: natalLayout.compact || transitLayout.compact,
+      };
       const placements = new Map(layout.placements.map((placement) => [placement.id, placement]));
-      const overflow = placements.size < model.bodies.length;
+      const overflow = placements.size < shownBodies.length;
       stage.dataset.labelMode = overflow ? 'markers' : layout.compact ? 'compact' : 'full';
       if (overflow)
         notice.textContent = [notice.textContent, 'Zoom in to reveal planet symbols']
           .filter(Boolean)
           .join(' · ');
-      for (const body of model.bodies) {
+      for (const body of shownBodies) {
         const placement = placements.get(body.id);
-        const marker = placement?.marker ?? polar(body.longitude, WHEEL.marker, asc);
+        const markerRadius = isTransit(body.id) ? TRANSIT_WHEEL.marker : WHEEL.marker;
+        const marker = placement?.marker ?? polar(body.longitude, markerRadius, asc);
         const active = activeBodies.has(body.id);
-        const color = active ? accent : colors.foreground,
+        const color = active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
           alpha = opacity(active);
         const selection: Selection = { kind: 'body', id: body.id };
         if (placement) stroke([marker, placement.label], colors.muted, 0.7, alpha * 0.7);
         stroke(
-          [polar(body.longitude, 236, asc), polar(body.longitude, 243, asc)],
+          [
+            polar(body.longitude, markerRadius - 3, asc),
+            polar(body.longitude, markerRadius + 4, asc),
+          ],
           active ? accent : colors.foreground,
           active ? 2 : 1.5,
           alpha,
@@ -791,7 +938,9 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
           element.remove();
           continue;
         }
-        element.dataset.compact = String(layout.compact);
+        element.dataset.compact = String(
+          isTransit(body.id) ? transitLayout.compact : natalLayout.compact,
+        );
         const screen = project(placement.label);
         element.style.left = `${screen.x}px`;
         element.style.top = `${screen.y}px`;
@@ -804,14 +953,24 @@ export function createChart(container: HTMLElement, initialOptions: ChartOptions
       }
       // Draw every planet's anchor above the aspect network and leader lines.
       // Anchors remain available when symbols compact or overflow the label band.
-      for (const body of model.bodies) {
+      for (const body of shownBodies) {
         const anchor = bodyAnchors.get(body.id)!;
         const active = activeBodies.has(body.id);
         const radius =
           (2.5 * Math.sqrt(visualWeight.strokeMultiplier) + (active ? 0.5 : 0)) / pixelsPerUnit;
-        const geometry = new CircleGeometry(radius, 24);
-        geometry.translate(anchor.x, anchor.y, 0);
-        mesh(geometry, active ? accent : colors.foreground, opacity(active));
+        if (isTransit(body.id)) {
+          const diamond = [
+            { x: anchor.x, y: anchor.y + radius },
+            { x: anchor.x + radius, y: anchor.y },
+            { x: anchor.x, y: anchor.y - radius },
+            { x: anchor.x - radius, y: anchor.y },
+          ];
+          stroke([...diamond, diamond[0]!], active ? accent : transitColor, 1.1, opacity(active));
+        } else {
+          const geometry = new CircleGeometry(radius, 24);
+          geometry.translate(anchor.x, anchor.y, 0);
+          mesh(geometry, active ? accent : colors.foreground, opacity(active));
+        }
         targets.push({
           selection: { kind: 'body', id: body.id },
           priority: 0,

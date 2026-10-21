@@ -1,5 +1,7 @@
 # API and data contracts
 
+For natal + transit bi-wheels, see [Transit bi-wheel API](transits.md). The natal contracts below remain unchanged.
+
 ## Model
 
 Import types and pure functions from `astr3/model`. `createModel(input, { orbs? })` validates, normalizes, and freezes its own objects/arrays. It does not mutate or freeze the caller's input. Application metadata is opaque and retained by reference; treat it as immutable.

@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. The initial wheel uses synthetic teaching data with a supplied grand trine. Choose a calculated preset or enter a UTC date/time and coordinates to use Astronomy Engine. House systems: Placidus, Whole Sign, Equal. Birth information is never sent to a service. The demo also includes an unknown-time reference snapshot and a **Chart weight** selector: Light, Regular (demo default), and Bold.
+Open the local URL printed by Vite. The initial wheel uses synthetic teaching data with a supplied grand trine. Choose a calculated preset or enter a UTC date/time and coordinates to use Astronomy Engine. House systems: Placidus, Whole Sign, Equal. Birth information is never sent to a service. Choose **Natal + transits** to add an outer transit band, UTC time stepping, and independent orb and visibility controls for natal, transit-to-natal, and transit-to-transit aspects. **Chart weight** offers Light, Regular (demo default), and Bold.
 
 ## Use the library
 
@@ -89,7 +89,34 @@ chart.update(data);
 - Dark/light themes, Light/Regular/Bold chart weight, custom glyph strings, aspect line widths/dashes, layers, dimming, and selection styles.
 - Validated data updates, resource disposal, and recovery after WebGL context restoration.
 
-The initial API is versioned 0.x and may change before 1.0. Automatic patterns, transit/synastry wheels, multi-selection, time playback, export, 3D presentation, and framework wrappers are deferred.
+The initial API is versioned 0.x and may change before 1.0. Automatic patterns, synastry, standalone transit houses, multi-selection, time playback, export, 3D presentation, and framework wrappers are deferred.
+
+## Natal + transit bi-wheels
+
+```ts
+import { createTransitChart } from 'astr3';
+import { createAstronomyProvider } from 'astr3/ephemeris';
+
+const provider = createAstronomyProvider();
+const natal = await provider.calculate({
+  utc: '2000-01-01T12:00:00Z',
+  latitude: 51.5074,
+  longitude: -0.1278,
+});
+const transit = await provider.calculateTransits({ utc: '2026-10-21T12:00:00Z' });
+const wheel = createTransitChart(document.querySelector<HTMLElement>('#wheel')!, {
+  data: { natal, transit },
+  orbs: { cross: { conjunction: 5 } },
+  layers: { crossAspects: true, natalAspects: false, transitAspects: false },
+});
+wheel.select({ kind: 'body', chart: 'transit', id: 'mars' });
+wheel.on('selection', ({ details }) => console.log(details));
+// Updating time leaves natal data, camera and configuration fixed.
+wheel.updateTransit(await provider.calculateTransits({ utc: '2026-10-22T12:00:00Z' }));
+// Unmount: wheel.dispose();
+```
+
+Both sides also accept precomputed `ChartInput`. Planet IDs remain local to their chart: natal Mars and transiting Mars can both use `mars`. The inner wheel uses natal houses/axes; transit bodies expose their `natalHouse`. Distinct central anchor dots keep aspect lines out of the zodiac and label bands. See [the transit API](docs/transits.md) for configuration, selection, and calculation contracts.
 
 ## Documentation and validation
 

@@ -37,8 +37,8 @@ try {
   writeFileSync(
     join(directory, 'consumer.ts'),
     `
-import { createChart, type Selection, type ChartInput, type ChartWeight } from 'astr3';
-import { createModel } from 'astr3/model';
+import { createChart, createTransitChart, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight } from 'astr3';
+import { createModel, createTransitModel } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
 const selection: Selection = { kind: 'body', id: 'sun' };
@@ -47,6 +47,11 @@ const chartFactory: typeof createChart = createChart;
 const chartWeight: ChartWeight = 'regular';
 const options: Parameters<typeof createChart>[1] = { data: input, chartWeight };
 void [selection, model, chartFactory, createAstronomyProvider, options];
+const pair: TransitChartInput = { natal: input, transit: input };
+const transitSelection: TransitSelection = { kind: 'body', chart: 'transit', id: 'sun' };
+const transitModel = createTransitModel(pair, { orbs: { cross: { trine: 3 } } });
+const transitOptions: Parameters<typeof createTransitChart>[1] = { data: pair, layers: { crossAspects: true }, glyphs: { transit: { sun: 'S' } } };
+void [transitSelection, transitModel, transitOptions, createAstronomyProvider().calculateTransits];
 `,
   );
   writeFileSync(
@@ -71,14 +76,19 @@ void [selection, model, chartFactory, createAstronomyProvider, options];
     join(directory, 'runtime.mjs'),
     `
 import assert from 'node:assert/strict';
-import { createChart } from 'astr3';
-import { createModel } from 'astr3/model';
+import { createChart, createTransitChart } from 'astr3';
+import { createModel, createTransitModel } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 assert.equal(typeof globalThis.document, 'undefined');
 assert.equal(typeof createChart, 'function');
+assert.equal(typeof createTransitChart, 'function');
+assert.equal(createTransitModel({ natal: { bodies: [] }, transit: { bodies: [] } }).crossAspects.length, 0);
 assert.equal(createModel({ bodies: [] }).houseStatus, 'unknown');
 const data = await createAstronomyProvider().calculate({ utc: '2000-01-01T12:00:00Z', latitude: 51.5, longitude: 0 });
 assert.equal(data.houses.length, 12);
+const transits = await createAstronomyProvider().calculateTransits({ utc: '2000-01-01T12:00:00Z' });
+assert.equal(transits.bodies.length, 10);
+assert.equal(transits.houses, undefined);
 `,
   );
   run(process.execPath, ['runtime.mjs']);

@@ -36,7 +36,7 @@
         </div>
         <div class="intro-meta">
           <span class="status-dot"></span> THREE.JS · TYPESCRIPT<br /><span
-            >Western natal wheels / v0.1</span
+            >Natal + transit wheels</span
           >
         </div>
       </section>
@@ -51,6 +51,7 @@
             </button>
           </div>
           <div id="chart"></div>
+          <div id="transit-chart" hidden></div>
           <div class="wheel-caption">
             <span id="chart-caption">Supplied demonstration data · not a birth chart</span
             ><span>SCROLL TO ZOOM · DRAG TO PAN</span>
@@ -76,6 +77,56 @@
           <section class="settings" aria-labelledby="settings-heading">
             <p class="eyebrow">03 / CONFIGURE</p>
             <h2 id="settings-heading">Change the view.</h2>
+            <label for="chart-view">View</label>
+            <select id="chart-view">
+              <option value="natal">Natal chart</option>
+              <option value="transit">Natal + transits</option>
+            </select>
+            <section id="transit-controls" hidden aria-label="Transit time and visibility">
+              <label for="transit-utc">Transit date &amp; time <span>UTC</span></label>
+              <input
+                id="transit-utc"
+                type="datetime-local"
+                min="1900-01-01T00:00"
+                max="2100-12-31T23:59"
+                required
+              />
+              <div class="transit-navigation">
+                <button id="transit-prev" type="button" aria-label="Previous transit step">←</button
+                ><select id="transit-step" aria-label="Transit step interval">
+                  <option value="hour">Hour</option>
+                  <option value="day" selected>Day</option>
+                  <option value="week">Week</option>
+                  <option value="month">Month</option></select
+                ><button id="transit-next" type="button" aria-label="Next transit step">→</button
+                ><button id="transit-now" type="button">Now</button>
+              </div>
+              <p id="transit-status" class="calculation-status" role="status">
+                Choose a transit time.
+              </p>
+              <fieldset class="layers">
+                <legend>Transit view</legend>
+                <label
+                  ><input type="checkbox" data-transit-layer="natalBodies" checked /> Natal
+                  planets</label
+                >
+                <label
+                  ><input type="checkbox" data-transit-layer="transitBodies" checked /> Transit
+                  planets</label
+                >
+                <label
+                  ><input type="checkbox" data-transit-layer="crossAspects" checked />
+                  Transit-to-natal aspects</label
+                >
+                <label
+                  ><input type="checkbox" data-transit-layer="natalAspects" /> Natal aspects</label
+                >
+                <label
+                  ><input type="checkbox" data-transit-layer="transitAspects" /> Transit-to-transit
+                  aspects</label
+                >
+              </fieldset>
+            </section>
             <label for="preset">Chart source</label
             ><select id="preset">
               <option value="study">Grand trine study</option>
@@ -135,6 +186,70 @@
             <p id="calculation-status" role="status" class="calculation-status">
               No data leaves your browser.
             </p>
+            <label for="orb-family">Aspect orb limits</label>
+            <select id="orb-family">
+              <option value="natal">Natal aspects</option>
+              <option value="cross" disabled>Transit-to-natal aspects</option>
+              <option value="transit" disabled>Transit-to-transit aspects</option>
+            </select>
+            <div class="orb-inputs">
+              <label
+                >Conjunction
+                <input
+                  data-orb="conjunction"
+                  type="number"
+                  min="0"
+                  max="180"
+                  step="0.1"
+                  value="8"
+                />°</label
+              >
+              <label
+                >Opposition
+                <input
+                  data-orb="opposition"
+                  type="number"
+                  min="0"
+                  max="180"
+                  step="0.1"
+                  value="8"
+                />°</label
+              >
+              <label
+                >Trine
+                <input
+                  data-orb="trine"
+                  type="number"
+                  min="0"
+                  max="180"
+                  step="0.1"
+                  value="6"
+                />°</label
+              >
+              <label
+                >Square
+                <input
+                  data-orb="square"
+                  type="number"
+                  min="0"
+                  max="180"
+                  step="0.1"
+                  value="6"
+                />°</label
+              >
+              <label
+                >Sextile
+                <input
+                  data-orb="sextile"
+                  type="number"
+                  min="0"
+                  max="180"
+                  step="0.1"
+                  value="4"
+                />°</label
+              >
+            </div>
+            <p id="orb-status" class="calculation-status" role="status"></p>
             <label for="chart-weight">Chart weight</label>
             <select id="chart-weight">
               <option value="light">Light</option>

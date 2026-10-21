@@ -32,7 +32,7 @@ export class CalculationError extends Error {
   }
 }
 
-function parseRequest(request: CalculationRequest): Date {
+function parseTime(request: { utc: Date | string }): Date {
   if (typeof request.utc === 'string' && !/(?:Z|[+-]\d{2}:\d{2})$/i.test(request.utc))
     throw new CalculationError('utc must include Z or an explicit timezone offset.');
   const date = new Date(request.utc);
@@ -42,6 +42,11 @@ function parseRequest(request: CalculationRequest): Date {
     date.getUTCFullYear() > 2100
   )
     throw new CalculationError('The browser adapter supports UTC dates from 1900 through 2100.');
+  return date;
+}
+
+function parseRequest(request: CalculationRequest): Date {
+  const date = parseTime(request);
   if (
     !Number.isFinite(request.latitude) ||
     Math.abs(request.latitude) > 90 ||
@@ -57,30 +62,57 @@ function parseRequest(request: CalculationRequest): Date {
 }
 
 /** Optional browser/Node adapter. No network, DOM, timezone database, or WebGL. */
-export function createAstronomyProvider(): EphemerisProvider {
+export interface AstronomyProvider extends EphemerisProvider {
+  calculateTransits(
+    request: { utc: Date | string },
+    options?: { signal?: AbortSignal },
+  ): Promise<ChartInput>;
+}
+
+async function calculatePositions(date: Date, signal?: AbortSignal): Promise<BodyInput[]> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  signal?.throwIfAborted();
+  const before = new Date(date.getTime() - 30 * 60_000),
+    after = new Date(date.getTime() + 30 * 60_000);
+  return BODIES.map((body) => {
+    const position = Ecliptic(GeoVector(body, date, true));
+    const earlier = Ecliptic(GeoVector(body, before, true)).elon;
+    const later = Ecliptic(GeoVector(body, after, true)).elon;
+    const speed = signedDistance(earlier, later) * 24;
+    return {
+      id: body.toLowerCase(),
+      name: body,
+      longitude: position.elon,
+      latitude: position.elat,
+      speed,
+      retrograde: speed < 0,
+    };
+  });
+}
+
+export function createAstronomyProvider(): AstronomyProvider {
   return {
+    async calculateTransits(request, { signal } = {}) {
+      signal?.throwIfAborted();
+      const date = parseTime(request);
+      const bodies = await calculatePositions(date, signal);
+      signal?.throwIfAborted();
+      return {
+        title: 'Transits',
+        bodies,
+        metadata: {
+          provider: 'astronomy-engine',
+          utc: date.toISOString(),
+          zodiac: 'tropical',
+          frame: 'geocentric true ecliptic of date',
+          aberration: true,
+        },
+      };
+    },
     async calculate(request, { signal } = {}): Promise<ChartInput> {
       signal?.throwIfAborted();
       const date = parseRequest(request);
-      // Yield once so a superseding request can abort before the synchronous engine runs.
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-      signal?.throwIfAborted();
-      const before = new Date(date.getTime() - 30 * 60_000),
-        after = new Date(date.getTime() + 30 * 60_000);
-      const positions: BodyInput[] = BODIES.map((body) => {
-        const position = Ecliptic(GeoVector(body, date, true));
-        const earlier = Ecliptic(GeoVector(body, before, true)).elon;
-        const later = Ecliptic(GeoVector(body, after, true)).elon;
-        const speed = signedDistance(earlier, later) * 24;
-        return {
-          id: body.toLowerCase(),
-          name: body,
-          longitude: position.elon,
-          latitude: position.elat,
-          speed,
-          retrograde: speed < 0,
-        };
-      });
+      const positions = await calculatePositions(date, signal);
       const rotation = Rotation_ECT_EQD(date).rot;
       const obliquity = (Math.atan2(rotation[1]![2]!, rotation[1]![1]!) * 180) / Math.PI;
       const system = request.houseSystem ?? 'placidus';
