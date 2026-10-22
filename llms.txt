@@ -1,0 +1,22 @@
+# astr3
+
+> MIT TypeScript library for explorable Western astrology wheels with Three.js.
+> Browser rendering, headless models, optional local ephemeris, natal and transit charts.
+> Version 0.1.0 is experimental. The repository builds an installable tarball; npm publication is pending.
+
+## Integration
+
+- [Getting started](README.md): local demo, tarball installation, natal and transit examples.
+- [Agent integration](docs/agent-integration.md): entry-point selection, headless example, browser lifecycle and common mistakes.
+- [API contracts](docs/api.md): input, aspects, options, events, picking and accessibility.
+- [Transit API](docs/transits.md): composite models, source-qualified selections and transit updates.
+- [Calculation conventions](docs/calculations.md): coordinate conventions, houses, nodes and measured accuracy limits.
+- [Architecture](docs/architecture.md): model, provider, renderer and application boundaries.
+
+## Contributing
+
+- [Repository agent instructions](AGENTS.md): source map, invariants, checks and local commits.
+- [Contributing](CONTRIBUTING.md): reproducible setup and review workflow.
+- [Release checklist](docs/releasing.md): history, privacy, builds and packed artifacts.
+- [Security reporting](SECURITY.md): private reporting policy and data handling.
+- [Changelog](CHANGELOG.md): current capabilities and upcoming changes.

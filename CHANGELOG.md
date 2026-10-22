@@ -1,0 +1,27 @@
+# Changelog
+
+User-visible changes are recorded here. The API is experimental until 1.0.
+
+## Unreleased
+
+- Prepared the open source repository with public/synthetic fixtures, contributor
+  guidance, agent integration examples and reproducible release privacy checks.
+
+## 0.1.0
+
+Initial implementation; package publication is pending.
+
+- Render Western natal wheels with Three.js and precomputed or locally calculated
+  positions, actual house cusps, AC/MC axes, true lunar nodes and unknown-house support.
+- Select planets, points, houses, aspects and supplied groups directly, with
+  relationship highlighting, details/events and programmatic selection.
+- Explore natal + transit bi-wheels with source-qualified selections and separate
+  natal, cross-chart and transit aspect settings.
+- Configure eleven aspect types, independent enablement and orbs, chart weight,
+  themes, glyphs, layers and line styles.
+- Keep markers at exact longitudes while fitting crowded symbols locally with
+  bounded circular packing, zoom-aware text and selectable cluster badges.
+- Use deterministic conjunction bows, touch/keyboard navigation, an accessible
+  HTML object list and graceful WebGL failure handling.
+- Consume typed ESM entry points for browser rendering, headless models and the
+  optional Astronomy Engine adapter, with lifecycle cleanup and packed-consumer checks.

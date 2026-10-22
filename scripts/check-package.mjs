@@ -18,6 +18,17 @@ try {
   );
   if (pack.files.some((file) => file.path.startsWith('tests/') || file.path.startsWith('demo/')))
     throw new Error('Development files leaked into the package.');
+  for (const path of [
+    'AGENTS.md',
+    'CONTRIBUTING.md',
+    'SECURITY.md',
+    'CHANGELOG.md',
+    'llms.txt',
+    'docs/agent-integration.md',
+    'docs/releasing.md',
+  ])
+    if (!pack.files.some((file) => file.path === path))
+      throw new Error(`Public documentation missing from package: ${path}`);
   const version = (name) =>
     JSON.parse(readFileSync(join(root, 'node_modules', name, 'package.json'), 'utf8')).version;
   writeFileSync(
@@ -106,6 +117,20 @@ assert.equal(transits.houses, undefined);
 `,
   );
   run(process.execPath, ['runtime.mjs']);
+  const guide = readFileSync(
+    join(directory, 'node_modules/astr3/docs/agent-integration.md'),
+    'utf8',
+  );
+  const example = guide.match(/```js\n([\s\S]*?)\n```/)?.[1];
+  if (!example) throw new Error('Agent guide has no complete headless example.');
+  writeFileSync(join(directory, 'agent-example.mjs'), example);
+  const inspected = JSON.parse(run(process.execPath, ['agent-example.mjs']));
+  if (
+    inspected.body.id !== 'sun' ||
+    inspected.aspects.length !== 2 ||
+    inspected.houseStatus !== 'unknown'
+  )
+    throw new Error('Packed agent guide example does not match its documented result.');
   console.log(
     'Package consumer passed: ESM imports, SSR-safe model/renderer import, optional adapter, TypeScript declarations.',
   );

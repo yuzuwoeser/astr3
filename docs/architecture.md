@@ -30,13 +30,13 @@ Picking compares shapes in CSS pixels. One semantic selection drives highlightin
 
 ## Application lifecycle
 
-Create after the host mounts. Subscribe to selection/hover for UI, use `update` for data and `setOptions` for display. Stable IDs preserve selection. Unsubscribe and dispose at unmount. Only the chart's own root is removed.
+Create after the host mounts. Subscribe to selection/hover for UI, use `update` for data and `setOptions` for display, aspect enablement, and orbs. Stable IDs preserve selection. Unsubscribe and dispose at unmount. Only the chart's own root is removed.
 
 For a remote/worker provider: cancel the prior request, increment a revision, request data, and apply only the current result. Display failures separately while retaining the previous valid chart. Provider, invalid-data, and graphics failures are distinct. The library has no accounts, service, or storage.
 
 ## Development and release
 
-`npm run check` verifies types, unit/reference behavior, and library/demo builds. `npm run test:browser` exercises actual Chromium WebGL and mobile touch emulation. Ignored `test-results/` contains review screenshots and failure traces. Run `npm run format:check` before committing.
+`npm run check` verifies types, unit/reference behavior, and library/demo builds. `npm run test:browser` exercises actual Chromium WebGL and mobile touch emulation. Ignored `test-results/` contains review screenshots and failure traces. Run `npm run format:check` before committing. [Contributing](../CONTRIBUTING.md) describes setup, and the [release checklist](releasing.md) covers identity, full-history secret scans and distributable privacy checks.
 
 `npm pack` includes ESM, declarations, JavaScript maps with inline sources, docs, license, and notices. Dependencies stay external to the library build. The demo lazy-loads the ephemeris. Physical devices, Firefox, and Safari need further verification before claiming equivalent support.
 

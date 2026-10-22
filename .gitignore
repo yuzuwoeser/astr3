@@ -6,3 +6,29 @@ test-results/
 playwright-report/
 *.tgz
 .DS_Store
+
+# Private configuration and credentials
+.env
+.env.*
+!.env.example
+.npmrc
+.aws/
+.ssh/
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+auth.json
+playwright/.auth/
+
+# Local logs, datasets and agent state
+*.log
+logs/
+private/
+.private/
+.agents/
+.codex/
+.claude/
+.gstack/
+.context/

@@ -10,7 +10,12 @@
     "README.md",
     "LICENSE",
     "NOTICE",
-    "docs"
+    "docs",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "llms.txt"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -63,5 +68,22 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"
-  }
+  },
+  "author": "yuzuwoeser",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuzuwoeser/astr3.git"
+  },
+  "homepage": "https://github.com/yuzuwoeser/astr3#readme",
+  "bugs": {
+    "url": "https://github.com/yuzuwoeser/astr3/issues"
+  },
+  "keywords": [
+    "astrology",
+    "threejs",
+    "natal-chart",
+    "transits",
+    "typescript",
+    "interactive"
+  ]
 }

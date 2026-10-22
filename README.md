@@ -6,8 +6,10 @@ Select a planet, point, house, aspect, or supplied configuration. Highlight its 
 
 ## Run the demo
 
+Use Node.js 24 LTS (minimum 22.12.0) and npm. From the repository root:
+
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -15,7 +17,7 @@ Open the local URL printed by Vite. The initial wheel uses synthetic teaching da
 
 ## Use the library
 
-This repository produces an npm-ready package; it has not been published by this implementation. Install the local package tarball in an application:
+This repository produces an npm-ready package; npm publication is pending. Install the local package tarball in an application:
 
 ```sh
 npm pack
@@ -123,16 +125,25 @@ Both sides also accept precomputed `ChartInput`. Planet IDs remain local to thei
 
 ## Documentation and validation
 
+- [Agent integration: headless data and browser lifecycle](docs/agent-integration.md)
 - [API and data contracts](docs/api.md)
+- [Transit bi-wheel API](docs/transits.md)
 - [Calculation conventions and tested accuracy](docs/calculations.md)
 - [Architecture and integration](docs/architecture.md)
+- [Contributing and local setup](CONTRIBUTING.md)
+- [Instructions for repository coding agents](AGENTS.md)
+- [Documentation index for LLMs](llms.txt)
+- [Release and privacy checklist](docs/releasing.md)
+- [Security reporting](SECURITY.md) and [changelog](CHANGELOG.md)
 
 ```sh
-npm run check             # types, unit/reference tests, library and demo builds
+npm run check             # types, unit/reference tests, builds, packed consumer
 npm exec playwright -- install chromium
 npm run test:browser      # real WebGL: Chromium desktop + mobile touch emulation
 npm run format:check
 ```
+
+Stop any unrelated server on port 4173 before browser tests; local runs may reuse it. On Linux, install Chromium with `--with-deps`. See [Contributing](CONTRIBUTING.md) for focused test commands.
 
 Browser tests exercise direct selection, overlaps, keyboard access, updates, touch/pinch, resizing, themes/layers, unavailable WebGL, context restoration, and repeated disposal. Independent numerical fixtures cover 1900–2100 and both hemispheres. See the calculation documentation for tolerances and limitations. Tests do not imply the same accuracy at every date, coordinate, or numerical boundary.
 

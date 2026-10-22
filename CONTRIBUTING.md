@@ -1,0 +1,78 @@
+# Contributing to astr3
+
+astr3 is an MIT-licensed TypeScript library. Issues and pull requests are welcome.
+The 0.x API may change; discuss a substantial public API change in an issue first.
+Do not include private birth information in reports, screenshots or fixtures.
+
+## Start locally
+
+Use **Node.js 24 LTS**, matching CI. Node 22.12.0 or newer is supported by the
+package. npm and Git are required; Python and an ephemeris service are not.
+
+Once the repository is public:
+
+```sh
+git clone https://github.com/yuzuwoeser/astr3.git
+cd astr3
+npm ci
+npm exec playwright -- install chromium
+npm run dev
+```
+
+Open the Vite URL. Choose a synthetic or public calculated preset, then try
+selecting a body, aspect, house or supplied group. The example application owns
+forms, tooltip text and time controls; the library owns rendering and selection.
+
+## Make and verify a change
+
+Create a branch from `main`. Keep a change focused and preserve existing local
+work. Read [AGENTS.md](AGENTS.md) for source boundaries and invariants, whether you
+work manually or with a coding agent.
+
+```sh
+npm run typecheck
+npm test
+npm run build
+npm run build:demo
+npm run test:package
+npm run test:browser
+npm run format:check
+```
+
+`npm run check` combines the first five commands. The package check installs the
+actual tarball into an isolated consumer and checks ESM imports, SSR-safe imports
+and TypeScript declarations. It uses npm's offline cache, populated by `npm ci`.
+
+Browser tests start Vite on **127.0.0.1:4173**, exercising Chromium desktop and
+mobile touch emulation with software WebGL. Stop an unrelated server on that port
+first: local runs may reuse an existing server. Linux needs browser OS packages:
+`npm exec playwright -- install --with-deps chromium`. A desktop-only pinch test
+is intentionally skipped; physical devices, Firefox and Safari are not covered.
+Screenshots and failure traces stay in ignored `test-results/`.
+
+For a focused run, use `npm test -- tests/unit/layout.test.ts` or
+`npm run test:browser -- tests/browser/transits.spec.ts --project=chromium`.
+`npm run format` applies Prettier; review its diff before committing.
+
+Add tests for changed behavior and regressions rather than duplicating the
+implementation. Keep calculation reference tests independent of the algorithm
+under test. Fixtures and optional regeneration provenance are documented in
+[calculations](docs/calculations.md).
+
+## Submit a pull request
+
+- Explain the observable problem and resulting behavior. Include a small public
+  or synthetic reproduction for fixes.
+- Document public options, event/data changes, calculation conventions and limits.
+- List validation results, including anything skipped or still unverified.
+- Include screenshots for visible changes using synthetic/public chart data.
+- Keep generated builds, local settings, credentials and personal data out of Git.
+
+Use descriptive commits. Implementation work should include a local commit after
+checks and diff review. A push or publication still needs the repository owner's
+authorization. GitHub workflows run formatting, types, tests, builds, consumer
+validation and a full-history secret scan.
+
+Report vulnerabilities using [SECURITY.md](SECURITY.md), not a public issue with
+an exploit or secret. See [the release checklist](docs/releasing.md) for artifact
+and privacy checks before a public release.
