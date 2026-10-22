@@ -122,11 +122,24 @@ Curves fade in with smoothstep opacity over the first 4 CSS pixels beyond the ov
 
 Anchor dots select the same body and expose the same hover/selection details as its symbol. They share relationship highlighting, dimming, theme colors, and chart weight, with a 6 CSS pixel picking radius for mouse and 12 for touch. Overlapping dots open the object chooser. The `bodies` layer controls the dots alongside symbols and outer markers; dots remain at the same radius when houses are hidden or unknown and when aspects are hidden.
 
-The complete planet label stays between the house circle and the outer degree ticks, with a 4 CSS pixel clearance from the boundaries and other labels. Crowded labels may shift around this band; connecting lines lead back to their unchanged longitude markers. This boundary also applies when houses are unknown or hidden.
+The complete planet label stays between the house circle and outer degree ticks, with 4 CSS pixels of clearance. A deterministic circular constraint solver fits labels together in one or two radial rows without adding circles. It preserves zodiac order within each row, balances angular displacement, and never moves a label more than 30° from its true longitude. Indicator lines terminate at label edges; exact longitude markers and house-circle anchors never move. These rules also apply when houses are unknown or hidden.
 
-Body symbol sizes follow the displayed chart scale from 14 to 25 CSS pixels. If a band's full labels do not fit, the renderer tries smaller fonts in 2px steps down to 14px before hiding any degree/retrograde text. AC/MC retain their optical reduction relative to that size, and degree text stays at 10px. Natal and transit bands fit independently, so crowding in one does not shrink the other. Every size is measured with the actual glyph, font weight, and label bounds before placement.
+Wheel text uses four size tiers based on effective scale (CSS pixels per wheel unit, including viewport size and camera zoom):
 
-If full labels still cannot fit at the minimum, the wheel uses compact symbols without the degree/retrograde text. If even a compact symbol cannot fit, its exact marker remains selectable and a “Zoom in to reveal planet symbols” hint appears. Resizing, zooming, or reducing the visible body count restores larger fonts and full labels when space returns. Position and retrograde information remain available in selection/hover details and **Explore chart objects**, which always includes every body. Font fitting never changes chart data, marker positions, aspect endpoints, selection, or marker picking tolerances.
+| Effective scale |                                  Body/zodiac glyphs | House numbers / axis captions | Scale numbers | Body degree/retrograde captions |
+| --------------- | --------------------------------------------------: | ----------------------------: | ------------: | ------------------------------: |
+| Below 0.65      | 14px × scale / 0.65, rounded to 0.5px; 10px minimum |                           8px |        Hidden |                          Hidden |
+| 0.65–0.89       |                                                18px |                           9px |        Hidden |                          Hidden |
+| 0.90–1.59       |                                                24px |                          10px |           9px |         10px when space permits |
+| 1.60+           |                                                32px |                          13px |          12px |         13px when space permits |
+
+AC/MC body glyphs retain their 0.72 optical scaling. Controls, detail panels, object-list text, marker sizes, and picking tolerances keep their normal screen sizes. Chart weight can affect available space through measured glyph dimensions.
+
+Each natal/transit band first checks whether its full captions fit at the selected glyph size. If they do not, it omits the captions before trying smaller glyph presets (24, 18, then 14px as applicable). This retains readable symbols instead of shrinking them to accommodate secondary text. Below the smallest tier, glyphs shrink proportionally with zoom to the 10px floor. Hidden positions and retrograde status remain available through selection/hover details and **Explore chart objects**.
+
+When symbols still cannot fit locally, count badges represent crowded neighborhoods. Each badge stays within 30° of all its members. Click/tap or press Enter/Space to open a chooser and select an original body; Escape closes the chooser and returns focus to the badge. A badge highlights when it contains an active body. Badges introduce no model object or selection type. Zooming/resizing expands them into individual symbols when space permits. If even a badge cannot fit, exact dots and accessible entries remain available.
+
+Text dimensions are cached by typography and content; cache misses are measured in an invisible probe outside the live labels. Font loading and typography changes invalidate measurements. Layout trials never toggle visible captions, and layout results are reused for panning and appearance-only selection/hover changes. Identical chart/scale inputs produce identical placement regardless of input order or zoom history.
 
 Screen-space priority: body labels/markers → aspects → group interiors → houses. Aspect tolerance is 8 CSS pixels with mouse and 14 with touch. Ties at the highest matching priority produce a chooser. Three or more noncollinear group members define a convex interior; degenerate groups remain selectable in the list/API.
 

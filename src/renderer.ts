@@ -36,6 +36,8 @@ import type {
 } from './types.js';
 import { WHEEL, aspectPath, boxesOverlap, convexHull, layoutBodies, polar } from './layout.js';
 import type { BodyLayout, Box, Point } from './layout.js';
+import { chartText, createTextMeasurer } from './chart-text.js';
+import type { TextSize } from './chart-text.js';
 import { hitTest } from './picking.js';
 import type { HitTarget } from './picking.js';
 import type { AspectFamily, BodyReference, ChartSide } from './model/transits.js';
@@ -119,6 +121,7 @@ const STYLE = `
 .astr3-body{min-width:34px;padding:2px 3px;border-radius:7px;background:var(--astr3-bg);border:1px solid transparent;font-size:23px}
 .astr3-body small{display:block;font-size:10px;letter-spacing:.01em;font-variant-numeric:tabular-nums;margin-top:2px}.astr3-body[data-active=true]{border-color:var(--astr3-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--astr3-accent) 18%,transparent)}
 .astr3-body[data-compact=true]{min-width:0}.astr3-body[data-compact=true] small{display:none}
+.astr3-clusters{position:absolute;inset:0;pointer-events:none}.astr3-clusters .astr3-cluster{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;min-width:24px;min-height:24px;padding:2px 5px;line-height:1.15;font-size:12px;font-weight:var(--astr3-label-weight);border-radius:12px}.astr3-cluster[data-active=true]{border-color:var(--astr3-accent);color:var(--astr3-accent)}
 .astr3-label[data-dim=true]{opacity:var(--astr3-dim)}.astr3-controls{position:absolute;z-index:3;right:14px;bottom:14px;display:flex;gap:5px}
 .astr3 button{font:inherit;color:inherit;cursor:pointer;background:var(--astr3-bg);border:1px solid var(--astr3-ring);border-radius:7px;padding:7px 10px}.astr3 button:hover{border-color:var(--astr3-accent)}
 .astr3-controls button{min-width:36px;min-height:36px}.astr3 button[aria-pressed=true]{border-color:var(--astr3-accent);color:var(--astr3-accent)}
@@ -160,6 +163,7 @@ export function createWheel(
   let frame = 0;
   let targets: HitTarget[] = [];
   let chooser: HTMLElement | undefined;
+  let chooserReturn: HTMLElement | undefined;
   let renderer: WebGLRenderer | undefined;
   const scene = new Scene();
   const camera = new OrthographicCamera(-330, 330, 330, -330, 0.1, 100);
@@ -190,7 +194,13 @@ export function createWheel(
   notice.className = 'astr3-notice';
   const controls = doc.createElement('div');
   controls.className = 'astr3-controls';
-  stage.append(canvas, labels, notice, controls);
+  const clusterLayer = doc.createElement('div');
+  clusterLayer.className = 'astr3-clusters';
+  stage.append(canvas, labels, clusterLayer, notice, controls);
+  const clusterButtons = new Map<string, HTMLButtonElement>();
+  const textMetrics = createTextMeasurer(root);
+  const labelSizes = new WeakMap<HTMLElement, TextSize>();
+  const layoutCache = new Map<string, BodyLayout>();
   const access = doc.createElement('details');
   access.className = 'astr3-access';
   const summary = doc.createElement('summary');
@@ -414,17 +424,24 @@ export function createWheel(
   function closeChooser(): void {
     chooser?.remove();
     chooser = undefined;
+    chooserReturn?.setAttribute('aria-expanded', 'false');
+    chooserReturn = undefined;
   }
-  function showChooser(candidates: Selection[], point: Point): void {
+  function showChooser(candidates: Selection[], point: Point, source?: HTMLElement): void {
     closeChooser();
     chooser = doc.createElement('div');
+    chooserReturn = source;
+    source?.setAttribute('aria-expanded', 'true');
     chooser.className = 'astr3-chooser';
     chooser.setAttribute('role', 'group');
-    chooser.setAttribute('aria-label', 'Overlapping chart objects');
+    chooser.setAttribute(
+      'aria-label',
+      source ? 'Clustered celestial bodies' : 'Overlapping chart objects',
+    );
     chooser.style.left = `${Math.max(8, Math.min(width - 268, point.x))}px`;
     chooser.style.top = `${Math.max(8, Math.min(height - 240, point.y))}px`;
     const title = doc.createElement('p');
-    title.textContent = 'Choose an overlapping object';
+    title.textContent = source ? 'Choose a celestial body' : 'Choose an overlapping object';
     chooser.append(title);
     for (const selection of candidates) {
       const button = doc.createElement('button');
@@ -611,6 +628,7 @@ export function createWheel(
         selected?.kind === selection.kind && selected.id === selection.id,
       );
     }
+    labelSizes.set(element, textMetrics.measure({ text, size, className }));
     labels.append(element);
     return element;
   }
@@ -619,6 +637,15 @@ export function createWheel(
     frame = 0;
     if (disposed) return;
     viewport();
+    const text = chartText(pixelsPerUnit);
+    stage.dataset.textTier = text.tier;
+    const font = win!.getComputedStyle(root);
+    if (
+      textMetrics.style(
+        `${font.fontFamily}/${font.fontStyle}/${visualWeight.fontWeight}/${visualWeight.symbolStroke}`,
+      )
+    )
+      layoutCache.clear();
     clearDrawing();
     labels.replaceChildren();
     targets = [];
@@ -649,6 +676,7 @@ export function createWheel(
     const accent = options.selectionEffects?.color ?? colors.accent;
     const activeWidth = options.selectionEffects?.lineWidth ?? 2.5;
     const reservedLabels: { element: HTMLElement; point: Point }[] = [];
+    const activeClusters = new Set<string>();
     const houseNumberSpace: Box[] = p
       ? [...bodyAnchors.values()].map((point) => ({
           ...point,
@@ -678,7 +706,7 @@ export function createWheel(
         label(
           polar(sign * 30 + 15, 269, asc),
           SIGN_GLYPHS[sign]!,
-          Math.max(16, Math.min(25, pixelsPerUnit * 31)),
+          text.glyph,
           color,
           'astr3-symbol',
         ).title = SIGNS[sign]!;
@@ -703,7 +731,7 @@ export function createWheel(
           0.65,
           major ? 0.9 : 0.35,
         );
-        if (major && pixelsPerUnit > 0.65) {
+        if (major && text.scale) {
           for (const [side, radius] of [
             ['inside', 232],
             ['outside', WHEEL.outer + 30],
@@ -723,7 +751,13 @@ export function createWheel(
               )
             )
               continue;
-            const element = label(point, String(degree % 30), 8, colors.muted, 'astr3-degree');
+            const element = label(
+              point,
+              String(degree % 30),
+              text.scale,
+              colors.muted,
+              'astr3-degree',
+            );
             element.dataset.scale = side;
             reservedLabels.push({ element, point });
           }
@@ -761,13 +795,13 @@ export function createWheel(
         const houseLabel = label(
           labelPoint,
           String(house.number),
-          p && pixelsPerUnit < 0.65 ? 8 : 10,
+          text.number,
           active ? accent : colors.muted,
           '',
           selection,
         );
         if (p) {
-          const rect = houseLabel.getBoundingClientRect();
+          const rect = labelSizes.get(houseLabel)!;
           const size = { width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
           // Keep the number within its own sector; stagger it inward when the
           // compact bi-wheel makes neighboring house labels or anchors collide.
@@ -815,11 +849,11 @@ export function createWheel(
         );
         const point = polar(value, axisRadius, asc);
         const selection: Selection | undefined = body ? { kind: 'body', id: body.id } : undefined;
-        const element = label(point, name, 10, accent, 'astr3-axis', selection);
+        const element = label(point, name, text.number, accent, 'astr3-axis', selection);
         element.dataset.axis = id;
         element.style.opacity = String(body ? opacity(active) : 1);
         if (selection) {
-          const rect = element.getBoundingClientRect();
+          const rect = labelSizes.get(element)!;
           targets.push({
             selection,
             priority: 0,
@@ -830,7 +864,7 @@ export function createWheel(
         reservedLabels.push({ element, point });
         const opposite = polar(value + 180, axisRadius, asc);
         reservedLabels.push({
-          element: label(opposite, name === 'AC' ? 'DC' : 'IC', 10, colors.muted),
+          element: label(opposite, name === 'AC' ? 'DC' : 'IC', text.number, colors.muted),
           point: opposite,
         });
       }
@@ -890,23 +924,161 @@ export function createWheel(
           });
       }
     if (visible.bodies) {
-      const minimumFontSize = 14;
-      const fontSize = Math.max(minimumFontSize, Math.min(25, pixelsPerUnit * 32));
+      const reservedBoxes = reservedLabels.map(({ element, point }) => {
+        const rect = labelSizes.get(element)!;
+        return { ...point, width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
+      });
+      const symbolScale = (body: Body) => (['AC', 'MC'].includes(glyph(body)) ? 0.72 : 1);
+      const caption = (body: Body) =>
+        `${visible.degrees ? formatPosition(body.longitude).split(' ')[0] : ''}${body.retrograde ? ' ℞' : ''}`;
+      const measureBody = (body: Body, size: number, compact: boolean) => {
+        const measured = textMetrics.measure({
+          text: glyph(body),
+          size: size * symbolScale(body),
+          body: true,
+          compact,
+          caption: compact ? undefined : caption(body),
+          captionSize: text.caption,
+        });
+        return {
+          width: measured.width + visualWeight.symbolStroke,
+          height: measured.height + visualWeight.symbolStroke,
+        };
+      };
+      const measureCluster = (count: number) => ({
+        width: Math.max(24, textMetrics.measure({ text: String(count), size: 12 }).width + 12),
+        height: 24,
+      });
+      const placeBand = (bodies: readonly Body[], transit = false) => {
+        const fit = (size: number, compact: boolean, clusters = false) => {
+          const sizes = bodies.map((body) => measureBody(body, size, compact));
+          const key = JSON.stringify([
+            bodies.map((body) => [body.id, body.longitude]),
+            sizes,
+            asc,
+            pixelsPerUnit,
+            reservedBoxes,
+            transit,
+            compact,
+            clusters,
+          ]);
+          const cached = layoutCache.get(key);
+          if (cached) return cached;
+          const result = layoutBodies(
+            bodies,
+            asc,
+            pixelsPerUnit,
+            (body) => sizes[bodies.indexOf(body)]!,
+            reservedBoxes,
+            transit ? TRANSIT_WHEEL : undefined,
+            compact ? 'compact' : 'full',
+            clusters ? measureCluster : undefined,
+          );
+          if (layoutCache.size >= 24) layoutCache.delete(layoutCache.keys().next().value!);
+          layoutCache.set(key, result);
+          return result;
+        };
+        // Caption preflight happens before any live labels exist. Crowding drops
+        // secondary text before shrinking symbols, independently in each band.
+        if (text.caption) {
+          const full = fit(text.glyph, false);
+          if (full.placements.length === bodies.length) return { layout: full, size: text.glyph };
+        }
+        const sizes = [text.glyph, ...[24, 18, 14].filter((size) => size < text.glyph)];
+        for (const size of sizes) {
+          const layout = fit(size, true);
+          if (layout.placements.length === bodies.length) return { layout, size };
+        }
+        const size = sizes.at(-1)!;
+        return { layout: fit(size, true, true), size };
+      };
+      const natal = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
+      const transit = placeBand(
+        shownBodies.filter((body) => isTransit(body.id)),
+        true,
+      );
+      const placements = new Map(
+        [...natal.layout.placements, ...transit.layout.placements].map((placement) => [
+          placement.id,
+          placement,
+        ]),
+      );
+      const clusters = [...natal.layout.clusters, ...transit.layout.clusters];
+      const grouped = clusters.reduce((count, cluster) => count + cluster.bodyIds.length, 0);
+      const overflow = placements.size + grouped < shownBodies.length;
+      stage.dataset.labelMode = overflow
+        ? 'markers'
+        : clusters.length
+          ? 'clustered'
+          : natal.layout.compact || transit.layout.compact
+            ? 'compact'
+            : 'full';
+      if (overflow || clusters.length)
+        notice.textContent = [
+          notice.textContent,
+          clusters.length
+            ? 'Choose a cluster or zoom in to reveal symbols'
+            : 'Zoom in to reveal planet symbols',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+      for (const cluster of clusters) {
+        activeClusters.add(cluster.id);
+        let button = clusterButtons.get(cluster.id);
+        if (!button) {
+          button = doc.createElement('button');
+          button.type = 'button';
+          button.className = 'astr3-cluster';
+          button.dataset.cluster = cluster.id;
+          button.setAttribute('aria-haspopup', 'true');
+          button.setAttribute('aria-expanded', 'false');
+          const candidates: Selection[] = cluster.bodyIds.map((id) => ({ kind: 'body', id }));
+          button.addEventListener('click', () => {
+            const rect = button!.getBoundingClientRect(),
+              parent = stage.getBoundingClientRect();
+            showChooser(
+              candidates,
+              { x: rect.x + rect.width / 2 - parent.x, y: rect.y + rect.height / 2 - parent.y },
+              button,
+            );
+          });
+          clusterButtons.set(cluster.id, button);
+          clusterLayer.append(button);
+        }
+        const screen = project(cluster.label);
+        button.textContent = String(cluster.bodyIds.length);
+        button.setAttribute(
+          'aria-label',
+          `${cluster.bodyIds.length} clustered bodies: ${cluster.bodyIds.map((id) => model.bodies.find((body) => body.id === id)!.name).join(', ')}`,
+        );
+        button.dataset.active = String(cluster.bodyIds.some((id) => activeBodies.has(id)));
+        const active = cluster.bodyIds.some((id) => activeBodies.has(id));
+        button.style.opacity = String(opacity(active));
+        button.style.color = active
+          ? accent
+          : isTransit(cluster.bodyIds[0]!)
+            ? transitColor
+            : colors.foreground;
+        if (p) button.dataset.chart = isTransit(cluster.bodyIds[0]!) ? 'transit' : 'natal';
+        button.style.left = `${screen.x}px`;
+        button.style.top = `${screen.y}px`;
+        button.style.width = `${cluster.box.width * pixelsPerUnit}px`;
+        button.style.height = `${cluster.box.height * pixelsPerUnit}px`;
+      }
       const elements = new Map<string, HTMLElement>();
-      const fontScales = new Map<string, number>();
-      // Batch DOM writes before measuring. Real glyph/degree dimensions also
-      // cover custom fonts, retrograde labels, and OS symbol substitutions.
       for (const body of shownBodies) {
-        const active = activeBodies.has(body.id);
-        const symbolText = glyph(body);
-        // Two-letter angle captions need optical scaling beside single-symbol glyphs.
-        const fontScale = symbolText === 'AC' || symbolText === 'MC' ? 0.72 : 1;
-        fontScales.set(body.id, fontScale);
+        const placement = placements.get(body.id);
+        if (!placement) continue;
+        const band = isTransit(body.id) ? transit : natal;
         const element = label(
-          { x: 0, y: 0 },
+          placement.label,
           '',
-          fontSize * fontScale,
-          active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
+          band.size * symbolScale(body),
+          activeBodies.has(body.id)
+            ? accent
+            : isTransit(body.id)
+              ? transitColor
+              : colors.foreground,
           'astr3-body',
           { kind: 'body', id: body.id },
         );
@@ -915,76 +1087,21 @@ export function createWheel(
           element.dataset.chart = ref.chart;
           element.dataset.bodyId = ref.id;
         }
+        element.dataset.compact = String(band.layout.compact);
+        element.dataset.dim = String(opacity(activeBodies.has(body.id)) < 1);
+        element.title = describe({ kind: 'body', id: body.id });
         const symbol = doc.createElement('span');
         symbol.className = 'astr3-symbol';
-        symbol.textContent = symbolText;
+        symbol.textContent = glyph(body);
         element.append(symbol);
-        element.dataset.dim = String(opacity(active) < 1);
-        element.title = describe({ kind: 'body', id: body.id });
-        if (visible.degrees || body.retrograde) {
-          const degree = doc.createElement('small');
-          degree.textContent = `${visible.degrees ? formatPosition(body.longitude).split(' ')[0] : ''}${body.retrograde ? ' ℞' : ''}`;
-          element.append(degree);
+        if (!band.layout.compact && caption(body)) {
+          const small = doc.createElement('small');
+          small.textContent = caption(body);
+          small.style.fontSize = `${text.caption}px`;
+          element.append(small);
         }
         elements.set(body.id, element);
       }
-      const measureElements = (bodies: readonly Body[]) =>
-        new Map(
-          bodies.map((body) => {
-            const rect = elements.get(body.id)!.getBoundingClientRect();
-            return [
-              body.id,
-              {
-                width: rect.width + visualWeight.symbolStroke,
-                height: rect.height + visualWeight.symbolStroke,
-              },
-            ];
-          }),
-        );
-      const reservedBoxes = reservedLabels.map(({ element, point }) => {
-        const rect = element.getBoundingClientRect();
-        return { ...point, width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
-      });
-      const placeBand = (bodies: readonly Body[], transit = false): BodyLayout => {
-        const fit = (compact: boolean) => {
-          for (const body of bodies) elements.get(body.id)!.dataset.compact = String(compact);
-          const sizes = measureElements(bodies);
-          return layoutBodies(
-            bodies,
-            asc,
-            pixelsPerUnit,
-            (body) => sizes.get(body.id)!,
-            reservedBoxes,
-            transit ? TRANSIT_WHEEL : undefined,
-            compact ? 'compact' : 'full',
-          );
-        };
-        // Each band chooses its own largest fitting size. Retain degree labels
-        // while shrinking, then compact only at the readable minimum.
-        for (let size = fontSize; ; size = Math.max(minimumFontSize, size - 2)) {
-          for (const body of bodies)
-            elements.get(body.id)!.style.fontSize = `${size * fontScales.get(body.id)!}px`;
-          const full = fit(false);
-          if (full.placements.length === bodies.length) return full;
-          if (size === minimumFontSize) return fit(true);
-        }
-      };
-      const natalLayout = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
-      const transitLayout = placeBand(
-        shownBodies.filter((body) => isTransit(body.id)),
-        true,
-      );
-      const layout = {
-        placements: [...natalLayout.placements, ...transitLayout.placements],
-        compact: natalLayout.compact || transitLayout.compact,
-      };
-      const placements = new Map(layout.placements.map((placement) => [placement.id, placement]));
-      const overflow = placements.size < shownBodies.length;
-      stage.dataset.labelMode = overflow ? 'markers' : layout.compact ? 'compact' : 'full';
-      if (overflow)
-        notice.textContent = [notice.textContent, 'Zoom in to reveal planet symbols']
-          .filter(Boolean)
-          .join(' · ');
       for (const body of shownBodies) {
         const placement = placements.get(body.id);
         const markerRadius = isTransit(body.id) ? TRANSIT_WHEEL.marker : WHEEL.marker;
@@ -993,7 +1110,21 @@ export function createWheel(
         const color = active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
           alpha = opacity(active);
         const selection: Selection = { kind: 'body', id: body.id };
-        if (placement) stroke([marker, placement.label], colors.muted, 0.7, alpha * 0.7);
+        if (placement) {
+          const dx = marker.x - placement.label.x,
+            dy = marker.y - placement.label.y;
+          const factor = Math.min(
+            1,
+            placement.box.width / 2 / Math.max(Math.abs(dx), 1e-9),
+            placement.box.height / 2 / Math.max(Math.abs(dy), 1e-9),
+          );
+          stroke(
+            [marker, { x: placement.label.x + dx * factor, y: placement.label.y + dy * factor }],
+            colors.muted,
+            0.7,
+            alpha * 0.7,
+          );
+        }
         stroke(
           [
             polar(body.longitude, isTransit(body.id) ? WHEEL.outer : markerRadius - 3, asc),
@@ -1011,14 +1142,8 @@ export function createWheel(
           center: project(marker),
           radius: 6,
         });
-        const element = elements.get(body.id)!;
-        if (!placement) {
-          element.remove();
-          continue;
-        }
-        element.dataset.compact = String(
-          isTransit(body.id) ? transitLayout.compact : natalLayout.compact,
-        );
+        const element = elements.get(body.id);
+        if (!placement || !element) continue;
         const screen = project(placement.label);
         element.style.left = `${screen.x}px`;
         element.style.top = `${screen.y}px`;
@@ -1057,6 +1182,13 @@ export function createWheel(
         });
       }
     } else delete stage.dataset.labelMode;
+    for (const [id, button] of clusterButtons)
+      if (!activeClusters.has(id)) {
+        if (chooserReturn === button) closeChooser();
+        if (doc.activeElement === button) stage.focus({ preventScroll: true });
+        button.remove();
+        clusterButtons.delete(id);
+      }
     if (renderer && !contextLost) renderer.render(scene, camera);
   }
   function requestDraw(): void {
@@ -1195,10 +1327,11 @@ export function createWheel(
     const e = event as KeyboardEvent;
     if (e.key === 'Escape') {
       e.preventDefault();
-      const hadChooser = !!chooser;
+      const hadChooser = !!chooser,
+        returnTo = chooserReturn;
       closeChooser();
-      setSelection(null, 'keyboard');
-      if (hadChooser) stage.focus({ preventScroll: true });
+      if (!hadChooser) setSelection(null, 'keyboard');
+      if (hadChooser) (returnTo?.isConnected ? returnTo : stage).focus({ preventScroll: true });
     }
     if (e.target === stage && ['+', '-', '0'].includes(e.key)) {
       e.preventDefault();
@@ -1246,6 +1379,12 @@ export function createWheel(
   const observer = new ResizeObserver(resize);
   observer.observe(container);
   listen(access, 'toggle', (() => resize()) as EventListener);
+  if (doc.fonts)
+    listen(doc.fonts, 'loadingdone', () => {
+      textMetrics.reset();
+      layoutCache.clear();
+      requestDraw();
+    });
   applyTheme();
   buildAccess();
   resize();
@@ -1347,6 +1486,9 @@ export function createWheel(
       disposed = true;
       if (frame) win.cancelAnimationFrame(frame);
       observer.disconnect();
+      textMetrics.dispose();
+      layoutCache.clear();
+      clusterButtons.clear();
       for (const dispose of teardown) dispose();
       closeChooser();
       listeners.clear();

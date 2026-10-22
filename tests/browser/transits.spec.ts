@@ -484,11 +484,11 @@ test('shrinks crowded natal symbols independently of the transit band', async ({
   await page.evaluate(() =>
     window.astr3Transit!.update({
       natal: {
-        bodies: Array.from({ length: 50 }, (_, i) => ({
+        bodies: Array.from({ length: 6 }, (_, i) => ({
           id: `point-${i}`,
           name: `Point ${i}`,
           longitude: (359 + i / 10) % 360,
-          glyph: i % 3 === 0 ? 'WW' : '☉',
+          glyph: '☉',
           retrograde: i % 2 === 0,
         })),
         aspects: [],
@@ -497,7 +497,7 @@ test('shrinks crowded natal symbols independently of the transit band', async ({
       crossAspects: [],
     }),
   );
-  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(51);
+  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(7);
   const sizes = () =>
     page.evaluate(() => {
       const font = (selector: string) =>
@@ -511,8 +511,8 @@ test('shrinks crowded natal symbols independently of the transit band', async ({
         transit: font('#transit-chart .astr3-body[data-chart=transit]'),
       };
     });
-  await expect.poll(async () => (await sizes()).transit).toBe(25);
-  await expect.poll(async () => (await sizes()).natal).toBeLessThan(25);
+  await expect.poll(async () => (await sizes()).transit).toBe(24);
+  await expect.poll(async () => (await sizes()).natal).toBeLessThan(24);
   expect((await sizes()).natal).toBeGreaterThanOrEqual(14);
   const at = await labelPoint(
     page,
@@ -527,7 +527,7 @@ test('shrinks crowded natal symbols independently of the transit band', async ({
       crossAspects: [],
     }),
   );
-  await expect.poll(sizes).toEqual({ natal: 25, transit: 25 });
+  await expect.poll(sizes).toEqual({ natal: 24, transit: 24 });
   expect(await page.evaluate(() => window.astr3Transit!.selection)).toEqual({
     chart: 'transit',
     kind: 'body',

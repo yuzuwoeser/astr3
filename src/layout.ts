@@ -1,4 +1,5 @@
-import { normalize } from './model/math.js';
+import { normalize, signedDistance } from './model/math.js';
+import { packLabels } from './label-packing.js';
 import type { AspectType, Body } from './model/types.js';
 
 export interface Point {
@@ -16,8 +17,15 @@ export interface BodyPlacement {
   box: Box;
   displaced: boolean;
 }
+export interface BodyCluster {
+  id: string;
+  bodyIds: string[];
+  label: Point;
+  box: Box;
+}
 export interface BodyLayout {
   placements: BodyPlacement[];
+  clusters: BodyCluster[];
   compact: boolean;
 }
 export const WHEEL = {
@@ -89,14 +97,7 @@ export function boxesOverlap(a: Box, b: Box, padding = 3): boolean {
   );
 }
 
-/** Nearest distance of an entire rectangle from the wheel center. */
-function nearestRadius(box: Box): number {
-  const x = Math.abs(box.x),
-    y = Math.abs(box.y);
-  return Math.hypot(Math.max(0, x - box.width / 2), Math.max(0, y - box.height / 2));
-}
-
-/** Screen-sized labels stay in the planet band. Exact longitude markers never move. */
+/** Screen-sized labels use collective local packing. Exact longitude markers never move. */
 export function layoutBodies(
   bodies: readonly Body[],
   ascendant: number,
@@ -113,101 +114,155 @@ export function layoutBodies(
     preferred: 214,
   },
   mode: 'auto' | 'full' | 'compact' = 'auto',
+  measureCluster?: (count: number) => { width: number; height: number },
 ): BodyLayout {
-  const scale = Math.max(pixelsPerUnit, 0.05);
-  const padding = 4 / scale;
-  const inner = band.inner + padding,
-    outer = band.outer - padding;
+  const scale = Math.max(pixelsPerUnit, 0.05),
+    padding = 4 / scale;
   const sorted = [...bodies].sort(
     (a, b) =>
       normalize(a.longitude - ascendant) - normalize(b.longitude - ascendant) ||
       a.id.localeCompare(b.id),
   );
-  function place(compact: boolean, largestFirst = false): BodyPlacement[] {
-    const occupied: Box[] = [...reservedBoxes];
-    const placements: BodyPlacement[] = [];
-    // Wide custom glyphs have fewer valid angles. On a second pass, give them
-    // those positions before smaller labels consume the available space.
-    const ordered = largestFirst
-      ? [...sorted].sort((a, b) => {
-          const first = measure(a, compact),
-            second = measure(b, compact);
-          return second.width * second.height - first.width * first.height;
-        })
-      : sorted;
-    for (const body of ordered) {
+  type Item = {
+    id: string;
+    angle: number;
+    width: number;
+    height: number;
+    limit: number;
+    members: Body[];
+    clustered: boolean;
+  };
+  function fit(compact: boolean, cluster = false): BodyLayout {
+    let items: Item[] = sorted.map((body) => {
       const size = measure(body, compact);
-      const width = size.width / scale,
-        height = size.height / scale;
-      let chosen: Box | undefined;
-      let displacement = 0;
-      // Search nearby angles first. Derive the usable radial interval from the
-      // whole label rectangle, not its center or just its corners at the inner rim.
-      for (let step = 0; step <= 90 && !chosen; step++) {
-        const offsets = step === 0 ? [0] : [step * 2, -step * 2];
-        for (const offset of offsets) {
-          const direction = polar(body.longitude + offset, 1, ascendant);
-          const projection = (Math.abs(direction.x) * width + Math.abs(direction.y) * height) / 2;
-          const discriminant = projection ** 2 + outer ** 2 - (width ** 2 + height ** 2) / 4;
-          if (outer <= inner || discriminant <= 0) continue;
-          const maxRadius = Math.sqrt(discriminant) - projection;
-          const nearAt = (radius: number) =>
-            nearestRadius({ x: direction.x * radius, y: direction.y * radius, width, height });
-          if (maxRadius <= 0 || nearAt(maxRadius) < inner) continue;
-          // Distance to a rectangle is monotonic along this ray. Find its first
-          // position clearing the inner circle, then sample only this valid band.
-          let low = 0,
-            high = maxRadius;
-          for (let iteration = 0; iteration < 24; iteration++) {
-            const mid = (low + high) / 2;
-            if (nearAt(mid) < inner) low = mid;
-            else high = mid;
+      return {
+        id: `body:${body.id}`,
+        angle: normalize(body.longitude - ascendant),
+        width: size.width / scale,
+        height: size.height / scale,
+        limit: 30,
+        members: [body],
+        clustered: false,
+      };
+    });
+    // Each replacement merges a conflicting neighborhood or removes one
+    // unplaceable badge. The budget guarantees termination even at tiny scales.
+    for (let pass = 0; pass <= bodies.length * 2; pass++) {
+      const result = packLabels(items, band, padding, reservedBoxes);
+      if (result.placements) {
+        const placements: BodyPlacement[] = [],
+          clusters: BodyCluster[] = [];
+        for (const placement of result.placements) {
+          const item = items.find((item) => item.id === placement.id)!;
+          const label = { x: placement.box.x, y: placement.box.y };
+          if (item.clustered)
+            clusters.push({
+              id: item.id,
+              bodyIds: item.members.map((body) => body.id),
+              label,
+              box: placement.box,
+            });
+          else
+            placements.push({
+              id: item.members[0]!.id,
+              marker: polar(item.members[0]!.longitude, band.marker, ascendant),
+              label,
+              box: placement.box,
+              displaced:
+                Math.abs(signedDistance(placement.angle, item.angle)) > 1e-6 ||
+                Math.abs(placement.radius - band.preferred) > 1,
+            });
+        }
+        return { placements, clusters, compact };
+      }
+      if (!cluster || !measureCluster || !items.length) break;
+      const failing = items.filter((item) => result.conflict.includes(item.id));
+      let candidates = failing.length ? failing : items;
+      function combine(group: Item[]): Item | undefined {
+        const members = group
+          .flatMap((item) => item.members)
+          .sort(
+            (a, b) =>
+              normalize(a.longitude - ascendant) - normalize(b.longitude - ascendant) ||
+              a.id.localeCompare(b.id),
+          );
+        const angles = members.map((body) => normalize(body.longitude - ascendant));
+        let start = 0,
+          largestGap = -1;
+        for (let i = 0; i < angles.length; i++) {
+          const next = i === angles.length - 1 ? angles[0]! + 360 : angles[i + 1]!;
+          if (next - angles[i]! > largestGap) {
+            largestGap = next - angles[i]!;
+            start = (i + 1) % angles.length;
           }
-          const minRadius = high;
-          const preferred = Math.max(minRadius, Math.min(band.preferred, maxRadius));
-          const radii = [preferred, maxRadius, minRadius];
-          for (let radius = maxRadius - 6 / scale; radius > minRadius; radius -= 6 / scale)
-            radii.push(radius);
-          for (const radius of radii) {
-            const point = polar(body.longitude + offset, radius, ascendant);
-            const box = { ...point, width, height };
-            if (!occupied.some((other) => boxesOverlap(box, other, padding))) {
-              chosen = box;
-              displacement = offset;
-              break;
+        }
+        const span = angles.length === 1 ? 0 : 360 - largestGap;
+        if (span > 60 + 1e-6) return;
+        const ordered = [...members.slice(start), ...members.slice(0, start)];
+        const size = measureCluster!(members.length);
+        return {
+          id: `cluster:${JSON.stringify(ordered.map((body) => body.id))}`,
+          angle: normalize(angles[start]! + span / 2),
+          width: size.width / scale,
+          height: size.height / scale,
+          limit: Math.max(0, 30 - span / 2),
+          members: ordered,
+          clustered: true,
+        };
+      }
+      let combined = combine(candidates);
+      if (!combined || (candidates.length === 1 && candidates[0]!.clustered)) {
+        let pair: Item[] | undefined,
+          closest = Infinity;
+        for (const first of candidates)
+          for (const second of items) {
+            if (first === second) continue;
+            const merged = combine([first, second]);
+            const distance = merged ? 30 - merged.limit : Infinity;
+            if (distance < closest) {
+              closest = distance;
+              pair = [first, second];
+              combined = merged;
             }
           }
-          if (chosen) break;
+        if (pair) candidates = pair;
+        else {
+          items = items.filter((item) => item !== candidates[0]);
+          continue;
         }
       }
-      // A bounded search may run out of space. The renderer keeps that body's
-      // marker selectable instead of placing its label inside a ring or offscreen.
-      if (!chosen) continue;
-      occupied.push(chosen);
-      placements.push({
-        id: body.id,
-        marker: polar(body.longitude, band.marker, ascendant),
-        label: { x: chosen.x, y: chosen.y },
-        box: chosen,
-        displaced:
-          displacement !== 0 || Math.abs(Math.hypot(chosen.x, chosen.y) - band.preferred) > 1,
-      });
+      // Collapse the whole local collision neighborhood, not just the last
+      // symbols in a minimal infeasible constraint chain.
+      for (const other of items) {
+        if (candidates.includes(other)) continue;
+        const nearby = candidates.some((item) => {
+          const half = (value: Item) =>
+            (Math.asin(
+              Math.min(
+                1,
+                (Math.hypot(value.width, value.height) / 2 + padding / 2) / band.preferred,
+              ),
+            ) *
+              180) /
+            Math.PI;
+          return Math.abs(signedDistance(item.angle, other.angle)) <= half(item) + half(other);
+        });
+        const expanded = nearby ? combine([...candidates, other]) : undefined;
+        if (expanded) {
+          candidates.push(other);
+          combined = expanded;
+        }
+      }
+      const ids = new Set(candidates.map((item) => item.id));
+      items = [...items.filter((item) => !ids.has(item.id)), combined!];
     }
-    return placements;
+    return { placements: [], clusters: [], compact };
   }
-  function fit(compact: boolean): BodyPlacement[] {
-    const first = place(compact);
-    if (first.length === bodies.length) return first;
-    const retry = place(compact, true);
-    const best = retry.length > first.length ? retry : first;
-    const indices = new Map(sorted.map((body, i) => [body.id, i]));
-    return best.sort((a, b) => indices.get(a.id)! - indices.get(b.id)!);
-  }
-  if (mode === 'compact') return { placements: fit(true), compact: true };
+  if (mode === 'compact') return fit(true, !!measureCluster);
   const full = fit(false);
-  return mode === 'full' || full.length === bodies.length
-    ? { placements: full, compact: false }
-    : { placements: fit(true), compact: true };
+  return mode === 'full' || full.placements.length === bodies.length
+    ? full
+    : fit(true, !!measureCluster);
 }
 
 export function distanceToSegment(point: Point, a: Point, b: Point): number {

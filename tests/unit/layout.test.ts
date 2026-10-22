@@ -1,12 +1,14 @@
 import { expect, it } from 'vitest';
 import { createModel } from '../../src/model/index.js';
 import { WHEEL, aspectPath, boxesOverlap, layoutBodies, polar } from '../../src/layout.js';
-import type { BodyPlacement, Point } from '../../src/layout.js';
+import type { Box, Point } from '../../src/layout.js';
+import { signedDistance } from '../../src/model/math.js';
+import { packLabels } from '../../src/label-packing.js';
 import { syntheticNatal } from '../fixtures/synthetic-chart.js';
 import { hitTest } from '../../src/picking.js';
 import type { HitTarget } from '../../src/picking.js';
 
-function expectWithinBand(placements: BodyPlacement[], scale: number) {
+function expectWithinBand(placements: { box: Box }[], scale: number) {
   for (const { box } of placements) {
     // The inner check uses the nearest point on the rectangle, which can be
     // midway along an edge. Checking only its corners would miss crossings.
@@ -29,16 +31,37 @@ it('keeps tightly clustered glyphs separate at phone and desktop scale without m
     })),
   });
   for (const scale of [0.5, 1.2]) {
-    const layout = layoutBodies(model.bodies, 10, scale);
+    const layout = layoutBodies(model.bodies, 10, scale, undefined, [], undefined, 'auto', () => ({
+      width: 24,
+      height: 24,
+    }));
     const { placements } = layout;
-    expect(placements).toHaveLength(model.bodies.length);
-    expectWithinBand(placements, scale);
+    const represented = [
+      ...placements.map((p) => p.id),
+      ...layout.clusters.flatMap((c) => c.bodyIds),
+    ];
+    expect(represented.sort()).toEqual(model.bodies.map((b) => b.id).sort());
+    const boxes = [...placements, ...layout.clusters];
+    expectWithinBand(boxes, scale);
+    for (const [i, a] of boxes.entries())
+      for (const b of boxes.slice(i + 1)) expect(boxesOverlap(a.box, b.box, 3 / scale)).toBe(false);
     for (const [i, a] of placements.entries()) {
       expect(a.marker).toEqual(polar(model.bodies.find((b) => b.id === a.id)!.longitude, 239, 10));
       for (const b of placements.slice(i + 1))
         expect(boxesOverlap(a.box, b.box, 3 / scale)).toBe(false);
     }
-    expect(layoutBodies([...model.bodies].reverse(), 10, scale)).toEqual(layout);
+    expect(
+      layoutBodies(
+        [...model.bodies].reverse(),
+        10,
+        scale,
+        undefined,
+        [],
+        undefined,
+        'auto',
+        () => ({ width: 24, height: 24 }),
+      ),
+    ).toEqual(layout);
   }
 });
 
@@ -92,15 +115,23 @@ it('reserves house-label space without moving markers or mutating the reserved b
   });
   const reserved = [{ x: -184, y: 0, width: 24, height: 24 }];
   const original = structuredClone(reserved);
-  const { placements } = layoutBodies(
+  const layout = layoutBodies(
     model.bodies,
     0,
     0.5,
     (_body, compact) => (compact ? { width: 26, height: 28 } : { width: 42, height: 44 }),
     reserved,
+    undefined,
+    'auto',
+    () => ({ width: 24, height: 24 }),
   );
-  expect(placements).toHaveLength(model.bodies.length);
-  expectWithinBand(placements, 0.5);
+  const { placements } = layout;
+  expect(placements.length + layout.clusters.reduce((n, c) => n + c.bodyIds.length, 0)).toBe(
+    model.bodies.length,
+  );
+  expectWithinBand([...placements, ...layout.clusters], 0.5);
+  for (const cluster of layout.clusters)
+    expect(boxesOverlap(cluster.box, reserved[0]!, 3 / 0.5)).toBe(false);
   for (const [i, placement] of placements.entries()) {
     expect(placement.marker).toEqual(
       polar(model.bodies.find((body) => body.id === placement.id)!.longitude, 239),
@@ -118,9 +149,18 @@ it('keeps synthetic clustered bodies outside the house circle without changing t
   const ascendant = model.angles.ascendant!;
   const original = structuredClone(model);
   for (const scale of [0.52, 0.57, 1.2, 1.8]) {
-    const { placements } = layoutBodies(model.bodies, ascendant, scale);
-    expect(placements).toHaveLength(14);
-    expectWithinBand(placements, scale);
+    const { placements, clusters } = layoutBodies(
+      model.bodies,
+      ascendant,
+      scale,
+      undefined,
+      [],
+      undefined,
+      'auto',
+      () => ({ width: 24, height: 24 }),
+    );
+    expect(placements.length + clusters.reduce((n, c) => n + c.bodyIds.length, 0)).toBe(14);
+    expectWithinBand([...placements, ...clusters], scale);
     for (const placement of placements)
       expect(placement.marker).toEqual(
         polar(
@@ -139,12 +179,12 @@ it('uses measured compact labels when necessary and restores full labels when sp
     compact ? { width: 22, height: 27 } : { width: 44, height: 48 };
   // Full-only probes let the renderer try smaller fonts before compacting.
   const probe = layoutBodies(model.bodies, 0, 0.5, measure, [], undefined, 'full');
-  expect(probe).toEqual({ placements: [], compact: false });
+  expect(probe).toEqual({ placements: [], clusters: [], compact: false });
   const smaller = layoutBodies(
     model.bodies,
     0,
     0.5,
-    () => ({ width: 34, height: 32 }),
+    () => ({ width: 24, height: 28 }),
     [],
     undefined,
     'full',
@@ -168,8 +208,176 @@ it('omits unplaceable labels instead of using the house disk or unbounded outer 
     bodies: [{ id: 'point', name: 'Very wide point', longitude: 60 }],
   });
   const layout = layoutBodies(model.bodies, 0, 0.5, () => ({ width: 1000, height: 1000 }));
-  expect(layout).toEqual({ compact: true, placements: [] });
+  expect(layout).toEqual({ compact: true, placements: [], clusters: [] });
   expect(layoutBodies(model.bodies, 0, 0.05).placements).toEqual([]);
+});
+
+it('balances circular displacement, preserves row order, and handles the zodiac seam', () => {
+  const items = Array.from({ length: 6 }, (_, i) => ({
+    id: `p${i}`,
+    angle: 359,
+    width: 24,
+    height: 24,
+    limit: 30,
+  }));
+  const result = packLabels(items, { inner: 148, outer: 242, preferred: 214 }, 4, []);
+  expect(result.placements).toHaveLength(6);
+  expect(
+    packLabels([...items].reverse(), { inner: 148, outer: 242, preferred: 214 }, 4, []),
+  ).toEqual(result);
+  const offsets = result.placements!.map((p) => signedDistance(359, p.angle));
+  expect(Math.min(...offsets)).toBeLessThan(0);
+  expect(Math.max(...offsets)).toBeGreaterThan(0);
+  expect(Math.max(...offsets)).toBeCloseTo(-Math.min(...offsets), 2);
+  expect(new Set(result.placements!.map((p) => p.radius)).size).toBe(2);
+  expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(30);
+  for (const radius of new Set(result.placements!.map((p) => p.radius))) {
+    const row = result.placements!.filter((p) => p.radius === radius);
+    const positions = row.map((p) => signedDistance(359, p.angle));
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  }
+});
+
+it('clears overlapping reserved areas and leaves an isolated label at its true angle', () => {
+  const obstacles = [
+    { x: -200, y: 0, width: 100, height: 100 },
+    { ...polar(12, 200), width: 2, height: 2 },
+  ];
+  const result = packLabels(
+    [{ id: 'label', angle: 12, width: 10, height: 10, limit: 30 }],
+    { inner: 150, outer: 250, preferred: 200 },
+    4,
+    obstacles,
+  );
+  expect(result.placements).toHaveLength(1);
+  for (const box of obstacles)
+    expect(boxesOverlap(result.placements![0]!.box, box, 4 - 1e-5)).toBe(false);
+  const clustered = Array.from({ length: 6 }, (_, i) => ({
+    id: `p${i}`,
+    angle: i / 10,
+    width: 24,
+    height: 24,
+    limit: 30,
+  }));
+  const layout = packLabels(
+    [...clustered, { id: 'isolated', angle: 180, width: 24, height: 24, limit: 30 }],
+    { inner: 148, outer: 242, preferred: 214 },
+    4,
+    [{ ...polar(4, 232), width: 8, height: 8 }],
+  );
+  expect(layout.placements).toHaveLength(7);
+  expect(layout.placements!.find((p) => p.id === 'isolated')!.angle).toBeCloseTo(180, 5);
+});
+
+it('groups an entire crowded neighborhood locally without consuming isolated symbols', () => {
+  const bodies = createModel({
+    bodies: [
+      ...Array.from({ length: 30 }, (_, i) => ({
+        id: `p${i}`,
+        name: `P${i}`,
+        longitude: (359 + i / 10) % 360,
+      })),
+      { id: 'isolated', name: 'Isolated', longitude: 180 },
+    ],
+  }).bodies;
+  const layout = layoutBodies(
+    bodies,
+    0,
+    0.5,
+    () => ({ width: 20, height: 22 }),
+    [],
+    undefined,
+    'compact',
+    () => ({ width: 24, height: 24 }),
+  );
+  expect(layout.placements.map((p) => p.id)).toEqual(['isolated']);
+  expect(layout.clusters).toHaveLength(1);
+  expect(layout.clusters[0]!.bodyIds).toHaveLength(30);
+  expectWithinBand([...layout.placements, ...layout.clusters], 0.5);
+  for (const cluster of layout.clusters) {
+    const angle = (Math.atan2(cluster.label.y, cluster.label.x) * 180) / Math.PI - 180;
+    for (const id of cluster.bodyIds)
+      expect(
+        Math.abs(signedDistance(bodies.find((b) => b.id === id)!.longitude, angle)),
+      ).toBeLessThanOrEqual(30 + 1e-5);
+  }
+  expect(
+    layoutBodies(
+      [...bodies].reverse(),
+      0,
+      0.5,
+      () => ({ width: 20, height: 22 }),
+      [],
+      undefined,
+      'compact',
+      () => ({ width: 24, height: 24 }),
+    ),
+  ).toEqual(layout);
+});
+
+it('keeps caller body IDs distinct from internal cluster IDs', () => {
+  const members = Array.from({ length: 8 }, (_, i) => ({
+    id: `a${i}`,
+    name: `A${i}`,
+    longitude: i / 10,
+  }));
+  const collision = `cluster:${JSON.stringify(members.map((body) => body.id))}`;
+  const bodies = createModel({
+    bodies: [...members, { id: collision, name: 'Isolated', longitude: 180 }],
+  }).bodies;
+  const layout = layoutBodies(
+    bodies,
+    0,
+    0.5,
+    () => ({ width: 26, height: 28 }),
+    [],
+    undefined,
+    'compact',
+    () => ({ width: 24, height: 24 }),
+  );
+  expect(layout.placements.map((p) => p.id)).toEqual([collision]);
+  expect(layout.clusters).toHaveLength(1);
+  expect(layout.clusters[0]!.bodyIds).toEqual(members.map((body) => body.id));
+});
+
+it('keeps mixed-size dense layouts local, contained, and collision-free across scales', () => {
+  const bodies = createModel({
+    bodies: Array.from({ length: 48 }, (_, i) => ({
+      id: `p${i}`,
+      name: `P${i}`,
+      longitude: i % 3 === 0 ? (358 + i / 20) % 360 : (i * 137.5) % 360,
+    })),
+  }).bodies;
+  for (const scale of [0.35, 0.65, 1.2, 2.5]) {
+    const layout = layoutBodies(
+      bodies,
+      0,
+      scale,
+      (body) => ({ width: Number(body.id.slice(1)) % 5 ? 20 : 32, height: 24 }),
+      [],
+      undefined,
+      'compact',
+      () => ({ width: 26, height: 24 }),
+    );
+    const labels = [...layout.placements, ...layout.clusters];
+    expectWithinBand(labels, scale);
+    const represented = [
+      ...layout.placements.map((p) => p.id),
+      ...layout.clusters.flatMap((c) => c.bodyIds),
+    ];
+    expect(new Set(represented).size).toBe(represented.length);
+    for (const [i, label] of labels.entries()) {
+      const angle = (Math.atan2(label.box.y, label.box.x) * 180) / Math.PI - 180;
+      const ids = 'bodyIds' in label ? label.bodyIds : [label.id];
+      for (const id of ids)
+        expect(
+          Math.abs(signedDistance(bodies.find((b) => b.id === id)!.longitude, angle)),
+        ).toBeLessThanOrEqual(30 + 1e-5);
+      for (const other of labels.slice(i + 1))
+        expect(boxesOverlap(label.box, other.box, 3 / scale)).toBe(false);
+    }
+    if (scale >= 0.65) expect(represented).toHaveLength(bodies.length);
+  }
 });
 
 const conjunctionOptions = {

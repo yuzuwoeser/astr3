@@ -22,7 +22,9 @@ The model owns positions, actual cusps, signs/houses/aspects, IDs, and relations
 
 The orthographic renderer schedules frames on demand. Stroke geometry keeps widths/dashes in CSS pixels instead of relying on platform-dependent WebGL line widths. Projected HTML labels avoid CSS2DRenderer's browser-zoom assumptions. Labels and invisible targets use the same layout.
 
-Chart-weight presets scale the shared stroke geometry and label typography together. Body-label measurements include glyph stroke and font weight, and the placement solver reserves the measured house-number bounds. Changing weight reruns this layout without changing astronomical positions or selection IDs.
+Chart-weight presets scale the shared stroke geometry and label typography together. Body-label measurements include glyph stroke and font weight, and the placement solver reserves the measured house-number bounds. Changing weight reruns this layout without changing astronomical positions or selection IDs. A hidden measurement probe caches typography/content dimensions; font loading invalidates those caches. Four text tiers choose all wheel font sizes before placement, and caption preflight removes secondary text before shrinking glyphs. Layout results are reused during appearance-only redraws and panning.
+
+The circular packing solver uses bounded separation constraints and least-squares isotonic regression. It evaluates one/two-row arrangements, minimizes worst angular displacement before squared movement, and caps displacement at 30°. Conservative bounding discs ensure measured rectangles clear each other and the band boundaries; reserved captions become fixed angular obstacles. Infeasible local neighborhoods collapse into keyed HTML count buttons that reuse the overlap chooser. Original bodies, markers, selection IDs, and accessible entries remain intact.
 
 Picking compares shapes in CSS pixels. One semantic selection drives highlighting, keyboard state, announcements, and application events. Accessible buttons are built from the model and survive unavailable/lost graphics.
 

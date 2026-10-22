@@ -76,6 +76,47 @@ async function anchorPixels(page: Page, points: Point[], selection: Selection | 
   );
 }
 
+async function representedBodies(page: Page) {
+  return page.evaluate(
+    () =>
+      document.querySelectorAll('.astr3-body').length +
+      [...document.querySelectorAll('.astr3-cluster')].reduce(
+        (n, el) => n + Number(el.textContent),
+        0,
+      ),
+  );
+}
+
+async function symbolDisplacements(page: Page) {
+  return page.evaluate(() => {
+    const stage = document.querySelector('.astr3-stage')!.getBoundingClientRect();
+    const model = window.astr3.model;
+    return [...document.querySelectorAll<HTMLElement>('.astr3-body,.astr3-cluster')].flatMap(
+      (el) => {
+        const rect = el.getBoundingClientRect();
+        const angle =
+          (Math.atan2(
+            stage.y + stage.height / 2 - rect.y - rect.height / 2,
+            rect.x + rect.width / 2 - stage.x - stage.width / 2,
+          ) *
+            180) /
+            Math.PI -
+          180 +
+          (model.angles.ascendant ?? 0);
+        const ids: string[] = el.dataset.cluster
+          ? JSON.parse(el.dataset.cluster.slice('cluster:'.length))
+          : [el.dataset.object!.slice(5)];
+        return ids.map((id) =>
+          Math.abs(
+            ((((angle - model.bodies.find((b) => b.id === id)!.longitude) % 360) + 540) % 360) -
+              180,
+          ),
+        );
+      },
+    );
+  });
+}
+
 async function planetBandViolations(page: Page, zoom = 1) {
   return page.evaluate(
     ({ house, outer, extent, zoom }) => {
@@ -83,16 +124,21 @@ async function planetBandViolations(page: Page, zoom = 1) {
       const scale = (Math.min(stage.width, stage.height) / (2 * extent)) * zoom;
       const cx = stage.x + stage.width / 2,
         cy = stage.y + stage.height / 2;
-      return [...document.querySelectorAll<HTMLElement>('.astr3-body')].flatMap((element) => {
-        const rect = element.getBoundingClientRect();
-        const x = Math.abs(rect.x + rect.width / 2 - cx),
-          y = Math.abs(rect.y + rect.height / 2 - cy);
-        const near = Math.hypot(Math.max(0, x - rect.width / 2), Math.max(0, y - rect.height / 2));
-        const far = Math.hypot(x + rect.width / 2, y + rect.height / 2);
-        return near < house * scale + 3.9 || far > outer * scale - 3.9
-          ? [element.dataset.object]
-          : [];
-      });
+      return [...document.querySelectorAll<HTMLElement>('.astr3-body,.astr3-cluster')].flatMap(
+        (element) => {
+          const rect = element.getBoundingClientRect();
+          const x = Math.abs(rect.x + rect.width / 2 - cx),
+            y = Math.abs(rect.y + rect.height / 2 - cy);
+          const near = Math.hypot(
+            Math.max(0, x - rect.width / 2),
+            Math.max(0, y - rect.height / 2),
+          );
+          const far = Math.hypot(x + rect.width / 2, y + rect.height / 2);
+          return near < house * scale + 3.9 || far > outer * scale - 3.9
+            ? [element.dataset.object]
+            : [];
+        },
+      );
     },
     { house: WHEEL.house, outer: WHEEL.labelOuter, extent: WHEEL.extent, zoom },
   );
@@ -133,9 +179,17 @@ test('selects angles and lunar nodes through glyphs, axes, anchors, and keyboard
     'south-node': 'South Node',
   };
   for (const [id, name] of Object.entries(names)) {
-    const point = await labelPoint(page, `.astr3-body[data-object="body:${id}"]`);
-    if (isMobile) await page.touchscreen.tap(point.x, point.y);
-    else await page.mouse.click(point.x, point.y);
+    const selector = `.astr3-body[data-object="body:${id}"]`;
+    if (await page.locator(selector).count()) {
+      const point = await labelPoint(page, selector);
+      if (isMobile) await page.touchscreen.tap(point.x, point.y);
+      else await page.mouse.click(point.x, point.y);
+    } else {
+      const badge = page.getByRole('button', { name: new RegExp(`clustered bodies:.*${name}`) });
+      if (isMobile) await badge.tap();
+      else await badge.click();
+      await page.locator('.astr3-chooser button').filter({ hasText: name }).click();
+    }
     await expect(page.locator('#inspector-heading')).toHaveText(name);
     if (id.includes('node'))
       await expect(page.locator('#details')).toContainText('True (osculating)');
@@ -166,7 +220,7 @@ test('selects angles and lunar nodes through glyphs, axes, anchors, and keyboard
   }
   await page.evaluate(() => window.astr3.setOptions({ layers: { axes: false } }));
   await expect(page.locator('.astr3-axis')).toHaveCount(0);
-  await expect(page.locator('.astr3-body')).toHaveCount(14);
+  await expect.poll(() => representedBodies(page)).toBe(14);
   await page.locator('.astr3-access summary').click();
   const node = page.locator('.astr3-access button[data-selection="body:north-node"]');
   await node.focus();
@@ -636,21 +690,22 @@ test('separates measured custom labels through responsive resize and zoom', asyn
       })),
     }),
   );
-  // Shrinking the glyphs lets all five double-width symbols stay visible too.
+  // Keep every body represented locally, using badges when individual glyphs cannot fit.
   await expect(page.locator('.astr3-access button[data-kind=body]')).toHaveCount(15);
-  await expect(page.locator('.astr3-body')).toHaveCount(15);
+  await expect.poll(() => representedBodies(page)).toBe(15);
   const symbolSize = () =>
     page
       .locator('.astr3-body')
       .evaluateAll((elements) =>
-        Math.max(...elements.map((element) => parseFloat(getComputedStyle(element).fontSize))),
+        Math.max(0, ...elements.map((element) => parseFloat(getComputedStyle(element).fontSize))),
       );
   await expect.poll(symbolSize).toBeLessThan(18);
-  const smallSize = await symbolSize();
-  expect(smallSize).toBeGreaterThanOrEqual(14);
-  await expect(page.locator('.astr3-body .astr3-symbol').filter({ hasText: '☉' })).toHaveCount(10);
+
+  await expect
+    .poll(async () => Math.max(...(await symbolDisplacements(page))))
+    .toBeLessThanOrEqual(30.01);
   const overlaps = async () =>
-    page.locator('.astr3-body').evaluateAll((elements) => {
+    page.locator('.astr3-body,.astr3-cluster').evaluateAll((elements) => {
       const boxes = elements.map((element) => element.getBoundingClientRect());
       return boxes.flatMap((a, i) =>
         boxes
@@ -663,64 +718,219 @@ test('separates measured custom labels through responsive resize and zoom', asyn
   await expect.poll(overlaps).toHaveLength(0);
   await expect.poll(() => planetBandViolations(page)).toEqual([]);
   await page.evaluate(() => window.astr3.zoomBy(2));
-  await expect(page.locator('.astr3-body')).toHaveCount(15);
-  await expect.poll(symbolSize).toBeGreaterThan(smallSize);
+  await expect.poll(() => representedBodies(page)).toBe(15);
+  await expect
+    .poll(async () => Math.max(...(await symbolDisplacements(page))))
+    .toBeLessThanOrEqual(30.01);
   await expect.poll(overlaps).toHaveLength(0);
   await expect.poll(() => planetBandViolations(page, 2)).toEqual([]);
   expect(await page.evaluate(() => window.astr3.model.bodies[0]!.longitude)).toBe(359);
 });
 
-test('shrinks crowded symbols before compacting and restores their size with zoom or fewer bodies', async ({
-  page,
-}) => {
+test('removes captions before shrinking glyphs and restores them with room', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1000 });
   await ready(page);
   await page.evaluate(() =>
     window.astr3.update({
-      bodies: Array.from({ length: 50 }, (_, i) => ({
+      bodies: Array.from({ length: 6 }, (_, i) => ({
         id: `point-${i}`,
         name: `Point ${i}`,
         longitude: (359 + i / 10) % 360,
-        glyph: i % 3 === 0 ? 'WW' : '☉',
+        glyph: '☉',
         retrograde: i % 2 === 0,
       })),
       aspects: [],
     }),
   );
-  await expect(page.locator('.astr3-body')).toHaveCount(50);
-  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-label-mode', 'full');
-  const symbolSize = () =>
-    page
-      .locator('.astr3-body')
-      .evaluateAll((elements) =>
-        Math.max(...elements.map((element) => parseFloat(getComputedStyle(element).fontSize))),
-      );
-  await expect.poll(symbolSize).toBeLessThan(25);
-  const crowdedSize = await symbolSize();
-  expect(crowdedSize).toBeGreaterThanOrEqual(14);
-  await expect(page.locator('.astr3-body small').first()).toBeVisible();
-  await expect.poll(() => planetBandViolations(page)).toEqual([]);
+  await expect(page.locator('.astr3-body')).toHaveCount(6);
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-label-mode', 'compact');
+  await expect(page.locator('.astr3-body').first()).toHaveCSS('font-size', '24px');
+  await expect(page.locator('.astr3-body small')).toHaveCount(0);
+  await expect
+    .poll(async () => Math.max(...(await symbolDisplacements(page))))
+    .toBeLessThanOrEqual(30.01);
   const original = await page.evaluate(() => JSON.stringify(window.astr3.model));
   const label = await labelPoint(page, '.astr3-body[data-object="body:point-0"]');
   await page.mouse.click(label.x, label.y);
   await expect(page.locator('#inspector-heading')).toHaveText('Point 0');
   const details = await page.locator('#details').textContent();
-  await page.evaluate(() => window.astr3.zoomBy(1.6));
-  await expect.poll(symbolSize).toBe(25);
-  await expect.poll(() => planetBandViolations(page, 1.6)).toEqual([]);
+  await page.evaluate(() => window.astr3.zoomBy(2));
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-text-tier', 'largest');
+  await expect(page.locator('.astr3-body').first()).toHaveCSS('font-size', '32px');
+  await expect(page.locator('.astr3-body small')).toHaveCount(6);
   expect(await page.locator('#details').textContent()).toBe(details);
+  await expect.poll(() => planetBandViolations(page, 2)).toEqual([]);
   await page.evaluate(() => window.astr3.resetView());
-  await expect.poll(symbolSize).toBe(crowdedSize);
+  await expect(page.locator('.astr3-body small')).toHaveCount(0);
+  const frames = await page.evaluate(async () => {
+    await document.fonts.ready;
+    const counts: number[] = [];
+    const prototype = HTMLElement.prototype,
+      original = prototype.getBoundingClientRect;
+    let reads = 0;
+    prototype.getBoundingClientRect = function () {
+      if (this.matches('.astr3-label')) reads++;
+      return original.call(this);
+    };
+    try {
+      for (let i = 0; i < 6; i++) {
+        window.astr3.select({ kind: 'body', id: `point-${i}` });
+        await new Promise(requestAnimationFrame);
+        counts.push(document.querySelectorAll('.astr3-body small').length);
+      }
+      return { counts, reads };
+    } finally {
+      prototype.getBoundingClientRect = original;
+    }
+  });
+  expect(frames).toEqual({ counts: Array(6).fill(0), reads: 0 });
   expect(await page.evaluate(() => JSON.stringify(window.astr3.model))).toBe(original);
   await page.evaluate(() =>
-    window.astr3.update({ bodies: window.astr3.model.bodies.slice(0, 15), aspects: [] }),
+    window.astr3.update({ bodies: window.astr3.model.bodies.slice(0, 1), aspects: [] }),
   );
-  await expect(page.locator('.astr3-body')).toHaveCount(15);
-  await expect.poll(symbolSize).toBe(25);
+  await expect(page.locator('.astr3-body small')).toHaveCount(1);
+});
+
+test('opens local cluster badges with touch and keyboard and expands them on zoom', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await page.setViewportSize({ width: 360, height: 900 });
+  await page.evaluate(() =>
+    window.astr3.update({
+      bodies: Array.from({ length: 30 }, (_, i) => ({
+        id: `point-${i}`,
+        name: `Point ${i}`,
+        longitude: (359 + i / 10) % 360,
+        glyph: '☉',
+      })),
+      aspects: [],
+    }),
+  );
+  await expect.poll(() => representedBodies(page)).toBe(30);
+  const badge = page.locator('.astr3-cluster');
+  await expect(badge).toHaveCount(1);
+  await expect(badge).toHaveText('30');
+  await expect
+    .poll(async () => Math.max(...(await symbolDisplacements(page))))
+    .toBeLessThanOrEqual(30.01);
+  await expect.poll(() => planetBandViolations(page)).toEqual([]);
+  if (isMobile) await badge.tap();
+  else await badge.click();
+  await expect(page.locator('.astr3-chooser button')).toHaveCount(30);
+  await page.locator('.astr3-chooser button').filter({ hasText: 'Point 17 ·' }).click();
+  await expect(page.locator('#inspector-heading')).toHaveText('Point 17');
+  await expect(badge).toHaveAttribute('data-active', 'true');
+  await badge.focus();
+  await badge.press('Enter');
+  await expect(page.locator('.astr3-chooser button').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(badge).toBeFocused();
+  await badge.press('Space');
+  await expect(page.locator('.astr3-chooser button')).toHaveCount(30);
+  await page.keyboard.press('Escape');
+  await expect(badge).toBeFocused();
   expect(await page.evaluate(() => window.astr3.selection)).toEqual({
     kind: 'body',
-    id: 'point-0',
+    id: 'point-17',
   });
+  await page.evaluate(() => window.astr3.zoomBy(5));
+  await expect(page.locator('.astr3-body')).toHaveCount(30);
+  await expect(badge).toHaveCount(0);
+  await expect
+    .poll(async () => Math.max(...(await symbolDisplacements(page))))
+    .toBeLessThanOrEqual(30.01);
+  await expect.poll(() => planetBandViolations(page, 5)).toEqual([]);
+  await page.evaluate(() => window.astr3.resetView());
+  await expect(badge).toHaveText('30');
+  await expect(badge).toHaveAttribute('data-active', 'true');
+});
+
+test('uses shared text tiers and shrinks below the smallest preset without resizing controls', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await ready(page);
+  const read = () =>
+    page.evaluate(() => {
+      const size = (selector: string) =>
+        getComputedStyle(document.querySelector(selector)!).fontSize;
+      return {
+        glyph: size('.astr3-labels > .astr3-symbol'),
+        house: size('[data-object^="house:"]'),
+        axis: size('.astr3-axis'),
+        scale: size('.astr3-degree'),
+        caption: size('.astr3-body small'),
+        control: size('.astr3-controls button'),
+      };
+    });
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-text-tier', 'large');
+  const before = await read();
+  await page.evaluate(() => window.astr3.zoomBy(1.4));
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-text-tier', 'largest');
+  const after = await read();
+  for (const type of ['glyph', 'house', 'axis', 'scale', 'caption'] as const)
+    expect(parseFloat(after[type])).toBeGreaterThan(parseFloat(before[type]));
+  expect(after.control).toBe(before.control);
+  await page.setViewportSize({ width: 360, height: 900 });
+  await page.evaluate(() => window.astr3.resetView());
+  await expect(page.locator('.astr3-stage')).toHaveAttribute('data-text-tier', 'small');
+  const smaller = await page
+    .locator('.astr3-labels > .astr3-symbol')
+    .first()
+    .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(smaller).toBeLessThan(14);
+  await expect(page.locator('.astr3-body small,.astr3-degree')).toHaveCount(0);
+  await page.evaluate(() => window.astr3.zoomBy(0.6));
+  await expect
+    .poll(() =>
+      page
+        .locator('.astr3-labels > .astr3-symbol')
+        .first()
+        .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+    )
+    .toBeLessThan(smaller);
+  expect(
+    await page
+      .locator('.astr3-controls button')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontSize),
+  ).toBe(before.control);
+  await page.setViewportSize({ width: 500, height: 900 });
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  for (const [scale, tier, glyph, number] of [
+    [0.649, 'small', 14, 8],
+    [0.651, 'medium', 18, 9],
+    [0.899, 'medium', 18, 9],
+    [0.901, 'large', 24, 10],
+    [1.599, 'large', 24, 10],
+    [1.601, 'largest', 32, 13],
+  ] as const) {
+    await page.evaluate(
+      ({ scale, extent }) => {
+        window.astr3.resetView();
+        const rect = document.querySelector('.astr3-stage')!.getBoundingClientRect();
+        window.astr3.zoomBy(scale / (Math.min(rect.width, rect.height) / (2 * extent)));
+      },
+      { scale, extent: WHEEL.extent },
+    );
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+    await expect(page.locator('.astr3-stage')).toHaveAttribute('data-text-tier', tier);
+    await expect(page.locator('.astr3-labels > .astr3-symbol').first()).toHaveCSS(
+      'font-size',
+      `${glyph}px`,
+    );
+    await expect(page.locator('.astr3-axis').first()).toHaveCSS('font-size', `${number}px`);
+    await expect(page.locator('.astr3-label[data-object^="house:"]').first()).toHaveCSS(
+      'font-size',
+      `${number}px`,
+    );
+    if (scale < 0.9) await expect(page.locator('.astr3-body small,.astr3-degree')).toHaveCount(0);
+    else await expect.poll(() => page.locator('.astr3-degree').count()).toBeGreaterThan(0);
+  }
 });
 
 test('patches orb options without resetting earlier limits and clears removed selections', async ({
@@ -756,7 +966,9 @@ test('changes chart weight across themes while retaining sizes and selection', a
       const element = document.querySelector('[data-object="body:sun"]')!;
       return {
         body: getComputedStyle(element).fontSize,
-        degree: getComputedStyle(element.querySelector('small')!).fontSize,
+        degree: element.querySelector('small')
+          ? getComputedStyle(element.querySelector('small')!).fontSize
+          : null,
         weight: getComputedStyle(element).fontWeight,
         stroke: getComputedStyle(element.querySelector('.astr3-symbol')!).webkitTextStrokeWidth,
       };
@@ -813,7 +1025,7 @@ test('avoids house and custom planet label collisions at every weight after resi
       })),
     }),
   );
-  await expect(page.locator('.astr3-body')).toHaveCount(15);
+  await expect.poll(() => representedBodies(page)).toBe(15);
   const overlaps = async () =>
     page.locator('.astr3-label').evaluateAll((elements) => {
       const bodies = elements
@@ -837,11 +1049,11 @@ test('avoids house and custom planet label collisions at every weight after resi
     for (const weight of ['light', 'regular', 'bold'] as const) {
       await page.getByRole('combobox', { name: 'Chart weight', exact: true }).selectOption(weight);
       await expect.poll(overlaps).toBe(0);
-      await expect.poll(() => page.locator('.astr3-body').count()).toBeGreaterThanOrEqual(10);
+      await expect.poll(() => representedBodies(page)).toBe(15);
       await expect(page.locator('.astr3-access button[data-kind=body]')).toHaveCount(15);
       await expect.poll(() => planetBandViolations(page)).toEqual([]);
       await page.evaluate(() => window.astr3.zoomBy(1.4));
-      await expect(page.locator('.astr3-body')).toHaveCount(15);
+      await expect.poll(() => representedBodies(page)).toBe(15);
       await expect.poll(overlaps).toBe(0);
       await expect.poll(() => planetBandViolations(page, 1.4)).toEqual([]);
       await page.evaluate(() => window.astr3.resetView());
@@ -870,11 +1082,13 @@ test('keeps synthetic clustered planet labels outside the house ring', async ({
     await page.setViewportSize({ width, height: 1000 });
     for (const weight of ['light', 'regular', 'bold']) {
       await page.locator('#chart-weight').selectOption(weight);
-      await expect(page.locator('.astr3-body')).toHaveCount(14);
+      await expect.poll(() => representedBodies(page)).toBe(14);
       await expect.poll(() => planetBandViolations(page)).toEqual([]);
     }
   }
-  await expect(page.locator('.astr3-notice')).not.toContainText('Zoom in');
+  await expect
+    .poll(async () => Math.max(...(await symbolDisplacements(page))))
+    .toBeLessThanOrEqual(30.01);
   expect(await page.evaluate(() => JSON.stringify(window.astr3.model))).toBe(positions);
   await page.evaluate(() => window.astr3.select({ kind: 'body', id: 'mercury' }));
   await expect(page.locator('#inspector-heading')).toHaveText('Mercury');
@@ -900,10 +1114,16 @@ test('compacts planet labels and restores degrees without changing selection det
   );
   await expect(page.locator('.astr3-body')).toHaveCount(3);
   await expect(page.locator('.astr3-stage')).toHaveAttribute('data-label-mode', 'compact');
-  await expect(page.locator('[data-object="body:mercury"]')).toHaveCSS('font-size', '14px');
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-object="body:mercury"]')
+        .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+    )
+    .toBeLessThan(14);
   await expect(page.locator('[data-object="body:mercury"] small')).toBeHidden();
-  const label = await page.locator('[data-object="body:mercury"]').boundingBox();
-  await page.mouse.click(label!.x + label!.width / 2, label!.y + label!.height / 2);
+  const at = await labelPoint(page, '[data-object="body:mercury"]');
+  await page.mouse.click(at.x, at.y);
   await expect(page.locator('#inspector-heading')).toHaveText('Mercury');
   await expect(page.locator('#details')).toContainText('14°15');
   await expect(page.locator('#details')).toContainText('Retrograde');
