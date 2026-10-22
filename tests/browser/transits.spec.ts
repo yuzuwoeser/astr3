@@ -274,18 +274,43 @@ test('pins transits outside a two-sided zodiac scale without separate transit ci
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.evaluate(() =>
     window.astr3Transit!.update({
-      natal: { bodies: [] },
+      natal: { bodies: [{ id: 'sun', name: 'Sun', longitude: 180 }] },
       transit: { bodies: [{ id: 'mars', name: 'Mars', longitude: 60 }] },
       crossAspects: [],
     }),
   );
   await expect(page.locator('#transit-chart .astr3-degree[data-scale=inside]')).toHaveCount(36);
   await expect(page.locator('#transit-chart .astr3-degree[data-scale=outside]')).toHaveCount(36);
-  const marker = await screenPoint(page, 60, WHEEL.outer + 12);
+  const natalMarker = await screenPoint(page, 180, WHEEL.zodiacInner);
+  await page.mouse.click(natalMarker.x, natalMarker.y);
+  await expect
+    .poll(() => page.evaluate(() => window.astr3Transit!.selection))
+    .toEqual({ chart: 'natal', kind: 'body', id: 'sun' });
+  const marker = await screenPoint(page, 60, WHEEL.outer);
   await page.mouse.click(marker.x, marker.y);
   await expect
     .poll(() => page.evaluate(() => window.astr3Transit!.selection))
     .toEqual({ chart: 'transit', kind: 'body', id: 'mars' });
+  await expect
+    .poll(() =>
+      page.evaluate((extent) => {
+        // Query the current label and stage together: selecting schedules a redraw.
+        const stage = document
+          .querySelector('#transit-chart .astr3-stage')!
+          .getBoundingClientRect();
+        const label = document
+          .querySelector('#transit-chart .astr3-body[data-chart=transit][data-body-id=mars]')!
+          .getBoundingClientRect();
+        return (
+          Math.hypot(
+            label.x + label.width / 2 - stage.x - stage.width / 2,
+            label.y + label.height / 2 - stage.y - stage.height / 2,
+          ) /
+          (Math.min(stage.width, stage.height) / (2 * extent))
+        );
+      }, TRANSIT_WHEEL.extent),
+    )
+    .toBeLessThan(380);
   const pixels = await page.evaluate(async () => {
     const chart = window.astr3Transit!;
     chart.update({ natal: { bodies: [] }, transit: { bodies: [] } });

@@ -114,7 +114,7 @@ Click/tap to select; click empty space or press Escape to clear. Drag to pan; sc
 
 The house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. The zodiac has degree ticks on both inside and outside edges, with numbers when space permits. There is no duplicated house-degree scale.
 
-Every planet or supplied point has a filled anchor dot on this circle at its exact longitude, including bodies without aspects. Aspect lines and supplied group outlines meet those anchors. The outer longitude markers remain in place; moving a label never moves either marker.
+Every planet or supplied point has a filled anchor dot on this circle at its exact longitude, including bodies without aspects. Aspect lines and supplied group outlines meet those anchors. Zodiac position dots sit directly on the zodiac's inner boundary for natal bodies and its outer boundary for transits. Moving a label never moves either marker.
 
 Conjunctions use deterministic inward bows whose depth decreases as the dots separate. In CSS pixels, let `d` be the distance between dot centers, `rA` and `rB` their normal visual radii, and `R` the house-circle radius. No connector is drawn when `d ≤ d0 = rA + rB + 2`. Beyond that threshold, midpoint depth is `min(20, R / 4) × d0 / d`. A symmetric quadratic Bézier joins the exact anchors, with its control point twice that depth inward from the chord midpoint; 17 points sample the curve. An antipodal pair falls back to a straight connector.
 

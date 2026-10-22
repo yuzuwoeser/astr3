@@ -51,10 +51,10 @@ export interface WheelPresentation {
 }
 export const TRANSIT_WHEEL = {
   extent: 464,
-  inner: 318,
-  outer: 422,
-  marker: WHEEL.outer + 12,
-  preferred: 350,
+  inner: 296,
+  outer: 400,
+  marker: WHEEL.outer,
+  preferred: 328,
   axis: 440,
 } as const;
 
@@ -774,13 +774,13 @@ export function createWheel(
         const polygon = [
           { x: 0, y: 0 },
           ...Array.from({ length: steps + 1 }, (_, j) =>
-            polar(house.longitude + (span * j) / steps, WHEEL.marker - 2, asc),
+            polar(house.longitude + (span * j) / steps, WHEEL.houseOuter, asc),
           ),
         ];
         const active = primary?.kind === 'house' && primary.id === house.id;
         if (active) fill(polygon, accent, 0.08);
         stroke(
-          [polar(house.longitude, 0, asc), polar(house.longitude, WHEEL.marker - 2, asc)],
+          [polar(house.longitude, 0, asc), polar(house.longitude, WHEEL.houseOuter, asc)],
           active ? accent : colors.ring,
           active ? 1.6 : 0.75,
           0.65,

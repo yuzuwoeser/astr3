@@ -31,9 +31,10 @@ export interface BodyLayout {
 export const WHEEL = {
   outer: 286,
   zodiacInner: 252,
-  marker: 239,
+  marker: 252,
   labelOuter: 242,
   house: 148,
+  houseOuter: 237,
   houseLabel: 133,
   extent: 330,
 } as const;

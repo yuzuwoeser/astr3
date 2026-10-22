@@ -46,7 +46,9 @@ it('keeps tightly clustered glyphs separate at phone and desktop scale without m
     for (const [i, a] of boxes.entries())
       for (const b of boxes.slice(i + 1)) expect(boxesOverlap(a.box, b.box, 3 / scale)).toBe(false);
     for (const [i, a] of placements.entries()) {
-      expect(a.marker).toEqual(polar(model.bodies.find((b) => b.id === a.id)!.longitude, 239, 10));
+      expect(a.marker).toEqual(
+        polar(model.bodies.find((b) => b.id === a.id)!.longitude, WHEEL.zodiacInner, 10),
+      );
       for (const b of placements.slice(i + 1))
         expect(boxesOverlap(a.box, b.box, 3 / scale)).toBe(false);
     }
@@ -134,7 +136,7 @@ it('reserves house-label space without moving markers or mutating the reserved b
     expect(boxesOverlap(cluster.box, reserved[0]!, 3 / 0.5)).toBe(false);
   for (const [i, placement] of placements.entries()) {
     expect(placement.marker).toEqual(
-      polar(model.bodies.find((body) => body.id === placement.id)!.longitude, 239),
+      polar(model.bodies.find((body) => body.id === placement.id)!.longitude, WHEEL.zodiacInner),
     );
     expect(boxesOverlap(placement.box, reserved[0]!, 3 / 0.5)).toBe(false);
     for (const other of placements.slice(i + 1))
