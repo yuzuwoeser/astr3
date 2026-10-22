@@ -52,9 +52,10 @@ export interface WheelPresentation {
 export const TRANSIT_WHEEL = {
   extent: 464,
   inner: 296,
+  nearOuter: 380,
   outer: 400,
   marker: WHEEL.outer,
-  preferred: 328,
+  preferred: 318,
   axis: 440,
 } as const;
 
@@ -950,7 +951,12 @@ export function createWheel(
         height: 24,
       });
       const placeBand = (bodies: readonly Body[], transit = false) => {
-        const fit = (size: number, compact: boolean, clusters = false) => {
+        const fit = (
+          size: number,
+          compact: boolean,
+          outer: number = TRANSIT_WHEEL.outer,
+          clusters = false,
+        ) => {
           const sizes = bodies.map((body) => measureBody(body, size, compact));
           const key = JSON.stringify([
             bodies.map((body) => [body.id, body.longitude]),
@@ -959,6 +965,7 @@ export function createWheel(
             pixelsPerUnit,
             reservedBoxes,
             transit,
+            outer,
             compact,
             clusters,
           ]);
@@ -970,7 +977,7 @@ export function createWheel(
             pixelsPerUnit,
             (body) => sizes[bodies.indexOf(body)]!,
             reservedBoxes,
-            transit ? TRANSIT_WHEEL : undefined,
+            transit ? { ...TRANSIT_WHEEL, outer } : undefined,
             compact ? 'compact' : 'full',
             clusters ? measureCluster : undefined,
           );
@@ -978,19 +985,29 @@ export function createWheel(
           layoutCache.set(key, result);
           return result;
         };
-        // Caption preflight happens before any live labels exist. Crowding drops
-        // secondary text before shrinking symbols, independently in each band.
-        if (text.caption) {
-          const full = fit(text.glyph, false);
-          if (full.placements.length === bodies.length) return { layout: full, size: text.glyph };
-        }
+        // Prefer a closer transit band, retaining wider bounds for crowding.
+        // Hide captions before moving outward; shrink glyphs only after
+        // trying every bound at the current size.
+        const bounds = transit
+          ? [
+              TRANSIT_WHEEL.nearOuter,
+              (TRANSIT_WHEEL.nearOuter + TRANSIT_WHEEL.outer) / 2,
+              TRANSIT_WHEEL.outer,
+            ]
+          : [TRANSIT_WHEEL.outer];
         const sizes = [text.glyph, ...[24, 18, 14].filter((size) => size < text.glyph)];
         for (const size of sizes) {
-          const layout = fit(size, true);
-          if (layout.placements.length === bodies.length) return { layout, size };
+          for (const outer of bounds) {
+            if (size === text.glyph && text.caption) {
+              const full = fit(size, false, outer);
+              if (full.placements.length === bodies.length) return { layout: full, size };
+            }
+            const layout = fit(size, true, outer);
+            if (layout.placements.length === bodies.length) return { layout, size };
+          }
         }
         const size = sizes.at(-1)!;
-        return { layout: fit(size, true, true), size };
+        return { layout: fit(size, true, TRANSIT_WHEEL.outer, true), size };
       };
       const natal = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
       const transit = placeBand(

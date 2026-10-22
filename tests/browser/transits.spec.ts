@@ -310,7 +310,7 @@ test('pins transits outside a two-sided zodiac scale without separate transit ci
         );
       }, TRANSIT_WHEEL.extent),
     )
-    .toBeLessThan(380);
+    .toBeLessThan(360);
   const pixels = await page.evaluate(async () => {
     const chart = window.astr3Transit!;
     chart.update({ natal: { bodies: [] }, transit: { bodies: [] } });
