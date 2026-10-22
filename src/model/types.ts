@@ -23,7 +23,18 @@ export interface ChartAngles {
   readonly midheaven?: number;
 }
 
-export type AspectType = 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
+export type AspectType =
+  | 'conjunction'
+  | 'sextile'
+  | 'square'
+  | 'trine'
+  | 'opposition'
+  | 'semisextile'
+  | 'semisquare'
+  | 'quintile'
+  | 'sesquiquadrate'
+  | 'biquintile'
+  | 'quincunx';
 export interface AspectInput {
   readonly id: string;
   readonly type: AspectType;
@@ -102,8 +113,11 @@ export interface SelectionDetails {
 }
 
 export type OrbConfig = Partial<Record<AspectType, number>>;
+export type AspectEnabledConfig = Partial<Record<AspectType, boolean>>;
 export interface ModelOptions {
   readonly orbs?: OrbConfig;
+  /** Major aspects default on; minor aspects default off. */
+  readonly enabledAspects?: AspectEnabledConfig;
 }
 
 export type HouseSystem = 'placidus' | 'whole-sign' | 'equal';

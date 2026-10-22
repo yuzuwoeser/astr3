@@ -4,7 +4,7 @@ For natal + transit bi-wheels, see [Transit bi-wheel API](transits.md). The nata
 
 ## Model
 
-Import types and pure functions from `astr3/model`. `createModel(input, { orbs? })` validates, normalizes, and freezes its own objects/arrays. It does not mutate or freeze the caller's input. Application metadata is opaque and retained by reference; treat it as immutable.
+Import types and pure functions from `astr3/model`. `createModel(input, { orbs?, enabledAspects? })` validates, normalizes, and freezes its own objects/arrays. It does not mutate or freeze the caller's input. Application metadata is opaque and retained by reference; treat it as immutable.
 
 | ChartInput field                | Meaning                                                                                                                                                                                                  |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,15 +40,31 @@ chart.select({ kind: 'body', id: 'ascendant' });
 
 Supplied nodes can use any convention; include it in metadata for application details. The example provider uses true nodes; see [calculation conventions](calculations.md). Automatic aspects include every supplied point pair, including the nodes' mutual opposition. Supply an explicit aspect list to apply different point-specific rules.
 
-| Aspect type | Exact angle | Default maximum orb |
-| ----------- | ----------: | ------------------: |
-| conjunction |          0° |                  8° |
-| sextile     |         60° |                  4° |
-| square      |         90° |                  6° |
-| trine       |        120° |                  6° |
-| opposition  |        180° |                  8° |
+| Aspect type    | Exact angle | Default maximum orb | Enabled by default |
+| -------------- | ----------: | ------------------: | ------------------ |
+| conjunction    |          0° |                  8° | Yes                |
+| sextile        |         60° |                  4° | Yes                |
+| square         |         90° |                  6° | Yes                |
+| trine          |        120° |                  6° | Yes                |
+| opposition     |        180° |                  8° | Yes                |
+| semisextile    |         30° |                  2° | No                 |
+| semisquare     |         45° |                  2° | No                 |
+| quintile       |         72° |                  2° | No                 |
+| sesquiquadrate |        135° |                  2° | No                 |
+| biquintile     |        144° |                  2° | No                 |
+| quincunx       |        150° |                  3° | No                 |
 
-Override limits with `orbs: { trine: 5 }`. Boundaries are inclusive. Overlapping calculated limits choose the closest exact angle. Supplied aspects are not filtered by orb limits. Calculated IDs survive body reordering. `calculateAspects`, `angularDistance`, `signedDistance`, `normalize`, `zodiacPosition`, and `formatPosition` support shared application logic. Aspects use longitude, not three-dimensional separation or declination parallels.
+Override limits with `orbs: { trine: 5 }`. Boundaries are inclusive. Overlapping calculated limits choose the closest exact **enabled** angle; exact ties keep definition order, with the original major types first. Supplied aspects are not filtered by orb limits. Calculated IDs survive body reordering. Aspects use longitude, not three-dimensional separation or declination parallels.
+
+`enabledAspects` is an `AspectEnabledConfig`: a partial aspect-to-boolean map. For example, `{ square: false, quincunx: true }` disables squares and enables quincunxes. Changing an orb does not enable its type. Disabled aspects are excluded from the model, connectors, picking, accessible list, selection events, and relationship details, including when supplied explicitly. Supplied data is validated before filtering. Groups referencing excluded aspects are temporarily omitted; body-only groups remain available. Keep the original input to restore excluded aspects/groups with a later settings change. Invalid references still throw.
+
+`ASPECT_DEFINITIONS` exposes each type's display name, exact angle, default `orb`, and `major` flag. `ASPECT_ANGLES`, `DEFAULT_ORBS`, and `DEFAULT_ENABLED_ASPECTS` expose frozen maps. `calculateAspects(bodies, orbs?, enabledAspects?)` uses the same defaults and filtering as `createModel`; its existing two-argument form remains valid. `angularDistance`, `signedDistance`, `normalize`, `zodiacPosition`, and `formatPosition` support shared application logic.
+
+```ts
+chart.setOptions({ enabledAspects: { semisextile: true, quincunx: true } });
+chart.setOptions({ enabledAspects: { square: false }, orbs: { quincunx: 2 } });
+// Earlier enablement and orb choices remain in effect.
+```
 
 ## Renderer
 
@@ -58,7 +74,7 @@ Override limits with `orbs: { trine: 5 }`. Boundaries are inclusive. Overlapping
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `model`, `selection`, `element`, `error` | Current normalized model, selected reference, mounted root, and graphics error.                                                                |
 | `update(data)`                           | Replace data; preserve a still-existing selected ID, or clear it with source `update`.                                                         |
-| `setOptions(options)`                    | Patch display options/orbs and recalculate aspects only if the original input omitted them.                                                    |
+| `setOptions(options)`                    | Patch display, orb, and enablement options. Recalculate omitted aspects; filter supplied aspects by enablement. Clear removed selections.      |
 | `select(reference)`                      | Select `{ kind: 'body' \| 'house' \| 'aspect' \| 'group', id }`. Unknown references throw `RangeError`.                                        |
 | `clearSelection()`                       | Deselect.                                                                                                                                      |
 | `zoomBy(factor)`, `resetView()`          | Multiply zoom (clamped to 0.6–5) or restore zoom/pan. Invalid factors throw.                                                                   |
@@ -71,12 +87,13 @@ Options:
 - `theme`: patch background, foreground, muted, ring, accent, group, the four element colors, and per-type aspect colors. Exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
 - `glyphs`: body-ID-to-text overrides, falling back to the body's glyph, built-in symbol, or two name characters. Strings are text, never injected HTML. Use short glyphs.
 - `layers`: patch `zodiac`, `bodies`, `houses`, `axes`, `aspects`, `groups`, `degrees`; all default true. Hidden layers remain available in the model and accessible list.
-- `lineStyles`: per aspect type `{ width?, dash?: [onPixels, offPixels] }`, in CSS pixels. Width is the baseline before the chart-weight multiplier; dash lengths stay constant.
+- `enabledAspects`: patch aspect-to-boolean settings as described above. This excludes aspect data; the `layers.aspects` switch only hides graphics.
+- `lineStyles`: per aspect type `{ width?, dash?: [onPixels, offPixels] }`, in CSS pixels. Width is the baseline before the chart-weight multiplier; dash lengths stay constant. Major types default to solid lines, minor types to `[4, 3]` dashes. Use `[1, 0]` to make a minor aspect solid.
 - `selectionEffects`: `{ color?, dimOpacity?, lineWidth? }`, defaulting to theme accent, `0.22`, and `2.5` pixels. Use opacity in `[0, 1]` and positive widths.
 - `dimUnrelated: false`: keep unrelated objects at normal opacity.
 - `ariaLabel`: accessible chart name; defaults to title.
 
-Nested option records patch by key. A per-aspect line-style object replaces that aspect's previous style. Primary selection takes precedence over transient hover highlighting.
+Nested option records patch by key. A per-aspect line-style object replaces that aspect's previous style. Primary selection takes precedence over transient hover highlighting. Theme overrides remain partial; applications implementing a complete `ChartTheme` must include colors for all eleven aspect types.
 
 | Chart weight | Stroke multiplier | Text weight | Extra symbol stroke |
 | ------------ | ----------------: | ----------: | ------------------: |

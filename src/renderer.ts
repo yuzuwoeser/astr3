@@ -23,6 +23,7 @@ import {
   signedDistance,
 } from './model/math.js';
 import { createModel, getSelectionDetails, hasSelection, selectionKey } from './model/model.js';
+import { ASPECT_DEFINITIONS } from './model/aspects.js';
 import type { Body, ChartInput, Selection } from './model/types.js';
 import type {
   Chart,
@@ -73,6 +74,12 @@ export const DARK_THEME: ChartTheme = {
     square: '#d68c82',
     trine: '#86b9d1',
     opposition: '#cc989f',
+    semisextile: '#84c0b3',
+    semisquare: '#d68c82',
+    quintile: '#ba9bd6',
+    sesquiquadrate: '#d68c82',
+    biquintile: '#ba9bd6',
+    quincunx: '#84c0b3',
   },
 };
 export const LIGHT_THEME: ChartTheme = {
@@ -89,6 +96,12 @@ export const LIGHT_THEME: ChartTheme = {
     square: '#ad544d',
     trine: '#427c9b',
     opposition: '#a65e76',
+    semisextile: '#37836e',
+    semisquare: '#ad544d',
+    quintile: '#79569b',
+    sesquiquadrate: '#ad544d',
+    biquintile: '#79569b',
+    quincunx: '#37836e',
   },
 };
 const LAYERS: ChartLayers = {
@@ -278,7 +291,7 @@ export function createWheel(
     if (selection.kind === 'aspect') {
       const aspect = model.aspects.find((aspect) => aspect.id === selection.id)!;
       const names = aspect.bodyIds.map((id) => model.bodies.find((body) => body.id === id)!.name);
-      return `${names.join(' / ')} · ${aspect.type} · orb ${aspect.orb.toFixed(2)}°`;
+      return `${names.join(' / ')} · ${ASPECT_DEFINITIONS[aspect.type].name} · orb ${aspect.orb.toFixed(2)}°`;
     }
     if (selection.kind === 'house') {
       const house = model.houses.find((house) => house.id === selection.id)!;
@@ -912,7 +925,7 @@ export function createWheel(
           color,
           active ? activeWidth : (style.width ?? 1.1),
           opacity(activeAspects.has(aspect.id)) * 0.85 * path.opacity,
-          style.dash,
+          style.dash ?? (ASPECT_DEFINITIONS[aspect.type].major ? undefined : [4, 3]),
         );
         if (path.opacity < 0.5) continue;
         for (let i = 1; i < path.points.length; i++)
@@ -1451,6 +1464,7 @@ export function createWheel(
         },
         glyphs: { ...options.glyphs, ...patch.glyphs },
         orbs: { ...options.orbs, ...patch.orbs },
+        enabledAspects: { ...options.enabledAspects, ...patch.enabledAspects },
         lineStyles: { ...options.lineStyles, ...patch.lineStyles },
         selectionEffects: { ...options.selectionEffects, ...patch.selectionEffects },
       };
@@ -1460,6 +1474,7 @@ export function createWheel(
       visualWeight = nextWeight;
       model = nextModel;
       clearHover();
+      closeChooser();
       if (selected && !hasSelection(model, selected)) setSelection(null, 'update');
       else if (selected)
         emit('selection', {

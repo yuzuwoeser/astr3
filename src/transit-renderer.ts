@@ -2,6 +2,7 @@ import { createWheel } from './renderer.js';
 import type { WheelPresentation } from './renderer.js';
 import { BODY_GLYPHS } from './model/math.js';
 import { createModel } from './model/model.js';
+import { ASPECT_DEFINITIONS } from './model/aspects.js';
 import {
   createTransitModel,
   getTransitSelectionDetails,
@@ -15,6 +16,7 @@ import type {
   TransitChartInput,
   TransitChartModel,
   TransitOrbs,
+  TransitAspectEnabledConfig,
   TransitSelection,
   TransitSelectionDetails,
 } from './model/transits.js';
@@ -30,10 +32,11 @@ export interface TransitLayers extends ChartLayers {
 }
 export interface TransitChartOptions extends Omit<
   ChartOptions,
-  'data' | 'orbs' | 'glyphs' | 'layers'
+  'data' | 'orbs' | 'enabledAspects' | 'glyphs' | 'layers'
 > {
   data: TransitChartInput;
   orbs?: TransitOrbs;
+  enabledAspects?: TransitAspectEnabledConfig;
   glyphs?: Partial<Record<ChartSide, Readonly<Record<string, string>>>>;
   layers?: Partial<TransitLayers>;
   /** Defaults to the theme's group color. */
@@ -76,6 +79,10 @@ const publicReference = (reference: Selection): TransitSelection => {
 };
 const rawId = (chart: AspectFamily, kind: Selection['kind'], id: string) =>
   transitSelectionKey({ chart, kind, id } as TransitSelection);
+
+// The composite model has already applied each family's settings. Its supplied
+// rendering projection must not filter enabled minor aspects a second time.
+const ALL_ASPECTS = Object.fromEntries(Object.keys(ASPECT_DEFINITIONS).map((type) => [type, true]));
 
 function flatten(model: TransitChartModel): ChartInput {
   return {
@@ -144,9 +151,17 @@ function display(model: TransitChartModel, options: TransitChartOptions): WheelP
   };
 }
 function renderingOptions(options: TransitChartOptions): Omit<ChartOptions, 'data'> {
-  const { data: _data, orbs: _orbs, glyphs, transitColor: _color, ...rest } = options;
+  const {
+    data: _data,
+    orbs: _orbs,
+    enabledAspects: _enabled,
+    glyphs,
+    transitColor: _color,
+    ...rest
+  } = options;
   return {
     ...rest,
+    enabledAspects: ALL_ASPECTS,
     glyphs: Object.fromEntries(
       (['natal', 'transit'] as const).flatMap((chart) =>
         Object.entries(glyphs?.[chart] ?? {}).map(([id, value]) => [
@@ -203,7 +218,7 @@ export function createTransitChart(
   function commit(nextOptions: TransitChartOptions, nextModel: TransitChartModel) {
     assertLive();
     const data = flatten(nextModel);
-    createModel(data); // Validate the complete rendering projection before changing live state.
+    createModel(data, { enabledAspects: ALL_ASPECTS }); // Validate before changing live state.
     const hadSelection = wheel.selection !== null;
     applying = true;
     try {
@@ -254,6 +269,12 @@ export function createTransitChart(
           (['natal', 'cross', 'transit'] as const).map((family) => [
             family,
             { ...options.orbs?.[family], ...patch.orbs?.[family] },
+          ]),
+        ),
+        enabledAspects: Object.fromEntries(
+          (['natal', 'cross', 'transit'] as const).map((family) => [
+            family,
+            { ...options.enabledAspects?.[family], ...patch.enabledAspects?.[family] },
           ]),
         ),
         glyphs: {

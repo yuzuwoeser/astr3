@@ -186,69 +186,18 @@
             <p id="calculation-status" role="status" class="calculation-status">
               No data leaves your browser.
             </p>
-            <label for="orb-family">Aspect orb limits</label>
+            <label for="orb-family">Aspects</label>
             <select id="orb-family">
               <option value="natal">Natal aspects</option>
               <option value="cross" disabled>Transit-to-natal aspects</option>
               <option value="transit" disabled>Transit-to-transit aspects</option>
             </select>
-            <div class="orb-inputs">
-              <label
-                >Conjunction
-                <input
-                  data-orb="conjunction"
-                  type="number"
-                  min="0"
-                  max="180"
-                  step="0.1"
-                  value="8"
-                />°</label
-              >
-              <label
-                >Opposition
-                <input
-                  data-orb="opposition"
-                  type="number"
-                  min="0"
-                  max="180"
-                  step="0.1"
-                  value="8"
-                />°</label
-              >
-              <label
-                >Trine
-                <input
-                  data-orb="trine"
-                  type="number"
-                  min="0"
-                  max="180"
-                  step="0.1"
-                  value="6"
-                />°</label
-              >
-              <label
-                >Square
-                <input
-                  data-orb="square"
-                  type="number"
-                  min="0"
-                  max="180"
-                  step="0.1"
-                  value="6"
-                />°</label
-              >
-              <label
-                >Sextile
-                <input
-                  data-orb="sextile"
-                  type="number"
-                  min="0"
-                  max="180"
-                  step="0.1"
-                  value="4"
-                />°</label
-              >
+            <div class="aspect-presets" role="group" aria-label="Aspect presets">
+              <button type="button" data-aspect-preset="major">Major only</button>
+              <button type="button" data-aspect-preset="all">All</button>
+              <button type="button" data-aspect-preset="none">None</button>
             </div>
+            <div id="aspect-controls"></div>
             <p id="orb-status" class="calculation-status" role="status"></p>
             <label for="chart-weight">Chart weight</label>
             <select id="chart-weight">
@@ -266,14 +215,7 @@
           </section>
         </aside>
       </div>
-      <section class="legend" aria-label="Aspect legend">
-        <span class="eyebrow">THE FIVE MAJOR ASPECTS</span
-        ><span><i class="conjunction"></i>Conjunction <small>0°</small></span
-        ><span><i class="sextile"></i>Sextile <small>60°</small></span
-        ><span><i class="square"></i>Square <small>90°</small></span
-        ><span><i class="trine"></i>Trine <small>120°</small></span
-        ><span><i class="opposition"></i>Opposition <small>180°</small></span>
-      </section>
+      <section id="aspect-legend" class="legend" aria-label="Aspect legend"></section>
     </main>
     <footer>
       <span>astr3 <span class="footer-star">✳</span> The sky, connected.</span

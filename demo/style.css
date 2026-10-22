@@ -326,22 +326,77 @@ input[type='datetime-local'] {
 #transit-controls {
   margin: 16px 0 24px;
 }
-.orb-inputs {
-  display: grid;
+.aspect-presets {
+  display: flex;
   gap: 6px;
-  margin-bottom: 8px;
+  margin: 10px 0 18px;
 }
-.orb-inputs label {
+.aspect-presets button {
+  flex: 1;
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: #52685d;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.aspect-presets button:hover {
+  background: #e8ebe2;
+}
+.aspect-options {
+  min-width: 0;
+  padding: 0;
+  margin: 0 0 14px;
+  border: 0;
+}
+.aspect-options legend {
+  margin-bottom: 6px;
+  font-size: 10px;
+  color: #718475;
+  letter-spacing: 0.08em;
+}
+.aspect-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+}
+.aspect-row label {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 0;
   font-size: 12px;
+  min-width: 0;
 }
-.orb-inputs input {
-  width: 68px;
-  margin: 0 0 0 auto;
+.aspect-toggle {
+  align-self: stretch;
+  cursor: pointer;
+}
+.aspect-toggle input {
+  width: 14px;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: #52685d;
+}
+.aspect-toggle small {
+  margin-left: auto;
+  font-size: 10px;
+  color: #718475;
+}
+.aspect-row[data-enabled='false'] .aspect-name {
+  color: #718475;
+}
+.aspect-orb input {
+  width: 58px;
+  margin: 0;
   padding: 7px;
+}
+.aspect-orb input:disabled {
+  opacity: 0.5;
 }
 .field-pair > div {
   width: 50%;
@@ -457,20 +512,7 @@ input[type='datetime-local'] {
 .legend i {
   display: block;
   width: 16px;
-  height: 2px;
-  background: #b6a474;
-}
-.legend .sextile {
-  background: #609f8c;
-}
-.legend .square {
-  background: #b66d60;
-}
-.legend .trine {
-  background: #6c9daf;
-}
-.legend .opposition {
-  background: #ae7c8a;
+  height: 0;
 }
 footer {
   max-width: 1440px;

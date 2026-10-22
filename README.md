@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. The initial wheel uses synthetic teaching data with a supplied grand trine. Choose a calculated preset or enter a UTC date/time and coordinates to use Astronomy Engine. House systems: Placidus, Whole Sign, Equal. Birth information is never sent to a service. Choose **Natal + transits** to add an outer transit band, UTC time stepping, and independent orb and visibility controls for natal, transit-to-natal, and transit-to-transit aspects. **Chart weight** offers Light, Regular (demo default), and Bold.
+Open the local URL printed by Vite. The initial wheel uses synthetic teaching data with a supplied grand trine. Choose a calculated preset or enter a UTC date/time and coordinates to use Astronomy Engine. House systems: Placidus, Whole Sign, Equal. Birth information is never sent to a service. **Aspects** provides individual switches, editable orbs, and Major only / All / None presets. Choose **Natal + transits** for an outer transit band, UTC time stepping, and independent aspect settings for natal, transit-to-natal, and transit-to-transit contacts. **Chart weight** offers Light, Regular (demo default), and Bold.
 
 ## Use the library
 
@@ -28,13 +28,14 @@ import { createChart } from 'astr3';
 
 const chart = createChart(document.querySelector<HTMLElement>('#wheel')!, {
   chartWeight: 'regular', // Omit to preserve the library's original Light styling.
+  enabledAspects: { semisextile: true, quincunx: true },
   data: {
     bodies: [
       { id: 'sun', name: 'Sun', longitude: 78.4 },
       { id: 'moon', name: 'Moon', longitude: 198.9 },
       { id: 'jupiter', name: 'Jupiter', longitude: 318.1 },
     ],
-    // Omit aspects to calculate the five major types with configurable orbs.
+    // Omit aspects to calculate enabled types with configurable orbs.
     // Supply [] to deliberately display none.
   },
 });
@@ -84,7 +85,7 @@ chart.update(data);
 - Selectable Ascendant, Midheaven, North Node, and South Node with the same dots, aspects, house occupancy, and detail events as planets. The browser provider includes true lunar nodes in natal/transit calculations and AC/MC in natal calculations when defined.
 - Collision-separated glyphs and leader lines with fixed longitude markers. Planet labels stay outside the original inner house circle and clear of the outer degree scale; collective one/two-row placement stays within 30° of true positions. Crowded views hide captions first, then shrink symbols or show selectable cluster badges. Wheel text uses zoom-aware size presets.
 - Selectable planet dots on the house circle at exact longitudes, joined by aspect lines and pattern outlines. Every planet has a dot, including those without aspects.
-- Five configurable major aspects; supplied groups with selectable interiors and accessible entries.
+- Eleven aspect types with independent enablement and orbs: five major aspects enabled by default, plus semi-sextile, semi-square, quintile, sesquiquadrate, biquintile, and quincunx. Disabled types leave the model, explorer, and relationship details. Supplied groups have selectable interiors and accessible entries.
 - Pointer/touch selection, overlap chooser, relationship highlights, application HTML tooltip events, and programmatic selection.
 - Zoom/pan/reset, keyboard controls, an accessible HTML object list, and reduced-motion behavior.
 - Dark/light themes, Light/Regular/Bold chart weight, custom glyph strings, aspect line widths/dashes, layers, dimming, and selection styles.
@@ -108,6 +109,7 @@ const transit = await provider.calculateTransits({ utc: '2026-10-21T12:00:00Z' }
 const wheel = createTransitChart(document.querySelector<HTMLElement>('#wheel')!, {
   data: { natal, transit },
   orbs: { cross: { conjunction: 5 } },
+  enabledAspects: { cross: { quincunx: true, semisextile: true } },
   layers: { crossAspects: true, natalAspects: false, transitAspects: false },
 });
 wheel.select({ kind: 'body', chart: 'transit', id: 'mars' });

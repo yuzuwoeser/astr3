@@ -37,20 +37,22 @@ try {
   writeFileSync(
     join(directory, 'consumer.ts'),
     `
-import { createChart, createTransitChart, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight } from 'astr3';
-import { createModel, createTransitModel } from 'astr3/model';
+import { createChart, createTransitChart, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
+import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
 const selection: Selection = { kind: 'body', id: 'sun' };
-const model = createModel(input);
+const enabledAspects: AspectEnabledConfig = { quincunx: true, square: false };
+const model = createModel(input, { enabledAspects });
 const chartFactory: typeof createChart = createChart;
 const chartWeight: ChartWeight = 'regular';
-const options: Parameters<typeof createChart>[1] = { data: input, chartWeight };
-void [selection, model, chartFactory, createAstronomyProvider, options];
+const options: Parameters<typeof createChart>[1] = { data: input, chartWeight, enabledAspects, lineStyles: { quincunx: { dash: [4, 3] } }, theme: { aspects: { quincunx: '#37836e' } } };
+void [selection, model, chartFactory, createAstronomyProvider, options, calculateAspects(input.bodies, {}, enabledAspects), ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS];
 const pair: TransitChartInput = { natal: input, transit: input };
 const transitSelection: TransitSelection = { kind: 'body', chart: 'transit', id: 'sun' };
-const transitModel = createTransitModel(pair, { orbs: { cross: { trine: 3 } } });
-const transitOptions: Parameters<typeof createTransitChart>[1] = { data: pair, layers: { crossAspects: true }, glyphs: { transit: { sun: 'S' } } };
+const enabledFamilies: TransitAspectEnabledConfig = { natal: { semisextile: true }, cross: { quincunx: true } };
+const transitModel = createTransitModel(pair, { orbs: { cross: { trine: 3 } }, enabledAspects: enabledFamilies });
+const transitOptions: Parameters<typeof createTransitChart>[1] = { data: pair, enabledAspects: enabledFamilies, layers: { crossAspects: true }, glyphs: { transit: { sun: 'S' } } };
 void [transitSelection, transitModel, transitOptions, createAstronomyProvider().calculateTransits];
 `,
   );
@@ -77,13 +79,19 @@ void [transitSelection, transitModel, transitOptions, createAstronomyProvider().
     `
 import assert from 'node:assert/strict';
 import { createChart, createTransitChart } from 'astr3';
-import { createModel, createTransitModel } from 'astr3/model';
+import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 assert.equal(typeof globalThis.document, 'undefined');
 assert.equal(typeof createChart, 'function');
 assert.equal(typeof createTransitChart, 'function');
 assert.equal(createTransitModel({ natal: { bodies: [] }, transit: { bodies: [] } }).crossAspects.length, 0);
 assert.equal(createModel({ bodies: [] }).houseStatus, 'unknown');
+assert.equal(ASPECT_DEFINITIONS.quincunx.angle, 150);
+assert.equal(DEFAULT_ENABLED_ASPECTS.quincunx, false);
+const points = [{ id: 'a', name: 'A', longitude: 0 }, { id: 'b', name: 'B', longitude: 30 }];
+assert.equal(calculateAspects(points).length, 0);
+assert.equal(calculateAspects(points, {}, { semisextile: true })[0].type, 'semisextile');
+assert.equal(createTransitModel({ natal: { bodies: [points[0]] }, transit: { bodies: [{ ...points[1], longitude: 150 }] } }, { enabledAspects: { cross: { quincunx: true } } }).crossAspects[0].type, 'quincunx');
 const data = await createAstronomyProvider().calculate({ utc: '2000-01-01T12:00:00Z', latitude: 51.5, longitude: 0 });
 assert.equal(data.houses.length, 12);
 assert.equal(data.bodies.length, 14);

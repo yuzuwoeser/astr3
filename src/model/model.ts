@@ -1,8 +1,11 @@
 import { angularDistance, normalize, zodiacPosition } from './math.js';
+import { ASPECT_ANGLES, aspectCandidates, matchAspect, resolveAspectSettings } from './aspects.js';
+import type { AspectSettings } from './aspects.js';
+import { ChartDataError } from './errors.js';
 import type {
   Aspect,
+  AspectEnabledConfig,
   AspectInput,
-  AspectType,
   Body,
   BodyInput,
   ChartInput,
@@ -15,27 +18,8 @@ import type {
   SelectionDetails,
 } from './types.js';
 
-export const ASPECT_ANGLES: Readonly<Record<AspectType, number>> = Object.freeze({
-  conjunction: 0,
-  sextile: 60,
-  square: 90,
-  trine: 120,
-  opposition: 180,
-});
-export const DEFAULT_ORBS: Readonly<Record<AspectType, number>> = Object.freeze({
-  conjunction: 8,
-  sextile: 4,
-  square: 6,
-  trine: 6,
-  opposition: 8,
-});
-export class ChartDataError extends Error {
-  readonly code = 'INVALID_CHART_DATA';
-  constructor(message: string) {
-    super(message);
-    this.name = 'ChartDataError';
-  }
-}
+export { ASPECT_ANGLES, DEFAULT_ORBS } from './aspects.js';
+export { ChartDataError } from './errors.js';
 const fail = (message: string): never => {
   throw new ChartDataError(message);
 };
@@ -46,34 +30,20 @@ function finite(value: number, path: string): number {
 function text(value: string, path: string): void {
   if (typeof value !== 'string' || !value.trim()) fail(`${path} must be a nonempty string.`);
 }
-function checkOrbs(orbs: OrbConfig): void {
-  for (const [type, value] of Object.entries(orbs)) {
-    if (
-      !Object.hasOwn(ASPECT_ANGLES, type) ||
-      !Number.isFinite(value) ||
-      value! < 0 ||
-      value! > 180
-    )
-      fail(`Orb for ${type} must be between 0 and 180 degrees.`);
-  }
-}
-
-export function calculateAspects(bodies: readonly BodyInput[], orbs: OrbConfig = {}): Aspect[] {
-  checkOrbs(orbs);
-  const limits = { ...DEFAULT_ORBS, ...orbs };
+function deriveAspects(
+  bodies: readonly BodyInput[],
+  settings: AspectSettings,
+  allCandidates = false,
+): Aspect[] {
   const result: Aspect[] = [];
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i]!,
         b = bodies[j]!;
       const separation = angularDistance(a.longitude, b.longitude);
-      // Large custom orbs can overlap: keep the closest exact aspect deterministically.
-      const candidates = (Object.keys(ASPECT_ANGLES) as AspectType[])
-        .map((type) => ({ type, orb: Math.abs(separation - ASPECT_ANGLES[type]) }))
-        .filter(({ type, orb }) => orb <= limits[type] + 1e-10)
-        .sort((x, y) => x.orb - y.orb);
-      const hit = candidates[0];
-      if (hit) {
+      const hit = matchAspect(separation, settings);
+      const candidates = allCandidates ? aspectCandidates(separation, settings) : hit ? [hit] : [];
+      for (const hit of candidates) {
         const ids = [a.id, b.id].sort();
         result.push({
           id: `aspect:${JSON.stringify(ids)}:${hit.type}`,
@@ -89,10 +59,18 @@ export function calculateAspects(bodies: readonly BodyInput[], orbs: OrbConfig =
   return result;
 }
 
+export function calculateAspects(
+  bodies: readonly BodyInput[],
+  orbs: OrbConfig = {},
+  enabledAspects: AspectEnabledConfig = {},
+): Aspect[] {
+  return deriveAspects(bodies, resolveAspectSettings(orbs, enabledAspects));
+}
+
 /** Pure, framework-independent validation and normalization. Never mutates the input. */
 export function createModel(input: ChartInput, options: ModelOptions = {}): ChartModel {
   if (!input || !Array.isArray(input.bodies)) fail('bodies must be an array.');
-  checkOrbs(options.orbs ?? {});
+  const settings = resolveAspectSettings(options.orbs, options.enabledAspects);
   const ids = new Set<string>();
   function register(id: string, path: string): void {
     text(id, `${path}.id`);
@@ -168,10 +146,13 @@ export function createModel(input: ChartInput, options: ModelOptions = {}): Char
     fail('houseStatus "available" requires twelve cusps.');
   if (input.houseStatus && input.houseStatus !== 'available' && houses.length)
     fail('Unknown or unavailable houses cannot have cusps.');
-  const aspects =
+  if (input.aspects !== undefined && !Array.isArray(input.aspects))
+    fail('aspects must be an array.');
+  const suppliedAspects =
     input.aspects === undefined
-      ? calculateAspects(bodies, options.orbs)
+      ? deriveAspects(bodies, settings)
       : input.aspects.map((aspect: AspectInput) => {
+          if (!aspect || typeof aspect !== 'object') fail('Aspects must be objects.');
           if (!Object.hasOwn(ASPECT_ANGLES, aspect.type))
             fail(`Unsupported aspect type "${aspect.type}".`);
           if (
@@ -194,27 +175,37 @@ export function createModel(input: ChartInput, options: ModelOptions = {}): Char
             orb: Math.abs(separation - ASPECT_ANGLES[aspect.type]),
           };
         });
-  for (const aspect of aspects) register(aspect.id, 'aspects');
-  const aspectIds = new Set(aspects.map((aspect) => aspect.id));
-  const groups = (input.groups ?? []).map((group) => {
-    register(group.id, 'groups');
-    text(group.name, `${group.id}.name`);
-    if (
-      !Array.isArray(group.bodyIds) ||
-      !Array.isArray(group.aspectIds) ||
-      (!group.bodyIds.length && !group.aspectIds.length)
-    )
-      fail(`${group.id} needs bodyIds or aspectIds.`);
-    for (const id of group.bodyIds)
-      if (!bodyMap.has(id)) fail(`${group.id} references missing body "${id}".`);
-    for (const id of group.aspectIds)
-      if (!aspectIds.has(id)) fail(`${group.id} references missing aspect "${id}".`);
-    return {
-      ...group,
-      bodyIds: [...new Set(group.bodyIds)],
-      aspectIds: [...new Set(group.aspectIds)],
-    };
-  });
+  // Validate references against all possible calculated matches, so disabling
+  // an aspect can suppress its supplied group without making the input invalid.
+  const validationAspects =
+    input.aspects === undefined && input.groups?.some((group) => group.aspectIds?.length)
+      ? deriveAspects(bodies, settings, true)
+      : suppliedAspects;
+  for (const aspect of validationAspects) register(aspect.id, 'aspects');
+  const aspectIds = new Set(validationAspects.map((aspect) => aspect.id));
+  const aspects = suppliedAspects.filter((aspect) => settings.enabled[aspect.type]);
+  const enabledIds = new Set(aspects.map((aspect) => aspect.id));
+  const groups = (input.groups ?? [])
+    .map((group) => {
+      register(group.id, 'groups');
+      text(group.name, `${group.id}.name`);
+      if (
+        !Array.isArray(group.bodyIds) ||
+        !Array.isArray(group.aspectIds) ||
+        (!group.bodyIds.length && !group.aspectIds.length)
+      )
+        fail(`${group.id} needs bodyIds or aspectIds.`);
+      for (const id of group.bodyIds)
+        if (!bodyMap.has(id)) fail(`${group.id} references missing body "${id}".`);
+      for (const id of group.aspectIds)
+        if (!aspectIds.has(id)) fail(`${group.id} references missing aspect "${id}".`);
+      return {
+        ...group,
+        bodyIds: [...new Set(group.bodyIds)],
+        aspectIds: [...new Set(group.aspectIds)],
+      };
+    })
+    .filter((group) => group.aspectIds.every((id) => enabledIds.has(id)));
   const model: ChartModel = {
     title: input.title ?? 'Natal chart',
     bodies,

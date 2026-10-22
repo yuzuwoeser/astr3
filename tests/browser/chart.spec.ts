@@ -394,7 +394,7 @@ test('suppresses coincident conjunction curves while retaining dots and aspect i
   await expect
     .poll(() => page.evaluate(() => window.astr3.selection))
     .toEqual({ kind: 'aspect', id: 'conjunction' });
-  await expect(page.locator('#inspector-heading')).toHaveText('conjunction');
+  await expect(page.locator('#inspector-heading')).toHaveText('Conjunction');
   // Selecting a hidden aspect highlights its endpoints without restoring a loop.
   const pixels = await anchorPixels(page, [formerLoop], { kind: 'aspect', id: 'conjunction' });
   expect(pixels[0]).toEqual([17, 28, 32]);

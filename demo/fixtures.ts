@@ -1,4 +1,4 @@
-import { calculateAspects } from '../src/model/index.js';
+import { ASPECT_DEFINITIONS, calculateAspects } from '../src/model/index.js';
 import type { ChartInput } from '../src/model/index.js';
 
 const bodies = [
@@ -17,7 +17,13 @@ const bodies = [
   { id: 'north-node', name: 'North Node', longitude: 35.6, retrograde: true },
   { id: 'south-node', name: 'South Node', longitude: 215.6, retrograde: true },
 ];
-const aspects = calculateAspects(bodies);
+// Supply every supported contact so the demo's minor-aspect switches can reveal
+// them while the chart's default enablement keeps its original appearance.
+const aspects = calculateAspects(
+  bodies,
+  {},
+  Object.fromEntries(Object.keys(ASPECT_DEFINITIONS).map((type) => [type, true])),
+);
 const members = ['sun', 'moon', 'jupiter'];
 
 /** Synthetic teaching fixture: supplied positions and an explicitly supplied group. */

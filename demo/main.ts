@@ -4,6 +4,8 @@ import {
   DARK_THEME,
   LIGHT_THEME,
   DEFAULT_ORBS,
+  DEFAULT_ENABLED_ASPECTS,
+  ASPECT_DEFINITIONS,
   formatPosition,
   getSelectionDetails,
   getTransitSelectionDetails,
@@ -22,6 +24,7 @@ import type {
   TransitLayers,
   AspectFamily,
   AspectType,
+  AspectEnabledConfig,
   TransitOrbs,
 } from '../src/index.js';
 import { study } from './fixtures.js';
@@ -55,6 +58,12 @@ const orbLimits: Required<TransitOrbs> = {
   cross: { ...DEFAULT_ORBS },
   transit: { ...DEFAULT_ORBS },
 };
+const enabledAspectTypes: Record<AspectFamily, Required<AspectEnabledConfig>> = {
+  natal: { ...DEFAULT_ENABLED_ASPECTS },
+  cross: { ...DEFAULT_ENABLED_ASPECTS },
+  transit: { ...DEFAULT_ENABLED_ASPECTS },
+};
+const aspectTypes = Object.keys(ASPECT_DEFINITIONS) as AspectType[];
 const transitTime = $<HTMLInputElement>('transit-utc');
 transitTime.value = new Date().toISOString().slice(0, 16);
 
@@ -93,7 +102,7 @@ function inspect(data: SelectionDetails | TransitSelectionDetails | null): void 
         ? `House ${(data.object as { number: number }).number}`
         : 'name' in data.object
           ? data.object.name
-          : (data.object as { type: string }).type
+          : ASPECT_DEFINITIONS[(data.object as { type: AspectType }).type].name
       : 'Every point has a story.',
   );
   heading.id = 'inspector-heading';
@@ -108,7 +117,7 @@ function inspect(data: SelectionDetails | TransitSelectionDetails | null): void 
         'muted',
       ),
     );
-    const firstGroup = chart.model.groups[0];
+    const firstGroup = (transitMode ? transitChart?.model.natal : chart.model)?.groups[0];
     if (firstGroup) {
       const button = selectionButton(`Explore ${firstGroup.name} ↗`, {
         kind: 'group',
@@ -194,11 +203,14 @@ function inspect(data: SelectionDetails | TransitSelectionDetails | null): void 
             )
           : aspect.bodyIds.map((id) => chart.model.bodies.find((body) => body.id === id)!.name);
       details.append(
-        selectionButton(`${names.join(' / ')} · ${aspect.type} · ${aspect.orb.toFixed(2)}° orb`, {
-          kind: 'aspect',
-          id: aspect.id,
-          ...('chart' in aspect ? { chart: aspect.chart } : {}),
-        }),
+        selectionButton(
+          `${names.join(' / ')} · ${ASPECT_DEFINITIONS[aspect.type].name} · ${aspect.orb.toFixed(2)}° orb`,
+          {
+            kind: 'aspect',
+            id: aspect.id,
+            ...('chart' in aspect ? { chart: aspect.chart } : {}),
+          },
+        ),
       );
     }
   }
@@ -213,7 +225,7 @@ function inspect(data: SelectionDetails | TransitSelectionDetails | null): void 
       );
   const clear = create('button', 'Clear selection ×', 'clear-selection');
   clear.type = 'button';
-  clear.addEventListener('click', () => chart.clearSelection());
+  clear.addEventListener('click', () => (transitMode ? transitChart : chart)?.clearSelection());
   details.append(clear);
 }
 chart.on('selection', (event) => {
@@ -234,7 +246,7 @@ chart.on('hover', (event) => {
     'name' in object
       ? object.name
       : 'type' in object
-        ? `${object.type} · ${object.orb.toFixed(2)}° orb`
+        ? `${ASPECT_DEFINITIONS[object.type].name} · ${object.orb.toFixed(2)}° orb`
         : `House ${object.number}`;
   tooltip.hidden = false;
   tooltip.style.left = `${Math.max(8, Math.min(window.innerWidth - tooltip.offsetWidth - 12, event.x + 16))}px`;
@@ -362,6 +374,7 @@ document.querySelectorAll<HTMLInputElement>('[data-layer]').forEach((input) =>
     const layers = { [input.dataset.layer!]: input.checked } as Partial<ChartLayers>;
     chart.setOptions({ layers });
     transitChart?.setOptions({ layers });
+    renderAspectLegend();
   }),
 );
 window.addEventListener('pagehide', (event) => {
@@ -423,6 +436,7 @@ $('chart-view').addEventListener('change', () => {
       chartWeight: $<HTMLSelectElement>('chart-weight').value as ChartWeight,
       theme: light ? LIGHT_THEME : DARK_THEME,
       orbs: orbLimits,
+      enabledAspects: enabledAspectTypes,
       layers,
     });
     window.astr3Transit = transitChart;
@@ -435,7 +449,7 @@ $('chart-view').addEventListener('change', () => {
         return;
       }
       const object = event.details.object;
-      tooltip.textContent = `${event.details.selection.chart === 'natal' ? 'Natal' : event.details.selection.chart === 'transit' ? 'Transiting' : 'Transit-to-natal'} ${'name' in object ? object.name : 'type' in object ? `${object.type} · ${object.orb.toFixed(2)}° orb` : `House ${object.number}`}`;
+      tooltip.textContent = `${event.details.selection.chart === 'natal' ? 'Natal' : event.details.selection.chart === 'transit' ? 'Transiting' : 'Transit-to-natal'} ${'name' in object ? object.name : 'type' in object ? `${ASPECT_DEFINITIONS[object.type].name} · ${object.orb.toFixed(2)}° orb` : `House ${object.number}`}`;
       tooltip.hidden = false;
       tooltip.style.left = `${Math.max(8, Math.min(innerWidth - tooltip.offsetWidth - 12, event.x + 16))}px`;
       tooltip.style.top = `${Math.max(8, event.y - 40)}px`;
@@ -448,6 +462,7 @@ $('chart-view').addEventListener('change', () => {
     option.disabled = !transitMode && option.value !== 'natal';
   $<HTMLSelectElement>('orb-family').value = transitMode ? 'cross' : 'natal';
   renderOrbInputs();
+  renderAspectLegend();
   tooltip.hidden = true;
   inspect(
     transitMode
@@ -485,29 +500,152 @@ $('transit-now').addEventListener('click', () => {
   void calculateTransit();
 });
 document.querySelectorAll<HTMLInputElement>('[data-transit-layer]').forEach((input) =>
-  input.addEventListener('change', () =>
+  input.addEventListener('change', () => {
     transitChart?.setOptions({
       layers: { [input.dataset.transitLayer!]: input.checked } as Partial<TransitLayers>,
-    }),
-  ),
-);
-function renderOrbInputs() {
-  const family = $<HTMLSelectElement>('orb-family').value as AspectFamily;
-  document.querySelectorAll<HTMLInputElement>('[data-orb]').forEach((input) => {
-    input.value = String(orbLimits[family][input.dataset.orb as AspectType]);
-  });
-}
-$('orb-family').addEventListener('change', renderOrbInputs);
-document.querySelectorAll<HTMLInputElement>('[data-orb]').forEach((input) =>
-  input.addEventListener('change', () => {
-    if (!input.value || !input.checkValidity()) {
-      $('orb-status').textContent = 'Orb limits must be numbers from 0° to 180°.';
-      return;
-    }
-    const family = $<HTMLSelectElement>('orb-family').value as AspectFamily;
-    orbLimits[family][input.dataset.orb as AspectType] = input.valueAsNumber;
-    if (family === 'natal') chart.setOptions({ orbs: orbLimits.natal });
-    transitChart?.setOptions({ orbs: { [family]: { ...orbLimits[family] } } });
-    $('orb-status').textContent = 'Orb limits updated.';
+    });
+    renderAspectLegend();
   }),
 );
+
+function renderAspectLegend() {
+  const legend = $('aspect-legend');
+  legend.replaceChildren(create('span', 'ENABLED ASPECTS', 'eyebrow'));
+  const master = document.querySelector<HTMLInputElement>('[data-layer=aspects]')!.checked;
+  const families: AspectFamily[] = !master
+    ? []
+    : transitMode
+      ? (['natal', 'cross', 'transit'] as const).filter(
+          (family) =>
+            document.querySelector<HTMLInputElement>(`[data-transit-layer=${family}Aspects]`)!
+              .checked,
+        )
+      : ['natal'];
+  const types = aspectTypes.filter((type) =>
+    families.some((family) => enabledAspectTypes[family][type]),
+  );
+  for (const type of types) {
+    const definition = ASPECT_DEFINITIONS[type];
+    const entry = create('span', '');
+    entry.dataset.aspectType = type;
+    const line = create('i', '');
+    line.setAttribute('aria-hidden', 'true');
+    line.style.borderTop = `2px ${definition.major ? 'solid' : 'dashed'} ${LIGHT_THEME.aspects[type]}`;
+    entry.append(
+      line,
+      document.createTextNode(definition.name),
+      create('small', `${definition.angle}°`),
+    );
+    legend.append(entry);
+  }
+  if (!types.length)
+    legend.append(
+      create('span', master ? 'No enabled aspects in visible families.' : 'Aspect layer hidden.'),
+    );
+}
+
+function applyEnabledAspects(family: AspectFamily, patch: AspectEnabledConfig) {
+  try {
+    if (family === 'natal') chart.setOptions({ enabledAspects: patch });
+    transitChart?.setOptions({ enabledAspects: { [family]: patch } });
+    Object.assign(enabledAspectTypes[family], patch);
+    const active = transitMode ? transitChart! : chart;
+    inspect(
+      active.selection
+        ? transitMode
+          ? getTransitSelectionDetails(transitChart!.model, transitChart!.selection!)
+          : getSelectionDetails(chart.model, chart.selection!)
+        : null,
+    );
+    $('orb-status').textContent = 'Aspects updated.';
+  } catch (error) {
+    $('orb-status').textContent = (error as Error).message;
+  }
+  renderOrbInputs();
+  renderAspectLegend();
+}
+
+for (const major of [true, false]) {
+  const fieldset = create('fieldset', '', 'aspect-options');
+  fieldset.append(create('legend', major ? 'Major aspects' : 'Minor aspects'));
+  for (const type of aspectTypes.filter((type) => ASPECT_DEFINITIONS[type].major === major)) {
+    const definition = ASPECT_DEFINITIONS[type];
+    const row = create('div', '', 'aspect-row');
+    row.dataset.aspect = type;
+    const toggleLabel = create('label', '', 'aspect-toggle');
+    const checkbox = create('input', '');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.aspectEnabled = type;
+    checkbox.setAttribute('aria-label', `Enable ${definition.name}`);
+    toggleLabel.append(
+      checkbox,
+      create('span', definition.name, 'aspect-name'),
+      create('small', `${definition.angle}°`),
+    );
+    const orbLabel = create('label', '', 'aspect-orb');
+    const input = create('input', '');
+    input.type = 'number';
+    input.min = '0';
+    input.max = '180';
+    input.step = '0.1';
+    input.dataset.orb = type;
+    input.setAttribute('aria-label', `${definition.name} orb in degrees`);
+    orbLabel.append(input, document.createTextNode('°'));
+    row.append(toggleLabel, orbLabel);
+    fieldset.append(row);
+    checkbox.addEventListener('change', () =>
+      applyEnabledAspects($<HTMLSelectElement>('orb-family').value as AspectFamily, {
+        [type]: checkbox.checked,
+      }),
+    );
+    input.addEventListener('change', () => {
+      if (!input.value || !input.checkValidity()) {
+        $('orb-status').textContent = 'Orb limits must be numbers from 0° to 180°.';
+        return;
+      }
+      const family = $<HTMLSelectElement>('orb-family').value as AspectFamily;
+      try {
+        const patch = { [type]: input.valueAsNumber };
+        if (family === 'natal') chart.setOptions({ orbs: patch });
+        transitChart?.setOptions({ orbs: { [family]: patch } });
+        Object.assign(orbLimits[family], patch);
+        $('orb-status').textContent = 'Orb limits updated.';
+      } catch (error) {
+        renderOrbInputs();
+        $('orb-status').textContent = (error as Error).message;
+      }
+    });
+  }
+  $('aspect-controls').append(fieldset);
+}
+
+function renderOrbInputs() {
+  const family = $<HTMLSelectElement>('orb-family').value as AspectFamily;
+  for (const type of aspectTypes) {
+    const enabled = enabledAspectTypes[family][type];
+    const row = document.querySelector<HTMLElement>(`[data-aspect=${type}]`)!;
+    row.dataset.enabled = String(enabled);
+    row.querySelector<HTMLInputElement>('[data-aspect-enabled]')!.checked = enabled;
+    const input = row.querySelector<HTMLInputElement>('[data-orb]')!;
+    input.value = String(orbLimits[family][type]);
+    input.disabled = !enabled;
+  }
+}
+$('orb-family').addEventListener('change', renderOrbInputs);
+document.querySelectorAll<HTMLButtonElement>('[data-aspect-preset]').forEach((button) =>
+  button.addEventListener('click', () => {
+    const family = $<HTMLSelectElement>('orb-family').value as AspectFamily;
+    const preset = button.dataset.aspectPreset;
+    applyEnabledAspects(
+      family,
+      Object.fromEntries(
+        aspectTypes.map((type) => [
+          type,
+          preset === 'all' || (preset === 'major' && ASPECT_DEFINITIONS[type].major),
+        ]),
+      ),
+    );
+  }),
+);
+renderOrbInputs();
+renderAspectLegend();

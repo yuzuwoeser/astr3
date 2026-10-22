@@ -1,7 +1,9 @@
 import { angularDistance, normalize } from './math.js';
-import { ASPECT_ANGLES, ChartDataError, DEFAULT_ORBS, createModel } from './model.js';
+import { ChartDataError, createModel } from './model.js';
+import { ASPECT_ANGLES, matchAspect, resolveAspectSettings } from './aspects.js';
 import type {
   Aspect,
+  AspectEnabledConfig,
   AspectType,
   Body,
   ChartInput,
@@ -34,6 +36,11 @@ export interface TransitChartInput {
   readonly crossAspects?: readonly CrossAspectInput[];
 }
 export type TransitOrbs = Partial<Record<AspectFamily, OrbConfig>>;
+export type TransitAspectEnabledConfig = Partial<Record<AspectFamily, AspectEnabledConfig>>;
+export interface TransitModelOptions {
+  readonly orbs?: TransitOrbs;
+  readonly enabledAspects?: TransitAspectEnabledConfig;
+}
 export interface TransitBody extends Body {
   readonly natalHouse?: number;
 }
@@ -71,18 +78,20 @@ export const bodyReferenceKey = (reference: BodyReference): string =>
 /** Pure bi-wheel model. Transit houses/axes are intentionally not used. */
 export function createTransitModel(
   input: TransitChartInput,
-  options: { orbs?: TransitOrbs } = {},
+  options: TransitModelOptions = {},
 ): TransitChartModel {
   if (!input?.natal || !input?.transit)
     throw new ChartDataError('A transit chart requires natal and transit data.');
-  const natal = createModel(input.natal, { orbs: options.orbs?.natal });
+  const natal = createModel(input.natal, {
+    orbs: options.orbs?.natal,
+    enabledAspects: options.enabledAspects?.natal,
+  });
   const transit = createModel(
     { ...input.transit, houses: [], angles: {}, houseStatus: 'unknown' },
-    { orbs: options.orbs?.transit },
+    { orbs: options.orbs?.transit, enabledAspects: options.enabledAspects?.transit },
   );
-  // Validate cross limits even when the caller supplies an authoritative aspect list.
-  createModel({ bodies: [] }, { orbs: options.orbs?.cross });
-  const limits = { ...DEFAULT_ORBS, ...options.orbs?.cross };
+  // Validate cross options even when supplied aspects bypass calculated orbs.
+  const settings = resolveAspectSettings(options.orbs?.cross, options.enabledAspects?.cross);
   const refs = new Map<string, Body>();
   for (const [chart, model] of [
     ['natal', natal],
@@ -95,10 +104,7 @@ export function createTransitModel(
     for (const a of natal.bodies)
       for (const b of transit.bodies) {
         const separation = angularDistance(a.longitude, b.longitude);
-        const hit = (Object.keys(ASPECT_ANGLES) as AspectType[])
-          .map((type) => ({ type, orb: Math.abs(separation - ASPECT_ANGLES[type]) }))
-          .filter(({ type, orb }) => orb <= limits[type] + 1e-10)
-          .sort((a, b) => a.orb - b.orb)[0];
+        const hit = matchAspect(separation, settings);
         if (hit)
           calculated.push({
             id: JSON.stringify([a.id, b.id, hit.type]),
@@ -113,38 +119,40 @@ export function createTransitModel(
   }
   if (!Array.isArray(supplied)) throw new ChartDataError('crossAspects must be an array.');
   const ids = new Set<string>();
-  const crossAspects = (supplied as readonly CrossAspectInput[]).map((aspect): CrossAspect => {
-    if (!aspect || typeof aspect !== 'object')
-      throw new ChartDataError('Cross aspects must be objects.');
-    if (typeof aspect.id !== 'string' || !aspect.id.trim() || ids.has(aspect.id))
-      throw new ChartDataError('Cross aspect IDs must be nonempty and unique.');
-    ids.add(aspect.id);
-    if (!Object.hasOwn(ASPECT_ANGLES, aspect.type))
-      throw new ChartDataError('Unsupported cross aspect type.');
-    if (
-      !Array.isArray(aspect.bodyRefs) ||
-      aspect.bodyRefs.length !== 2 ||
-      new Set(aspect.bodyRefs.map((ref: BodyReference) => ref?.chart)).size !== 2 ||
-      aspect.bodyRefs.some((ref: BodyReference) => !ref || !refs.has(bodyReferenceKey(ref)))
-    )
-      throw new ChartDataError(
-        'A cross aspect needs one existing natal body and one existing transit body.',
+  const crossAspects = (supplied as readonly CrossAspectInput[])
+    .map((aspect): CrossAspect => {
+      if (!aspect || typeof aspect !== 'object')
+        throw new ChartDataError('Cross aspects must be objects.');
+      if (typeof aspect.id !== 'string' || !aspect.id.trim() || ids.has(aspect.id))
+        throw new ChartDataError('Cross aspect IDs must be nonempty and unique.');
+      ids.add(aspect.id);
+      if (!Object.hasOwn(ASPECT_ANGLES, aspect.type))
+        throw new ChartDataError('Unsupported cross aspect type.');
+      if (
+        !Array.isArray(aspect.bodyRefs) ||
+        aspect.bodyRefs.length !== 2 ||
+        new Set(aspect.bodyRefs.map((ref: BodyReference) => ref?.chart)).size !== 2 ||
+        aspect.bodyRefs.some((ref: BodyReference) => !ref || !refs.has(bodyReferenceKey(ref)))
+      )
+        throw new ChartDataError(
+          'A cross aspect needs one existing natal body and one existing transit body.',
+        );
+      const separation = angularDistance(
+        ...(aspect.bodyRefs.map(
+          (ref: BodyReference) => refs.get(bodyReferenceKey(ref))!.longitude,
+        ) as [number, number]),
       );
-    const separation = angularDistance(
-      ...(aspect.bodyRefs.map(
-        (ref: BodyReference) => refs.get(bodyReferenceKey(ref))!.longitude,
-      ) as [number, number]),
-    );
-    return Object.freeze({
-      ...aspect,
-      bodyRefs: Object.freeze(
-        aspect.bodyRefs.map((ref: BodyReference) => Object.freeze({ ...ref })),
-      ) as unknown as CrossAspect['bodyRefs'],
-      angle: ASPECT_ANGLES[aspect.type],
-      separation,
-      orb: Math.abs(separation - ASPECT_ANGLES[aspect.type]),
-    });
-  });
+      return Object.freeze({
+        ...aspect,
+        bodyRefs: Object.freeze(
+          aspect.bodyRefs.map((ref: BodyReference) => Object.freeze({ ...ref })),
+        ) as unknown as CrossAspect['bodyRefs'],
+        angle: ASPECT_ANGLES[aspect.type],
+        separation,
+        orb: Math.abs(separation - ASPECT_ANGLES[aspect.type]),
+      });
+    })
+    .filter((aspect) => settings.enabled[aspect.type]);
   const bodies = transit.bodies.map((body) => {
     const house = natal.houses.find(
       (house, i) =>
