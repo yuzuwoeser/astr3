@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { createModel } from '../../src/model/index.js';
 import { WHEEL, aspectPath, boxesOverlap, layoutBodies, polar } from '../../src/layout.js';
-import type { BodyPlacement } from '../../src/layout.js';
+import type { BodyPlacement, Point } from '../../src/layout.js';
 import { syntheticNatal } from '../fixtures/synthetic-chart.js';
 import { hitTest } from '../../src/picking.js';
 import type { HitTarget } from '../../src/picking.js';
@@ -157,20 +157,129 @@ it('omits unplaceable labels instead of using the house disk or unbounded outer 
   expect(layoutBodies(model.bodies, 0, 0.05).placements).toEqual([]);
 });
 
-it('joins exact ring anchors for ordinary aspects and visible conjunction loops', () => {
-  const start = polar(0, WHEEL.house);
-  const end = polar(120, WHEEL.house);
-  expect(aspectPath(start, end, 1)).toEqual([start, end]);
-  for (const scale of [0.5, 1.2]) {
-    for (const longitude of [0, 0.1, 359.9]) {
-      const close = polar(longitude, WHEEL.house);
-      const path = aspectPath(start, close, scale);
-      expect(path[0]).toEqual(start);
-      expect(path.at(-1)).toEqual(close);
-      const middle = path[Math.floor(path.length / 2)]!;
-      expect(Math.hypot(middle.x - start.x, middle.y - start.y) * scale).toBeGreaterThan(14);
-      for (const point of path)
+const conjunctionOptions = {
+  type: 'conjunction' as const,
+  markerRadii: [2.5, 2.5] as const,
+  ringRadius: WHEEL.house,
+};
+function ringPair(distancePx: number, scale = 1): [Point, Point] {
+  const half = distancePx / scale / 2;
+  const x = -Math.sqrt(WHEEL.house ** 2 - half ** 2);
+  return [
+    { x, y: -half },
+    { x, y: half },
+  ];
+}
+
+it('keeps non-conjunction connectors straight regardless of screen distance', () => {
+  for (const type of ['sextile', 'square', 'trine', 'opposition'] as const)
+    for (const distance of [0, 0.1, 6, 48]) {
+      const [start, end] = ringPair(distance);
+      expect(aspectPath(start, end, 1, { ...conjunctionOptions, type })).toEqual({
+        points: [start, end],
+        opacity: 1,
+      });
+    }
+});
+
+it('suppresses overlapping conjunctions using CSS-pixel marker extents and clearance', () => {
+  for (const scale of [0.5, 1, 2]) {
+    for (const distance of [0, 0.1, 6, 7])
+      expect(aspectPath(...ringPair(distance, scale), scale, conjunctionOptions)).toEqual({
+        points: [],
+        opacity: 0,
+      });
+    expect(
+      aspectPath(...ringPair(8, scale), scale, conjunctionOptions).points.length,
+    ).toBeGreaterThan(0);
+    // Heavier markers and outlined transit diamonds occupy more screen space.
+    expect(
+      aspectPath(...ringPair(8, scale), scale, {
+        ...conjunctionOptions,
+        markerRadii: [3.5, 3.5],
+      }).points,
+    ).toEqual([]);
+    expect(
+      aspectPath(...ringPair(8, scale), scale, {
+        ...conjunctionOptions,
+        markerRadii: [2.5, 4],
+      }).points,
+    ).toEqual([]);
+  }
+  const [start, end] = ringPair(20);
+  expect(aspectPath(start, end, 0.3, conjunctionOptions).points).toEqual([]);
+  expect(aspectPath(start, end, 1, conjunctionOptions).opacity).toBe(1);
+});
+
+it('makes bow depth inversely proportional to spacing and keeps curves inside the ring', () => {
+  for (const scale of [0.2, 0.5, 1.2, 2]) {
+    const depths = [12, 24, 48].map((distance) => {
+      const [start, end] = ringPair(distance, scale);
+      const path = aspectPath(start, end, scale, conjunctionOptions);
+      expect(path.opacity).toBe(1);
+      expect(path.points).toHaveLength(17);
+      expect(path.points[0]).toEqual(start);
+      expect(path.points.at(-1)).toEqual(end);
+      for (const point of path.points)
         expect(Math.hypot(point.x, point.y)).toBeLessThanOrEqual(WHEEL.house + 1e-8);
+      const middle = path.points[8]!;
+      const depth = Math.hypot(middle.x - (start.x + end.x) / 2, middle.y) * scale;
+      expect(depth).toBeGreaterThan(0);
+      expect(depth).toBeLessThanOrEqual(Math.min(20, (WHEEL.house * scale) / 4));
+      return depth;
+    });
+    expect(depths[0]! / depths[1]!).toBeCloseTo(2, 10);
+    expect(depths[1]! / depths[2]!).toBeCloseTo(2, 10);
+  }
+});
+
+it('fades conjunctions smoothly across four CSS pixels after the overlap threshold', () => {
+  for (const scale of [0.5, 1, 2]) {
+    for (const [distance, opacity] of [
+      [7, 0],
+      [8, 0.15625],
+      [9, 0.5],
+      [10, 0.84375],
+      [11, 1],
+      [24, 1],
+    ] as const)
+      expect(
+        aspectPath(...ringPair(distance, scale), scale, conjunctionOptions).opacity,
+      ).toBeCloseTo(opacity, 10);
+    expect(aspectPath(...ringPair(7.0001, scale), scale, conjunctionOptions).opacity).toBeLessThan(
+      1e-8,
+    );
+  }
+});
+
+it('generates the same bow after reversal, rotation, wraparound, and repeated calls', () => {
+  const [start, end] = ringPair(18);
+  const path = aspectPath(start, end, 1, conjunctionOptions);
+  expect(aspectPath(start, end, 1, conjunctionOptions)).toEqual(path);
+  const reversed = aspectPath(end, start, 1, conjunctionOptions).points.reverse();
+  for (const [i, point] of path.points.entries()) {
+    expect(reversed[i]!.x).toBeCloseTo(point.x, 10);
+    expect(reversed[i]!.y).toBeCloseTo(point.y, 10);
+  }
+  for (const angle of [0.0001, Math.PI / 2, Math.PI * 2 - 0.0001]) {
+    const rotate = (point: Point) => ({
+      x: point.x * Math.cos(angle) - point.y * Math.sin(angle),
+      y: point.x * Math.sin(angle) + point.y * Math.cos(angle),
+    });
+    const rotated = aspectPath(rotate(start), rotate(end), 1, conjunctionOptions);
+    expect(rotated.opacity).toBe(path.opacity);
+    for (const [i, point] of path.points.map(rotate).entries()) {
+      expect(rotated.points[i]!.x).toBeCloseTo(point.x, 10);
+      expect(rotated.points[i]!.y).toBeCloseTo(point.y, 10);
     }
   }
+});
+
+it('uses a finite straight fallback when a supplied conjunction has antipodal endpoints', () => {
+  const start = polar(0, WHEEL.house),
+    end = polar(180, WHEEL.house);
+  expect(aspectPath(start, end, 1, conjunctionOptions)).toEqual({
+    points: [start, end],
+    opacity: 1,
+  });
 });

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { TRANSIT_WHEEL } from '../../src/renderer.js';
-import { WHEEL, polar } from '../../src/layout.js';
+import { WHEEL, aspectPath, polar } from '../../src/layout.js';
 import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
@@ -162,6 +162,109 @@ test('shares house-ring anchors and aspect geometry across all three families', 
   const midpoint = await screenPoint(page, 60, WHEEL.house / 2);
   await page.mouse.click(midpoint.x, midpoint.y);
   await expect(page.locator('#transit-chart .astr3-chooser button')).toHaveCount(3);
+});
+
+test('uses distance-aware conjunction bows and overlap suppression in all three families', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await page.locator('#transit-chart .astr3-stage').scrollIntoViewIfNeeded();
+  const stage = await page.locator('#transit-chart .astr3-stage').boundingBox();
+  const scale = Math.min(stage!.width, stage!.height) / (2 * TRANSIT_WHEEL.extent);
+  const halfAngle = (Math.asin(24 / (2 * WHEEL.house * scale)) * 180) / Math.PI;
+  const update = async (halfAngle: number) =>
+    page.evaluate((halfAngle) => {
+      const bodies = [
+        { id: 'sun', name: 'Sun', longitude: -halfAngle },
+        { id: 'moon', name: 'Moon', longitude: halfAngle },
+      ];
+      window.astr3Transit!.update({
+        natal: { bodies, aspects: [{ id: 'n', type: 'conjunction', bodyIds: ['sun', 'moon'] }] },
+        transit: { bodies, aspects: [{ id: 't', type: 'conjunction', bodyIds: ['sun', 'moon'] }] },
+        crossAspects: [
+          {
+            id: 'c',
+            type: 'conjunction',
+            bodyRefs: [
+              { chart: 'natal', id: 'sun' },
+              { chart: 'transit', id: 'moon' },
+            ],
+          },
+        ],
+      });
+    }, halfAngle);
+  await update(halfAngle);
+  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(4);
+  const natalRadius = 2.5 * Math.sqrt(1.5),
+    transitRadius = natalRadius + (1.1 * 1.5) / 2;
+  for (const [chart, id, radii] of [
+    ['natal', 'n', [natalRadius, natalRadius]],
+    ['transit', 't', [transitRadius, transitRadius]],
+    ['cross', 'c', [natalRadius, transitRadius]],
+  ] as const) {
+    await page.evaluate(
+      (family) =>
+        new Promise<void>((resolve) => {
+          window.astr3Transit!.setOptions({
+            layers: {
+              natalAspects: family === 'natal',
+              transitAspects: family === 'transit',
+              crossAspects: family === 'cross',
+            },
+          });
+          requestAnimationFrame(() => resolve());
+        }),
+      chart,
+    );
+    const path = aspectPath(polar(-halfAngle, WHEEL.house), polar(halfAngle, WHEEL.house), scale, {
+      type: 'conjunction',
+      markerRadii: radii,
+      ringRadius: WHEEL.house,
+    });
+    const at = await screenPoint(page, 0, -path.points[8]!.x);
+    if (isMobile) await page.touchscreen.tap(at.x, at.y);
+    else await page.mouse.click(at.x, at.y);
+    await expect
+      .poll(() => page.evaluate(() => window.astr3Transit!.selection))
+      .toEqual({
+        kind: 'aspect',
+        chart,
+        id,
+      });
+  }
+  await update(0);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        window.astr3Transit!.setOptions({
+          layers: { natalAspects: true, crossAspects: true, transitAspects: true },
+        });
+        window.astr3Transit!.select({ chart: 'cross', kind: 'aspect', id: 'c' });
+        requestAnimationFrame(() => resolve());
+      }),
+  );
+  const formerLoop = await screenPoint(page, 0, WHEEL.house - 15 / scale);
+  if (isMobile) await page.touchscreen.tap(formerLoop.x, formerLoop.y);
+  else await page.mouse.click(formerLoop.x, formerLoop.y);
+  await expect.poll(() => page.evaluate(() => window.astr3Transit!.selection)).toBeNull();
+  const anchor = await screenPoint(page, 0, WHEEL.house);
+  if (isMobile) await page.touchscreen.tap(anchor.x, anchor.y);
+  else await page.mouse.click(anchor.x, anchor.y);
+  await expect(page.locator('#transit-chart .astr3-chooser button')).toHaveCount(4);
+  await page
+    .locator('#transit-chart .astr3-chooser button')
+    .filter({ hasText: 'Transiting Moon' })
+    .click();
+  await page.locator('#transit-chart .astr3-access summary').click();
+  const cross = page
+    .locator('#transit-chart .astr3-access button[data-kind=aspect]')
+    .filter({ hasText: 'Natal Sun / Transiting Moon' });
+  await cross.focus();
+  await cross.press('Enter');
+  await expect
+    .poll(() => page.evaluate(() => window.astr3Transit!.selection))
+    .toEqual({ chart: 'cross', kind: 'aspect', id: 'c' });
 });
 
 test('pins transits outside a two-sided zodiac scale without separate transit circles', async ({

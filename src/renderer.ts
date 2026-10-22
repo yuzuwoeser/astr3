@@ -430,7 +430,20 @@ export function createWheel(
       const button = doc.createElement('button');
       button.type = 'button';
       button.textContent = describe(selection);
+      let pointerStartedHere = false;
+      button.addEventListener('pointerdown', () => {
+        pointerStartedHere = true;
+      });
+      button.addEventListener('pointercancel', () => {
+        pointerStartedHere = false;
+      });
       button.addEventListener('click', (event) => {
+        // A touch opening the chooser can send its compatibility click to a
+        // newly created button underneath it. Require a fresh pointer gesture.
+        if (event.detail > 0 && !pointerStartedHere) {
+          event.preventDefault();
+          return;
+        }
         setSelection(selection, event.detail === 0 ? 'keyboard' : 'pointer');
         stage.focus({ preventScroll: true });
       });
@@ -615,6 +628,9 @@ export function createWheel(
       asc = model.angles.ascendant ?? 0;
     const p = presentation?.();
     const isTransit = (id: string) => p?.bodyRefs.get(id)?.chart === 'transit';
+    const dotRadiusPx = 2.5 * Math.sqrt(visualWeight.strokeMultiplier);
+    const dotExtentPx = (id: string) =>
+      dotRadiusPx + (isTransit(id) ? (1.1 * visualWeight.strokeMultiplier) / 2 : 0);
     const transitColor = p?.transitColor ?? colors.group;
     const axisRadius = p ? TRANSIT_WHEEL.axis : visible.degrees ? 318 : 305;
     const shownBodies = model.bodies.filter(
@@ -845,26 +861,32 @@ export function createWheel(
         const active = !!primary && activeAspects.has(aspect.id);
         const style: LineStyle = options.lineStyles?.[aspect.type] ?? {};
         const color = active ? accent : colors.aspects[aspect.type];
-        const line = aspectPath(
+        const path = aspectPath(
           bodyAnchors.get(aspect.bodyIds[0])!,
           bodyAnchors.get(aspect.bodyIds[1])!,
           pixelsPerUnit,
-          p ? 24 : 8,
+          {
+            type: aspect.type,
+            markerRadii: [dotExtentPx(aspect.bodyIds[0]), dotExtentPx(aspect.bodyIds[1])],
+            ringRadius: WHEEL.house,
+          },
         );
+        if (!path.points.length) continue;
         stroke(
-          line,
+          path.points,
           color,
           active ? activeWidth : (style.width ?? 1.1),
-          opacity(activeAspects.has(aspect.id)) * 0.85,
+          opacity(activeAspects.has(aspect.id)) * 0.85 * path.opacity,
           style.dash,
         );
-        for (let i = 1; i < line.length; i++)
+        if (path.opacity < 0.5) continue;
+        for (let i = 1; i < path.points.length; i++)
           targets.push({
             selection: { kind: 'aspect', id: aspect.id },
             priority: 1,
             shape: 'line',
-            a: project(line[i - 1]!),
-            b: project(line[i]!),
+            a: project(path.points[i - 1]!),
+            b: project(path.points[i]!),
           });
       }
     if (visible.bodies) {
@@ -999,8 +1021,7 @@ export function createWheel(
       for (const body of shownBodies) {
         const anchor = bodyAnchors.get(body.id)!;
         const active = activeBodies.has(body.id);
-        const radius =
-          (2.5 * Math.sqrt(visualWeight.strokeMultiplier) + (active ? 0.5 : 0)) / pixelsPerUnit;
+        const radius = (dotRadiusPx + (active ? 0.5 : 0)) / pixelsPerUnit;
         if (isTransit(body.id)) {
           const diamond = [
             { x: anchor.x, y: anchor.y + radius },

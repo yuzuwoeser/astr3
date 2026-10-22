@@ -1,5 +1,5 @@
 import { normalize } from './model/math.js';
-import type { Body } from './model/types.js';
+import type { AspectType, Body } from './model/types.js';
 
 export interface Point {
   x: number;
@@ -36,36 +36,51 @@ export function polar(longitude: number, radius: number, ascendant = 0): Point {
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
 }
 
-/** Close or coincident endpoints need a visible loop that still joins both anchors. */
+/** Marker radii are CSS pixels; anchors and ringRadius are wheel coordinates. */
 export function aspectPath(
   start: Point,
   end: Point,
   pixelsPerUnit: number,
-  minimumLength = 8,
-): Point[] {
+  {
+    type,
+    markerRadii,
+    ringRadius,
+  }: {
+    type: AspectType;
+    markerRadii: readonly [number, number];
+    ringRadius: number;
+  },
+): { points: Point[]; opacity: number } {
+  if (type !== 'conjunction') return { points: [start, end], opacity: 1 };
   const scale = Math.max(pixelsPerUnit, 0.05);
-  if (Math.hypot(end.x - start.x, end.y - start.y) * scale >= minimumLength) return [start, end];
+  const distance = Math.hypot(end.x - start.x, end.y - start.y) * scale;
+  const overlap = markerRadii[0] + markerRadii[1] + 2;
+  if (distance <= overlap) return { points: [], opacity: 0 };
+  const fade = Math.min(1, (distance - overlap) / 4);
+  const opacity = fade * fade * (3 - 2 * fade);
   const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
   const radius = Math.hypot(middle.x, middle.y);
-  const inward = { x: -middle.x / radius, y: -middle.y / radius };
-  const depth = 20 / scale,
-    spread = 8 / scale;
-  const first = {
-    x: start.x + inward.x * depth - inward.y * spread,
-    y: start.y + inward.y * depth + inward.x * spread,
+  if (radius <= 1e-9) return { points: [start, end], opacity };
+  const depth = (Math.min(20, (ringRadius * scale) / 4) * overlap) / distance / scale;
+  // A quadratic's midpoint lies halfway between the chord midpoint and its
+  // control point. Keep the inward direction tied to the wheel, not the camera.
+  const control = {
+    x: middle.x - (middle.x / radius) * 2 * depth,
+    y: middle.y - (middle.y / radius) * 2 * depth,
   };
-  const second = {
-    x: end.x + inward.x * depth + inward.y * spread,
-    y: end.y + inward.y * depth - inward.x * spread,
+  return {
+    opacity,
+    points: Array.from({ length: 17 }, (_, i) => {
+      if (i === 0) return start;
+      if (i === 16) return end;
+      const t = i / 16,
+        u = 1 - t;
+      return {
+        x: u * u * start.x + 2 * u * t * control.x + t * t * end.x,
+        y: u * u * start.y + 2 * u * t * control.y + t * t * end.y,
+      };
+    }),
   };
-  return Array.from({ length: 17 }, (_, i) => {
-    const t = i / 16,
-      u = 1 - t;
-    return {
-      x: u ** 3 * start.x + 3 * u ** 2 * t * first.x + 3 * u * t ** 2 * second.x + t ** 3 * end.x,
-      y: u ** 3 * start.y + 3 * u ** 2 * t * first.y + 3 * u * t ** 2 * second.y + t ** 3 * end.y,
-    };
-  });
 }
 export function boxesOverlap(a: Box, b: Box, padding = 3): boolean {
   return (

@@ -1,7 +1,7 @@
 import { syntheticNatal } from '../fixtures/synthetic-chart.js';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { WHEEL, polar } from '../../src/layout.js';
+import { WHEEL, aspectPath, polar } from '../../src/layout.js';
 import type { Point } from '../../src/layout.js';
 import type { Selection } from '../../src/index.js';
 import { labelPoint } from './label-point.js';
@@ -304,7 +304,7 @@ test('renders every planet anchor and links its selection and highlighting to th
   await expect.poll(() => page.evaluate(() => window.astr3.selection)).toBeNull();
 });
 
-test('keeps coincident ring anchors selectable and conjunction loops pickable', async ({
+test('suppresses coincident conjunction curves while retaining dots and aspect inspection', async ({
   page,
   isMobile,
 }) => {
@@ -328,12 +328,28 @@ test('keeps coincident ring anchors selectable and conjunction loops pickable', 
   await expect(page.locator('#inspector-heading')).toHaveText('Moon');
   const stage = await page.locator('.astr3-stage').boundingBox();
   const scale = Math.min(stage!.width, stage!.height) / (2 * WHEEL.extent);
-  const inside = await point(page, -WHEEL.house + 15 / scale, 0);
+  const formerLoop = { x: -WHEEL.house + 15 / scale, y: 0 };
+  const inside = await point(page, formerLoop.x, formerLoop.y);
   if (isMobile) await page.touchscreen.tap(inside.x, inside.y);
   else await page.mouse.click(inside.x, inside.y);
+  await expect.poll(() => page.evaluate(() => window.astr3.selection)).toBeNull();
+  await page.locator('.astr3-access summary').click();
+  const aspect = page.locator('.astr3-access button[data-selection="aspect:conjunction"]');
+  await aspect.focus();
+  await aspect.press('Enter');
   await expect
     .poll(() => page.evaluate(() => window.astr3.selection))
     .toEqual({ kind: 'aspect', id: 'conjunction' });
+  await expect(page.locator('#inspector-heading')).toHaveText('conjunction');
+  // Selecting a hidden aspect highlights its endpoints without restoring a loop.
+  const pixels = await anchorPixels(page, [formerLoop], { kind: 'aspect', id: 'conjunction' });
+  expect(pixels[0]).toEqual([17, 28, 32]);
+  for (const id of ['sun', 'moon'])
+    await expect(page.locator(`.astr3-body[data-object="body:${id}"]`)).toHaveCSS(
+      'color',
+      'rgb(234, 203, 146)',
+    );
+  await page.locator('.astr3-access summary').click();
   // Zoom/pan must project the anchor targets with the camera, just like the lines.
   await page.evaluate(() => window.astr3.zoomBy(1.25));
   await expect(page.locator('.astr3-body')).toHaveCount(2);
@@ -346,6 +362,49 @@ test('keeps coincident ring anchors selectable and conjunction loops pickable', 
   await page.mouse.click(zoomed.x + 28, zoomed.y + 20);
   await expect(page.getByRole('group', { name: 'Overlapping chart objects' })).toBeVisible();
   await expect(page.locator('.astr3-chooser button')).toHaveCount(2);
+});
+
+test('picks visible conjunction bows, excludes faint paths, and keeps geometry stable across orb edits', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await page.locator('.astr3-stage').scrollIntoViewIfNeeded();
+  const stage = await page.locator('.astr3-stage').boundingBox();
+  const scale = Math.min(stage!.width, stage!.height) / (2 * WHEEL.extent);
+  const radius = 2.5 * Math.sqrt(1.5); // Demo's Regular weight, in CSS pixels.
+  const overlap = 2 * radius + 2;
+  for (const distance of [overlap + 1, overlap + 3, 24]) {
+    const halfAngle = (Math.asin(distance / (2 * WHEEL.house * scale)) * 180) / Math.PI;
+    await page.evaluate((halfAngle) => {
+      window.astr3.update({
+        bodies: [
+          { id: 'sun', name: 'Sun', longitude: -halfAngle },
+          { id: 'moon', name: 'Moon', longitude: halfAngle },
+        ],
+      });
+      window.astr3.setOptions({ orbs: { conjunction: 45 } });
+    }, halfAngle);
+    const path = aspectPath(polar(-halfAngle, WHEEL.house), polar(halfAngle, WHEEL.house), scale, {
+      type: 'conjunction',
+      markerRadii: [radius, radius],
+      ringRadius: WHEEL.house,
+    });
+    const middle = path.points[8]!;
+    // Sampling waits for the updated frame as well as checking actual WebGL ink.
+    const before = await anchorPixels(page, [middle], null);
+    expect(before[0]!.some((value, i) => value !== [17, 28, 32][i])).toBe(true);
+    const at = await point(page, middle.x, middle.y);
+    if (isMobile) await page.touchscreen.tap(at.x, at.y);
+    else await page.mouse.click(at.x, at.y);
+    const id = await page.evaluate(() => window.astr3.model.aspects[0]!.id);
+    await expect
+      .poll(() => page.evaluate(() => window.astr3.selection))
+      .toEqual(distance < overlap + 2 ? null : { kind: 'aspect', id });
+    await page.evaluate(() => window.astr3.setOptions({ orbs: { conjunction: 60 } }));
+    expect(await anchorPixels(page, [middle], null)).toEqual(before);
+    expect(await page.evaluate(() => window.astr3.model.aspects[0]!.id)).toBe(id);
+  }
 });
 
 test('selects houses directly and from a keyboard-accessible list', async ({ page }) => {
