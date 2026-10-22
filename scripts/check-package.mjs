@@ -14,7 +14,11 @@ function run(command, args, cwd = directory) {
 }
 try {
   const [pack] = JSON.parse(
-    run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', directory], root),
+    run(
+      'npm',
+      ['pack', '--json', '--offline', '--ignore-scripts', '--pack-destination', directory],
+      root,
+    ),
   );
   if (pack.files.some((file) => file.path.startsWith('tests/') || file.path.startsWith('demo/')))
     throw new Error('Development files leaked into the package.');
@@ -29,8 +33,26 @@ try {
   ])
     if (!pack.files.some((file) => file.path === path))
       throw new Error(`Public documentation missing from package: ${path}`);
-  const version = (name) =>
-    JSON.parse(readFileSync(join(root, 'node_modules', name, 'package.json'), 'utf8')).version;
+  // npm ci caches archive contents, but not necessarily registry manifests.
+  // Pack installed peers locally so a clean CI cache cannot affect resolution.
+  const localDependency = (name) => {
+    const [dependency] = JSON.parse(
+      run(
+        'npm',
+        [
+          'pack',
+          join(root, 'node_modules', name),
+          '--json',
+          '--offline',
+          '--ignore-scripts',
+          '--pack-destination',
+          directory,
+        ],
+        root,
+      ),
+    );
+    return `file:${join(directory, dependency.filename)}`;
+  };
   writeFileSync(
     join(directory, 'package.json'),
     JSON.stringify({
@@ -39,12 +61,20 @@ try {
       type: 'module',
       dependencies: {
         astr3: `file:${join(directory, pack.filename)}`,
-        three: version('three'),
-        'astronomy-engine': version('astronomy-engine'),
+        three: localDependency('three'),
+        'astronomy-engine': localDependency('astronomy-engine'),
       },
     }),
   );
-  run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund']);
+  run('npm', [
+    'install',
+    '--offline',
+    '--cache',
+    join(directory, 'npm-cache'),
+    '--ignore-scripts',
+    '--no-audit',
+    '--no-fund',
+  ]);
   writeFileSync(
     join(directory, 'consumer.ts'),
     `

@@ -65,7 +65,10 @@ emulation; physical devices, Firefox and Safari remain unverified.
 
 `npm run check` builds both outputs and installs the package into an isolated
 offline consumer, verifying public ESM entry points, declarations and headless
-imports. `npm pack` rebuilds the library and creates an ignored tarball. Inspect
+imports. The consumer installs local archives of astr3 and its installed peers
+with an isolated empty npm cache, so cached registry metadata is not required.
+
+`npm pack` rebuilds the library and creates an ignored tarball. Inspect
 its file list: only built ESM/types/maps, public docs, metadata, license and notices
 belong there. Tests, demo source, private configuration and local agent data do not.
 Extract the tarball into a temporary directory for scanning; do not rely on

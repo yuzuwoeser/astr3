@@ -41,7 +41,9 @@ npm run format:check
 
 `npm run check` combines the first five commands. The package check installs the
 actual tarball into an isolated consumer and checks ESM imports, SSR-safe imports
-and TypeScript declarations. It uses npm's offline cache, populated by `npm ci`.
+and TypeScript declarations. It packs the installed peers alongside astr3 and
+installs those local archives offline with an isolated empty npm cache. It does
+not depend on cached registry metadata. Run `npm ci` first to install the peers.
 
 Browser tests start Vite on **127.0.0.1:4173**, exercising Chromium desktop and
 mobile touch emulation with software WebGL. Stop an unrelated server on that port

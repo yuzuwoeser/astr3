@@ -4,6 +4,9 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Validate the packed consumer using local peer archives and an empty npm cache,
+  so fresh CI installations pass without cached registry metadata.
+
 - Prepared the open source repository with public/synthetic fixtures, contributor
   guidance, agent integration examples and reproducible release privacy checks.
 
