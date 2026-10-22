@@ -478,6 +478,63 @@ test('steps UTC and applies only the latest time while preserving the previous c
     .toBeLessThan(120000);
 });
 
+test('shrinks crowded natal symbols independently of the transit band', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await ready(page);
+  await page.evaluate(() =>
+    window.astr3Transit!.update({
+      natal: {
+        bodies: Array.from({ length: 50 }, (_, i) => ({
+          id: `point-${i}`,
+          name: `Point ${i}`,
+          longitude: (359 + i / 10) % 360,
+          glyph: i % 3 === 0 ? 'WW' : '☉',
+          retrograde: i % 2 === 0,
+        })),
+        aspects: [],
+      },
+      transit: { bodies: [{ id: 'venus', name: 'Venus', longitude: 180 }], aspects: [] },
+      crossAspects: [],
+    }),
+  );
+  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(51);
+  const sizes = () =>
+    page.evaluate(() => {
+      const font = (selector: string) =>
+        Math.max(
+          ...[...document.querySelectorAll(selector)].map((element) =>
+            parseFloat(getComputedStyle(element).fontSize),
+          ),
+        );
+      return {
+        natal: font('#transit-chart .astr3-body[data-chart=natal]'),
+        transit: font('#transit-chart .astr3-body[data-chart=transit]'),
+      };
+    });
+  await expect.poll(async () => (await sizes()).transit).toBe(25);
+  await expect.poll(async () => (await sizes()).natal).toBeLessThan(25);
+  expect((await sizes()).natal).toBeGreaterThanOrEqual(14);
+  const at = await labelPoint(
+    page,
+    '#transit-chart .astr3-body[data-chart=transit][data-body-id=venus]',
+  );
+  await page.mouse.click(at.x, at.y);
+  await expect(page.locator('#inspector-heading')).toHaveText('Transiting Venus');
+  await page.evaluate(() =>
+    window.astr3Transit!.update({
+      natal: { bodies: window.astr3Transit!.model.natal.bodies.slice(0, 1), aspects: [] },
+      transit: { bodies: window.astr3Transit!.model.transit.bodies, aspects: [] },
+      crossAspects: [],
+    }),
+  );
+  await expect.poll(sizes).toEqual({ natal: 25, transit: 25 });
+  expect(await page.evaluate(() => window.astr3Transit!.selection)).toEqual({
+    chart: 'transit',
+    kind: 'body',
+    id: 'venus',
+  });
+});
+
 test('contains both label bands and retains accessible selections through graphics loss', async ({
   page,
 }, info) => {

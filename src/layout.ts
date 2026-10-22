@@ -112,6 +112,7 @@ export function layoutBodies(
     marker: WHEEL.marker,
     preferred: 214,
   },
+  mode: 'auto' | 'full' | 'compact' = 'auto',
 ): BodyLayout {
   const scale = Math.max(pixelsPerUnit, 0.05);
   const padding = 4 / scale;
@@ -202,8 +203,9 @@ export function layoutBodies(
     const indices = new Map(sorted.map((body, i) => [body.id, i]));
     return best.sort((a, b) => indices.get(a.id)! - indices.get(b.id)!);
   }
+  if (mode === 'compact') return { placements: fit(true), compact: true };
   const full = fit(false);
-  return full.length === bodies.length
+  return mode === 'full' || full.length === bodies.length
     ? { placements: full, compact: false }
     : { placements: fit(true), compact: true };
 }

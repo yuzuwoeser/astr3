@@ -137,6 +137,21 @@ it('uses measured compact labels when necessary and restores full labels when sp
   const model = createModel({ bodies: [{ id: 'mercury', name: 'Mercury', longitude: 45 }] });
   const measure = (_body: unknown, compact: boolean) =>
     compact ? { width: 22, height: 27 } : { width: 44, height: 48 };
+  // Full-only probes let the renderer try smaller fonts before compacting.
+  const probe = layoutBodies(model.bodies, 0, 0.5, measure, [], undefined, 'full');
+  expect(probe).toEqual({ placements: [], compact: false });
+  const smaller = layoutBodies(
+    model.bodies,
+    0,
+    0.5,
+    () => ({ width: 34, height: 32 }),
+    [],
+    undefined,
+    'full',
+  );
+  expect(smaller.compact).toBe(false);
+  expect(smaller.placements).toHaveLength(1);
+  expectWithinBand(smaller.placements, 0.5);
   const compact = layoutBodies(model.bodies, 0, 0.5, measure);
   expect(compact.compact).toBe(true);
   expect(compact.placements).toHaveLength(1);

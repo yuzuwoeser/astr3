@@ -67,7 +67,7 @@ Override limits with `orbs: { trine: 5 }`. Boundaries are inclusive. Overlapping
 
 Options:
 
-- `chartWeight`: `light` (library default), `regular`, or `bold`. Changes chart strokes, label weight, and symbol strokes without changing font sizes, colors, or dimming. The demo starts at Regular and provides a Chart weight selector. Invalid values throw `RangeError`; invalid option updates leave the previous settings intact.
+- `chartWeight`: `light` (library default), `regular`, or `bold`. Changes chart strokes, label weight, and symbol strokes. Crowded labels may choose a smaller font to fit the measured weight. The demo starts at Regular and provides a Chart weight selector. Invalid values throw `RangeError`; invalid option updates leave the previous settings intact.
 - `theme`: patch background, foreground, muted, ring, accent, group, the four element colors, and per-type aspect colors. Exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
 - `glyphs`: body-ID-to-text overrides, falling back to the body's glyph, built-in symbol, or two name characters. Strings are text, never injected HTML. Use short glyphs.
 - `layers`: patch `zodiac`, `bodies`, `houses`, `axes`, `aspects`, `groups`, `degrees`; all default true. Hidden layers remain available in the model and accessible list.
@@ -124,7 +124,9 @@ Anchor dots select the same body and expose the same hover/selection details as 
 
 The complete planet label stays between the house circle and the outer degree ticks, with a 4 CSS pixel clearance from the boundaries and other labels. Crowded labels may shift around this band; connecting lines lead back to their unchanged longitude markers. This boundary also applies when houses are unknown or hidden.
 
-When full labels cannot fit, the wheel uses compact symbols, hiding the degree/retrograde text without reducing symbol font size. Full labels return when resizing or zooming provides enough space. Position and retrograde information remain available in selection/hover details and **Explore chart objects**. If even a compact symbol cannot fit, its exact marker remains selectable and a “Zoom in to reveal planet symbols” hint appears. The object list always includes every body.
+Body symbol sizes follow the displayed chart scale from 14 to 25 CSS pixels. If a band's full labels do not fit, the renderer tries smaller fonts in 2px steps down to 14px before hiding any degree/retrograde text. AC/MC retain their optical reduction relative to that size, and degree text stays at 10px. Natal and transit bands fit independently, so crowding in one does not shrink the other. Every size is measured with the actual glyph, font weight, and label bounds before placement.
+
+If full labels still cannot fit at the minimum, the wheel uses compact symbols without the degree/retrograde text. If even a compact symbol cannot fit, its exact marker remains selectable and a “Zoom in to reveal planet symbols” hint appears. Resizing, zooming, or reducing the visible body count restores larger fonts and full labels when space returns. Position and retrograde information remain available in selection/hover details and **Explore chart objects**, which always includes every body. Font fitting never changes chart data, marker positions, aspect endpoints, selection, or marker picking tolerances.
 
 Screen-space priority: body labels/markers → aspects → group interiors → houses. Aspect tolerance is 8 CSS pixels with mouse and 14 with touch. Ties at the highest matching priority produce a chooser. Three or more noncollinear group members define a convex interior; degenerate groups remain selectable in the list/API.
 

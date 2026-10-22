@@ -35,7 +35,7 @@ import type {
   LineStyle,
 } from './types.js';
 import { WHEEL, aspectPath, boxesOverlap, convexHull, layoutBodies, polar } from './layout.js';
-import type { Box, Point } from './layout.js';
+import type { BodyLayout, Box, Point } from './layout.js';
 import { hitTest } from './picking.js';
 import type { HitTarget } from './picking.js';
 import type { AspectFamily, BodyReference, ChartSide } from './model/transits.js';
@@ -890,19 +890,22 @@ export function createWheel(
           });
       }
     if (visible.bodies) {
-      const fontSize = Math.max(18, Math.min(25, pixelsPerUnit * 32));
+      const minimumFontSize = 14;
+      const fontSize = Math.max(minimumFontSize, Math.min(25, pixelsPerUnit * 32));
       const elements = new Map<string, HTMLElement>();
+      const fontScales = new Map<string, number>();
       // Batch DOM writes before measuring. Real glyph/degree dimensions also
       // cover custom fonts, retrograde labels, and OS symbol substitutions.
       for (const body of shownBodies) {
         const active = activeBodies.has(body.id);
         const symbolText = glyph(body);
         // Two-letter angle captions need optical scaling beside single-symbol glyphs.
-        const symbolSize = symbolText === 'AC' || symbolText === 'MC' ? fontSize * 0.72 : fontSize;
+        const fontScale = symbolText === 'AC' || symbolText === 'MC' ? 0.72 : 1;
+        fontScales.set(body.id, fontScale);
         const element = label(
           { x: 0, y: 0 },
           '',
-          symbolSize,
+          fontSize * fontScale,
           active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
           'astr3-body',
           { kind: 'body', id: body.id },
@@ -925,12 +928,12 @@ export function createWheel(
         }
         elements.set(body.id, element);
       }
-      const measureElements = () =>
+      const measureElements = (bodies: readonly Body[]) =>
         new Map(
-          [...elements].map(([id, element]) => {
-            const rect = element.getBoundingClientRect();
+          bodies.map((body) => {
+            const rect = elements.get(body.id)!.getBoundingClientRect();
             return [
-              id,
+              body.id,
               {
                 width: rect.width + visualWeight.symbolStroke,
                 height: rect.height + visualWeight.symbolStroke,
@@ -938,24 +941,34 @@ export function createWheel(
             ];
           }),
         );
-      const fullSizes = measureElements();
-      for (const element of elements.values()) element.dataset.compact = 'true';
-      const compactSizes = measureElements();
       const reservedBoxes = reservedLabels.map(({ element, point }) => {
         const rect = element.getBoundingClientRect();
         return { ...point, width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
       });
-      const placeBand = (bodies: readonly Body[], transit = false) =>
-        layoutBodies(
-          bodies,
-          asc,
-          pixelsPerUnit,
-          (body, compact) => (compact ? compactSizes : fullSizes).get(body.id)!,
-          reservedBoxes,
-          transit
-            ? { ...TRANSIT_WHEEL, marker: TRANSIT_WHEEL.marker, preferred: TRANSIT_WHEEL.preferred }
-            : undefined,
-        );
+      const placeBand = (bodies: readonly Body[], transit = false): BodyLayout => {
+        const fit = (compact: boolean) => {
+          for (const body of bodies) elements.get(body.id)!.dataset.compact = String(compact);
+          const sizes = measureElements(bodies);
+          return layoutBodies(
+            bodies,
+            asc,
+            pixelsPerUnit,
+            (body) => sizes.get(body.id)!,
+            reservedBoxes,
+            transit ? TRANSIT_WHEEL : undefined,
+            compact ? 'compact' : 'full',
+          );
+        };
+        // Each band chooses its own largest fitting size. Retain degree labels
+        // while shrinking, then compact only at the readable minimum.
+        for (let size = fontSize; ; size = Math.max(minimumFontSize, size - 2)) {
+          for (const body of bodies)
+            elements.get(body.id)!.style.fontSize = `${size * fontScales.get(body.id)!}px`;
+          const full = fit(false);
+          if (full.placements.length === bodies.length) return full;
+          if (size === minimumFontSize) return fit(true);
+        }
+      };
       const natalLayout = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
       const transitLayout = placeBand(
         shownBodies.filter((body) => isTransit(body.id)),
