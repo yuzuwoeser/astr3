@@ -874,10 +874,13 @@ export function createWheel(
       // cover custom fonts, retrograde labels, and OS symbol substitutions.
       for (const body of shownBodies) {
         const active = activeBodies.has(body.id);
+        const symbolText = glyph(body);
+        // Two-letter angle captions need optical scaling beside single-symbol glyphs.
+        const symbolSize = symbolText === 'AC' || symbolText === 'MC' ? fontSize * 0.72 : fontSize;
         const element = label(
           { x: 0, y: 0 },
           '',
-          fontSize,
+          symbolSize,
           active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
           'astr3-body',
           { kind: 'body', id: body.id },
@@ -889,7 +892,7 @@ export function createWheel(
         }
         const symbol = doc.createElement('span');
         symbol.className = 'astr3-symbol';
-        symbol.textContent = glyph(body);
+        symbol.textContent = symbolText;
         element.append(symbol);
         element.dataset.dim = String(opacity(active) < 1);
         element.title = describe({ kind: 'body', id: body.id });
