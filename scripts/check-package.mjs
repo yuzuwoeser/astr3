@@ -86,8 +86,14 @@ assert.equal(createTransitModel({ natal: { bodies: [] }, transit: { bodies: [] }
 assert.equal(createModel({ bodies: [] }).houseStatus, 'unknown');
 const data = await createAstronomyProvider().calculate({ utc: '2000-01-01T12:00:00Z', latitude: 51.5, longitude: 0 });
 assert.equal(data.houses.length, 12);
+assert.equal(data.bodies.length, 14);
+assert.equal(data.bodies.find(body => body.id === 'ascendant').longitude, data.angles.ascendant);
+assert.equal(data.bodies.find(body => body.id === 'midheaven').longitude, data.angles.midheaven);
 const transits = await createAstronomyProvider().calculateTransits({ utc: '2000-01-01T12:00:00Z' });
-assert.equal(transits.bodies.length, 10);
+assert.equal(transits.bodies.length, 12);
+assert.equal(transits.metadata.lunarNodeType, 'true');
+assert.equal(transits.bodies.find(body => body.id === 'north-node').metadata.nodeType, 'true');
+assert.equal(transits.angles, undefined);
 assert.equal(transits.houses, undefined);
 `,
   );

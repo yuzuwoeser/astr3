@@ -4,10 +4,11 @@ import type { Page } from '@playwright/test';
 import { WHEEL, polar } from '../../src/layout.js';
 import type { Point } from '../../src/layout.js';
 import type { Selection } from '../../src/index.js';
+import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
   await page.goto('/');
-  await expect(page.locator('.astr3-body')).toHaveCount(10);
+  await expect(page.locator('.astr3-body')).toHaveCount(14);
   await expect.poll(() => page.evaluate(() => window.astr3.error)).toBeNull();
 }
 
@@ -104,6 +105,80 @@ async function syntheticNatalChart(page: Page) {
     .toBe('Synthetic clustered chart');
   await page.evaluate(() => new Promise(requestAnimationFrame));
 }
+
+async function publicReferenceChart(page: Page) {
+  await page.locator('#preset').selectOption('custom');
+  await page.locator('#utc').fill('2000-01-01T12:00');
+  await page.locator('#latitude').fill('51.5074');
+  await page.locator('#longitude').fill('-0.1278');
+  await page.locator('#calculate').click();
+  await expect(page.locator('#chart-caption')).toContainText('2000-01-01 12:00:00 UTC');
+  await expect(page.locator('#calculation-status')).toContainText('Calculated locally');
+  await expect(page.locator('.astr3-access button[data-selection="body:mercury"]')).toContainText(
+    '1°53',
+  );
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+}
+
+test('selects angles and lunar nodes through glyphs, axes, anchors, and keyboard controls', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await publicReferenceChart(page);
+  const names = {
+    ascendant: 'Ascendant',
+    midheaven: 'Midheaven',
+    'north-node': 'North Node',
+    'south-node': 'South Node',
+  };
+  for (const [id, name] of Object.entries(names)) {
+    const point = await labelPoint(page, `.astr3-body[data-object="body:${id}"]`);
+    if (isMobile) await page.touchscreen.tap(point.x, point.y);
+    else await page.mouse.click(point.x, point.y);
+    await expect(page.locator('#inspector-heading')).toHaveText(name);
+    if (id.includes('node'))
+      await expect(page.locator('#details')).toContainText('True (osculating)');
+    else await expect(page.locator('#details')).not.toContainText('Motion');
+  }
+  for (const id of ['ascendant', 'midheaven']) {
+    const point = await labelPoint(page, `.astr3-axis[data-axis=${id}]`);
+    await page.mouse.click(point.x, point.y);
+    await expect
+      .poll(() => page.evaluate(() => window.astr3.selection))
+      .toEqual({ kind: 'body', id });
+    const anchor = await page.evaluate((id) => {
+      const model = window.astr3.model;
+      return {
+        longitude: model.bodies.find((body) => body.id === id)!.longitude,
+        asc: model.angles.ascendant!,
+      };
+    }, id);
+    await page.evaluate(() => window.astr3.clearSelection());
+    const world = polar(anchor.longitude, WHEEL.house, anchor.asc);
+    await selectAt(page, world.x, world.y);
+    const chooser = page.locator('.astr3-chooser button');
+    if (await chooser.count())
+      await chooser.filter({ hasText: names[id as keyof typeof names] }).click();
+    await expect
+      .poll(() => page.evaluate(() => window.astr3.selection))
+      .toEqual({ kind: 'body', id });
+  }
+  await page.evaluate(() => window.astr3.setOptions({ layers: { axes: false } }));
+  await expect(page.locator('.astr3-axis')).toHaveCount(0);
+  await expect(page.locator('.astr3-body')).toHaveCount(14);
+  await page.locator('.astr3-access summary').click();
+  const node = page.locator('.astr3-access button[data-selection="body:north-node"]');
+  await node.focus();
+  await node.press('Enter');
+  await expect(page.locator('#inspector-heading')).toHaveText('North Node');
+  await page.locator('#preset').selectOption('unknown');
+  await expect.poll(() => page.evaluate(() => window.astr3.model.timeUncertain)).toBe(true);
+  await expect(page.locator('.astr3-access button[data-kind=body]')).toHaveCount(12);
+  expect(
+    await page.evaluate(() => window.astr3.model.bodies.some((body) => body.id === 'ascendant')),
+  ).toBe(false);
+});
 
 test('renders a real WebGL wheel and selects a planet with contextual highlighting', async ({
   page,
@@ -377,7 +452,7 @@ test('calculates locally, omits unknown houses, and cancels obsolete requests', 
   await page.locator('#preset').selectOption('sydney');
   await page.locator('#preset').selectOption('study');
   await expect(page.locator('#chart-title')).toHaveText('Grand trine study');
-  await expect(page.locator('.astr3-body')).toHaveCount(10);
+  await expect(page.locator('.astr3-body')).toHaveCount(14);
 });
 
 test('survives context loss/restoration and disposes repeated mounts cleanly', async ({ page }) => {
@@ -674,7 +749,7 @@ test('keeps synthetic clustered planet labels outside the house ring', async ({
     await page.setViewportSize({ width, height: 1000 });
     for (const weight of ['light', 'regular', 'bold']) {
       await page.locator('#chart-weight').selectOption(weight);
-      await expect(page.locator('.astr3-body')).toHaveCount(10);
+      await expect(page.locator('.astr3-body')).toHaveCount(14);
       await expect.poll(() => planetBandViolations(page)).toEqual([]);
     }
   }

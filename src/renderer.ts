@@ -14,7 +14,14 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { BODY_GLYPHS, SIGN_GLYPHS, SIGNS, formatPosition, normalize } from './model/math.js';
+import {
+  BODY_GLYPHS,
+  SIGN_GLYPHS,
+  SIGNS,
+  formatPosition,
+  normalize,
+  signedDistance,
+} from './model/math.js';
 import { createModel, getSelectionDetails, hasSelection, selectionKey } from './model/model.js';
 import type { Body, ChartInput, Selection } from './model/types.js';
 import type {
@@ -770,20 +777,46 @@ export function createWheel(
       }
     }
     if (visible.axes)
-      for (const [name, value] of [
-        ['AC', model.angles.ascendant],
-        ['MC', model.angles.midheaven],
+      for (const [id, name, value] of [
+        ['ascendant', 'AC', model.angles.ascendant],
+        ['midheaven', 'MC', model.angles.midheaven],
       ] as const) {
         if (value === undefined) continue;
+        const body = model.bodies.find((body) => {
+          const ref = p?.bodyRefs.get(body.id);
+          return (
+            (p ? ref?.chart === 'natal' && ref.id === id : body.id === id) &&
+            Math.abs(signedDistance(body.longitude, value)) < 1e-8
+          );
+        });
+        const active = !!body && activeBodies.has(body.id);
         stroke(
           [polar(value, axisRadius - 4, asc), polar(value + 180, axisRadius - 4, asc)],
-          colors.muted,
-          1,
-          0.55,
+          active ? accent : colors.muted,
+          active ? activeWidth : 1,
+          body ? opacity(active) * 0.55 : 0.55,
           [5, 5],
         );
-        label(polar(value, axisRadius, asc), name, 10, accent);
-        label(polar(value + 180, axisRadius, asc), name === 'AC' ? 'DC' : 'IC', 10, colors.muted);
+        const point = polar(value, axisRadius, asc);
+        const selection: Selection | undefined = body ? { kind: 'body', id: body.id } : undefined;
+        const element = label(point, name, 10, accent, 'astr3-axis', selection);
+        element.dataset.axis = id;
+        element.style.opacity = String(body ? opacity(active) : 1);
+        if (selection) {
+          const rect = element.getBoundingClientRect();
+          targets.push({
+            selection,
+            priority: 0,
+            shape: 'box',
+            box: { ...project(point), width: rect.width, height: rect.height },
+          });
+        }
+        reservedLabels.push({ element, point });
+        const opposite = polar(value + 180, axisRadius, asc);
+        reservedLabels.push({
+          element: label(opposite, name === 'AC' ? 'DC' : 'IC', 10, colors.muted),
+          point: opposite,
+        });
       }
     if (visible.groups)
       for (const group of model.groups) {

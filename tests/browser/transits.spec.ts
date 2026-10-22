@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { TRANSIT_WHEEL } from '../../src/renderer.js';
 import { WHEEL, polar } from '../../src/layout.js';
+import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
   await page.goto('/');
@@ -15,16 +16,66 @@ async function ready(page: Page) {
     .toBe('2024-04-08T18:00:00.000Z');
   await expect(page.locator('#transit-chart .astr3')).toHaveAttribute('data-mode', 'transit');
 }
-async function screenPoint(page: Page, longitude: number, radius: number) {
+async function screenPoint(page: Page, longitude: number, radius: number, ascendant = 0) {
   await page.locator('#transit-chart .astr3-stage').scrollIntoViewIfNeeded();
   const rect = await page.locator('#transit-chart .astr3-stage').boundingBox();
-  const world = polar(longitude, radius),
+  const world = polar(longitude, radius, ascendant),
     scale = Math.min(rect!.width, rect!.height) / (2 * TRANSIT_WHEEL.extent);
   return {
     x: rect!.x + rect!.width / 2 + world.x * scale,
     y: rect!.y + rect!.height / 2 - world.y * scale,
   };
 }
+
+test('selects natal angles and transiting lunar nodes with source-qualified details', async ({
+  page,
+  isMobile,
+}) => {
+  await ready(page);
+  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(26);
+  for (const id of ['ascendant', 'midheaven']) {
+    const point = await labelPoint(page, `#transit-chart .astr3-axis[data-axis=${id}]`);
+    if (isMobile) await page.touchscreen.tap(point.x, point.y);
+    else await page.mouse.click(point.x, point.y);
+    await expect
+      .poll(() => page.evaluate(() => window.astr3Transit!.selection))
+      .toEqual({
+        chart: 'natal',
+        kind: 'body',
+        id,
+      });
+    await expect(page.locator('#details')).not.toContainText('Motion');
+  }
+  const { longitude, ascendant } = await page.evaluate(() => ({
+    longitude: window.astr3Transit!.model.transit.bodies.find((body) => body.id === 'north-node')!
+      .longitude,
+    ascendant: window.astr3Transit!.model.natal.angles.ascendant!,
+  }));
+  for (const radius of [TRANSIT_WHEEL.marker, WHEEL.house]) {
+    const point = await screenPoint(page, longitude, radius, ascendant);
+    if (isMobile) await page.touchscreen.tap(point.x, point.y);
+    else await page.mouse.click(point.x, point.y);
+    const chooser = page.locator('#transit-chart .astr3-chooser button');
+    if (await chooser.count()) await chooser.filter({ hasText: 'Transiting North Node' }).click();
+    await expect
+      .poll(() => page.evaluate(() => window.astr3Transit!.selection))
+      .toEqual({
+        chart: 'transit',
+        kind: 'body',
+        id: 'north-node',
+      });
+    await expect(page.locator('#inspector-heading')).toHaveText('Transiting North Node');
+    await expect(page.locator('#details')).toContainText('True (osculating)');
+    await expect(page.locator('#details')).toContainText('Natal house');
+  }
+  expect(
+    await page.evaluate(() =>
+      window.astr3Transit!.model.transit.bodies.some((body) =>
+        ['ascendant', 'midheaven'].includes(body.id),
+      ),
+    ),
+  ).toBe(false);
+});
 
 test('selects independently scoped planets from the outer band and accessible list', async ({
   page,
@@ -329,7 +380,7 @@ test('contains both label bands and retains accessible selections through graphi
 }, info) => {
   await ready(page);
   await page.locator('#transit-chart .astr3-stage').scrollIntoViewIfNeeded();
-  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(20);
+  await expect(page.locator('#transit-chart .astr3-access button[data-kind=body]')).toHaveCount(26);
   const violations = () =>
     page.evaluate(
       ({ extent, inner, outer }) => {

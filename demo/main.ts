@@ -130,8 +130,13 @@ function inspect(data: SelectionDetails | TransitSelectionDetails | null): void 
   details.append(create('span', `SELECTED ${data.selection.kind.toUpperCase()}`, 'selection-tag'));
   if ('longitude' in data.object)
     details.append(field('Position', formatPosition(data.object.longitude)));
-  if ('retrograde' in data.object)
+  if (
+    ('speed' in data.object && data.object.speed !== undefined) ||
+    ('retrograde' in data.object && data.object.retrograde)
+  )
     details.append(field('Motion', data.object.retrograde ? 'Retrograde ℞' : 'Direct'));
+  if (data.object.metadata?.nodeType === 'true')
+    details.append(field('Node calculation', 'True (osculating)'));
   if ('natalHouse' in data.object)
     details.append(
       field(
@@ -167,7 +172,7 @@ function inspect(data: SelectionDetails | TransitSelectionDetails | null): void 
           ? 'Occupants'
           : data.selection.kind === 'group'
             ? 'Members'
-            : 'Connected planets',
+            : 'Connected points',
       ),
     );
     for (const body of others)

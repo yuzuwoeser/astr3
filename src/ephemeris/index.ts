@@ -7,6 +7,7 @@ import type {
   EphemerisProvider,
 } from '../model/types.js';
 import { calculateHouses } from './houses.js';
+import { calculateLunarNodes } from './nodes.js';
 
 export { calculateHouses } from './houses.js';
 export type { HouseCalculation } from './houses.js';
@@ -74,7 +75,7 @@ async function calculatePositions(date: Date, signal?: AbortSignal): Promise<Bod
   signal?.throwIfAborted();
   const before = new Date(date.getTime() - 30 * 60_000),
     after = new Date(date.getTime() + 30 * 60_000);
-  return BODIES.map((body) => {
+  const planets = BODIES.map((body) => {
     const position = Ecliptic(GeoVector(body, date, true));
     const earlier = Ecliptic(GeoVector(body, before, true)).elon;
     const later = Ecliptic(GeoVector(body, after, true)).elon;
@@ -88,6 +89,7 @@ async function calculatePositions(date: Date, signal?: AbortSignal): Promise<Bod
       retrograde: speed < 0,
     };
   });
+  return [...planets, ...calculateLunarNodes(date)];
 }
 
 export function createAstronomyProvider(): AstronomyProvider {
@@ -106,6 +108,7 @@ export function createAstronomyProvider(): AstronomyProvider {
           zodiac: 'tropical',
           frame: 'geocentric true ecliptic of date',
           aberration: true,
+          lunarNodeType: 'true',
         },
       };
     },
@@ -127,7 +130,15 @@ export function createAstronomyProvider(): AstronomyProvider {
       signal?.throwIfAborted();
       return {
         title: 'Natal chart',
-        bodies: positions,
+        bodies: [
+          ...positions,
+          ...(['ascendant', 'midheaven'] as const).flatMap((id): BodyInput[] => {
+            const longitude = result?.angles[id];
+            return longitude === undefined
+              ? []
+              : [{ id, name: id === 'ascendant' ? 'Ascendant' : 'Midheaven', longitude }];
+          }),
+        ],
         houses: result?.houses,
         angles: result?.angles,
         timeUncertain: request.timeUncertain ?? false,
@@ -149,6 +160,7 @@ export function createAstronomyProvider(): AstronomyProvider {
           zodiac: 'tropical',
           frame: 'geocentric true ecliptic of date',
           aberration: true,
+          lunarNodeType: 'true',
         },
       };
     },

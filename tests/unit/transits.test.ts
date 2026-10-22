@@ -141,7 +141,22 @@ describe('transit calculation and UTC stepping', () => {
     const request = { utc: '2000-01-01T12:00:00Z', latitude: 51.5074, longitude: -0.1278 };
     const natal = await provider.calculate(request),
       transit = await provider.calculateTransits({ utc: request.utc });
-    expect(transit.bodies).toEqual(natal.bodies);
+    expect(transit.bodies).toEqual(
+      natal.bodies.filter((body) => !['ascendant', 'midheaven'].includes(body.id)),
+    );
+    expect(transit.bodies).toHaveLength(12);
+    expect(natal.bodies).toHaveLength(14);
+    expect(transit.angles).toBeUndefined();
+    const model = createTransitModel({ natal, transit });
+    for (const id of ['ascendant', 'midheaven'])
+      expect(model.crossAspects.some((aspect) => aspect.bodyRefs[0].id === id)).toBe(true);
+    const node = getTransitSelectionDetails(model, {
+      kind: 'body',
+      chart: 'transit',
+      id: 'north-node',
+    })!;
+    expect(node.object).toMatchObject({ natalHouse: expect.any(Number) });
+    expect(node.aspects.some((aspect) => aspect.chart === 'cross')).toBe(true);
     expect(transit.houses).toBeUndefined();
     expect(transit.timeUncertain).toBeUndefined();
     expect(transit.metadata?.utc).toBe(request.utc.replace('Z', '.000Z'));

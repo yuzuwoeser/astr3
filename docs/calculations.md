@@ -1,6 +1,6 @@
 # Calculation conventions and validation
 
-`astr3/ephemeris` uses [Astronomy Engine](https://github.com/cosinekitty/astronomy) 2.1.19 (MIT) for planetary positions, apparent sidereal time, and true obliquity. Houses use an independent geometric implementation. No Swiss Ephemeris implementation is incorporated. Neither Swiss Ephemeris nor Python is a package dependency.
+`astr3/ephemeris` uses [Astronomy Engine](https://github.com/cosinekitty/astronomy) 2.1.19 (MIT) for planetary positions, lunar state vectors, apparent sidereal time, and true obliquity. Houses and lunar nodes use geometric calculations over those quantities. No Swiss Ephemeris implementation is incorporated. Neither Swiss Ephemeris nor Python is a package dependency.
 
 ## Inputs and outputs
 
@@ -9,11 +9,19 @@
 - Absolute UTC as `Date`, or ISO timestamp with `Z`/explicit offset. Local civil time, DST ambiguity, and place lookup belong to applications. Latitude is north positive; longitude is east positive.
 - Supported adapter dates: 1900-01-01 through 2100-12-31 UTC. The core renderer has no date range.
 - Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto; tropical, geocentric, true ecliptic/equinox of date. `GeoVector(..., true)` includes light-time and aberration corrections before ecliptic conversion.
+- North Node (`north-node`, ☊) and South Node (`south-node`, ☋) use the **true, osculating** convention. Both are included in natal and transit `bodies`, with latitude 0°, speed, retrograde status, and `metadata.nodeType: 'true'`. Chart metadata includes `lunarNodeType: 'true'`. The South Node is exactly opposite the North Node. These geometric points have no light-time/aberration correction.
+- Ascendant (`ascendant`, AC) and Midheaven (`midheaven`, MC) are included in natal `bodies` whenever the corresponding angles are defined. Their longitudes match `angles` exactly, independent of house system; MC is not inferred from cusp 10. Their daily speed is not supplied. UTC-only transit calculations omit these location-dependent points.
 - Speed is a centered one-hour longitude difference, unwrapped across 0° and scaled to degrees/day. Negative means retrograde. Extremely near stations, classifications can differ between engines; no stationary classification is asserted.
-- No topocentric parallax, sidereal ayanamsa, nodes, asteroids, Chiron, refraction, custom ΔT, or Earth-orientation corrections. Arbitrary supplied points remain renderable.
+- No topocentric parallax, sidereal ayanamsa, mean-node calculation, asteroids, Chiron, refraction, custom ΔT, or Earth-orientation corrections. Arbitrary supplied points remain renderable, including externally calculated mean nodes.
 - `timeUncertain` uses the supplied reference instant, omits angles/houses, and returns a warning. It does not claim the entire day's positions are known precisely.
 
 The provider checks cancellation before and after calculation. After an initial asynchronous yield, the engine is synchronous and cannot be interrupted mid-body. For high-volume work, run it in an application-owned worker. The demo cancels old requests and checks a revision token before applying results.
+
+## Lunar node geometry
+
+The true node is the intersection of the instantaneous lunar orbital plane with the ecliptic, following the [osculating-node convention](https://www.astro.com/swisseph/swisseph.htm). Rotate Astronomy Engine's `GeoMoonState` position and velocity from J2000 equatorial coordinates into the true ecliptic/equinox of the requested date. With orbital normal `h = r × v`, the ascending-node direction is `(-h.y, h.x, 0)`. Its longitude gives the North Node; add 180° for the South Node.
+
+True nodes can briefly move direct, so their motion is calculated rather than hardcoded retrograde. The Moon model's velocity approximation affects node speeds more than positions. Near a node station, a tiny speed and its direct/retrograde flag can disagree with another engine. Use an external provider when exact agreement with that engine is required.
 
 ## House geometry
 
@@ -34,6 +42,7 @@ Committed fixtures record numeric results from separately installed Swiss Epheme
 - **52 charts:** endpoints and five-year samples across 1900–2100, both hemispheres, equatorial/high latitudes, and dates around Mercury's April 2024 stations.
 - **Planet tolerance: 2 arcminutes**, checked on fixtures rather than asserted universally. On 2100-12-31 the Moon differs by about 1.14 arcminutes because the engines predict different future ΔT (about 205 versus 94 seconds). Sampled modern-date errors are substantially smaller.
 - **House/angle tolerance: 0.005°** with independent time models. Fixed-RAMC fixtures isolate the house geometry and cover meridian wraparound and ±66.5° latitude.
+- **True-node position tolerance: 1 arcminute**, checked against 54 independent Moshier true-node fixtures across 1900–2100, including zodiac wrap and direct motion. Sampled speed differences stay below 0.01°/day; motion flags are compared outside that margin from a station. These are sampled tolerances, not a universal error bound. Optional regeneration uses `tests/fixtures/generate-node-reference.py` under the same separate-installation terms.
 - Other tests cover longitude/orb boundaries, supplied aspects, cusp membership, unknown data, polar failures, and cancellation.
 
 For exact agreement with a particular astrology service, supply that service's positions/cusps and conventions through another provider. Interpretation text belongs to applications.

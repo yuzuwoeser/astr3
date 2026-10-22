@@ -12,6 +12,10 @@ const bodies = [
   { id: 'uranus', name: 'Uranus', longitude: 337.1, retrograde: true },
   { id: 'neptune', name: 'Neptune', longitude: 302.5 },
   { id: 'pluto', name: 'Pluto', longitude: 245.4, retrograde: true },
+  { id: 'ascendant', name: 'Ascendant', longitude: 13 },
+  { id: 'midheaven', name: 'Midheaven', longitude: 278 },
+  { id: 'north-node', name: 'North Node', longitude: 35.6, retrograde: true },
+  { id: 'south-node', name: 'South Node', longitude: 215.6, retrograde: true },
 ];
 const aspects = calculateAspects(bodies);
 const members = ['sun', 'moon', 'jupiter'];

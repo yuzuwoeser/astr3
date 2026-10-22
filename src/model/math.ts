@@ -40,6 +40,8 @@ export const BODY_GLYPHS: Readonly<Record<string, string>> = Object.freeze({
   pluto: '♇',
   'north-node': '☊',
   'south-node': '☋',
+  ascendant: 'AC',
+  midheaven: 'MC',
   chiron: '⚷',
 });
 

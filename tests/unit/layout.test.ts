@@ -119,7 +119,7 @@ it('keeps synthetic clustered bodies outside the house circle without changing t
   const original = structuredClone(model);
   for (const scale of [0.52, 0.57, 1.2, 1.8]) {
     const { placements } = layoutBodies(model.bodies, ascendant, scale);
-    expect(placements).toHaveLength(10);
+    expect(placements).toHaveLength(14);
     expectWithinBand(placements, scale);
     for (const placement of placements)
       expect(placement.marker).toEqual(

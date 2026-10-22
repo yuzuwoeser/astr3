@@ -2,7 +2,7 @@
 
 Explorable astrology wheels for the browser. A framework-neutral TypeScript library built with Three.js, released under MIT.
 
-Select a planet, house, aspect, or supplied configuration. Highlight its relationships and connect the selection to your own explanations, tables, tooltips, or panels. Rendering works with precomputed data; the optional browser adapter calculates a natal chart without a backend.
+Select a planet, point, house, aspect, or supplied configuration. Highlight its relationships and connect the selection to your own explanations, tables, tooltips, or panels. Rendering works with precomputed data; the optional browser adapter calculates a natal chart without a backend.
 
 ## Run the demo
 
@@ -81,6 +81,7 @@ chart.update(data);
 ## Included in v0.1
 
 - Western natal wheels, arbitrary supplied points/cusps, independent AC/MC axes, degree labels, retrograde indicators, and unknown-house support.
+- Selectable Ascendant, Midheaven, North Node, and South Node with the same dots, aspects, house occupancy, and detail events as planets. The browser provider includes true lunar nodes in natal/transit calculations and AC/MC in natal calculations when defined.
 - Collision-separated glyphs and leader lines with fixed longitude markers. Planet labels stay outside the original inner house circle and clear of the outer degree scale; crowded views use compact symbols with full information available through selection.
 - Selectable planet dots on the house circle at exact longitudes, joined by aspect lines and pattern outlines. Every planet has a dot, including those without aspects.
 - Five configurable major aspects; supplied groups with selectable interiors and accessible entries.

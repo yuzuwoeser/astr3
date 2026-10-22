@@ -19,6 +19,27 @@ Import types and pure functions from `astr3/model`. `createModel(input, { orbs? 
 
 IDs must be nonempty and unique across all object kinds. References must exist. Longitudes normalize into `[0, 360)`. Nonfinite positions, duplicate IDs, incomplete/out-of-order cusps, and dangling relationships throw `ChartDataError` (`code: INVALID_CHART_DATA`). Body/group names must be nonempty. Invalid updates leave the previous model intact.
 
+`bodies` is the common collection for planets **and points**. The browser provider includes `ascendant`, `midheaven`, `north-node`, and `south-node` alongside the ten planets. They support the same selection, house occupancy, groups, aspects, glyph overrides, and house-circle anchors. Built-in glyphs are AC, MC, ☊, and ☋. Angles remain available separately in `angles` to draw the axes.
+
+For precomputed input, supply point entries explicitly in `bodies`; `createModel` preserves the supplied collection and does not invent points from `angles`. To make an AC/MC axis caption selectable, use the canonical body ID and the same longitude in `angles` and `bodies`. For example:
+
+```ts
+const data = {
+  bodies: [
+    { id: 'sun', name: 'Sun', longitude: 133 },
+    { id: 'ascendant', name: 'Ascendant', longitude: 13 },
+    { id: 'midheaven', name: 'Midheaven', longitude: 278 },
+    { id: 'north-node', name: 'North Node', longitude: 35.6 },
+    { id: 'south-node', name: 'South Node', longitude: 215.6 },
+  ],
+  angles: { ascendant: 13, midheaven: 278 },
+};
+chart.update(data);
+chart.select({ kind: 'body', id: 'ascendant' });
+```
+
+Supplied nodes can use any convention; include it in metadata for application details. The example provider uses true nodes; see [calculation conventions](calculations.md). Automatic aspects include every supplied point pair, including the nodes' mutual opposition. Supply an explicit aspect list to apply different point-specific rules.
+
 | Aspect type | Exact angle | Default maximum orb |
 | ----------- | ----------: | ------------------: |
 | conjunction |          0° |                  8° |

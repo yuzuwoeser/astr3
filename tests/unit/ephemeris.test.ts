@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createAstronomyProvider, calculateHouses } from '../../src/ephemeris/index.js';
-import { angularDistance, createModel } from '../../src/model/index.js';
+import { angularDistance, createModel, getSelectionDetails } from '../../src/model/index.js';
 import type { HouseSystem } from '../../src/model/index.js';
 
 const reference = JSON.parse(
@@ -21,6 +21,9 @@ const geometry = JSON.parse(
 ) as {
   cases: { ramc: number; latitude: number; obliquity: number; cusps: number[] }[];
 };
+const nodes = JSON.parse(
+  readFileSync(new URL('../fixtures/lunar-nodes.json', import.meta.url), 'utf8'),
+) as { cases: { utc: string; longitude: number; speed: number }[] };
 
 it('matches independent Placidus geometry near the polar circle and meridian quadrants', () => {
   for (const fixture of geometry.cases) {
@@ -41,13 +44,15 @@ describe('independent numerical reference fixtures, 1900–2100', () => {
         const data = await provider.calculate({ ...fixture, houseSystem: system });
         const model = createModel(data);
         expect(data.houseStatus).toBe('available');
-        for (const [i, body] of model.bodies.entries()) {
+        expect(model.bodies).toHaveLength(14);
+        for (const [i, planet] of fixture.planets.entries()) {
+          const body = model.bodies[i]!;
           // Different future ΔT models shift the Moon by >1 arcminute in 2100.
           expect(
-            angularDistance(body.longitude, fixture.planets[i]!.longitude),
+            angularDistance(body.longitude, planet.longitude),
             `${body.name} position`,
           ).toBeLessThan(2 / 60);
-          expect(body.retrograde, `${body.name} motion`).toBe(fixture.planets[i]!.speed < 0);
+          expect(body.retrograde, `${body.name} motion`).toBe(planet.speed < 0);
         }
         expect(
           angularDistance(model.angles.ascendant!, fixture.houses[system].ascendant),
@@ -55,6 +60,8 @@ describe('independent numerical reference fixtures, 1900–2100', () => {
         expect(
           angularDistance(model.angles.midheaven!, fixture.houses[system].midheaven),
         ).toBeLessThan(0.005);
+        for (const id of ['ascendant', 'midheaven'] as const)
+          expect(model.bodies.find((body) => body.id === id)?.longitude).toBe(model.angles[id]);
         for (const [i, house] of model.houses.entries())
           expect(
             angularDistance(house.longitude, fixture.houses[system].cusps[i]!),
@@ -62,6 +69,49 @@ describe('independent numerical reference fixtures, 1900–2100', () => {
           ).toBeLessThan(0.005);
       }
     });
+  }
+});
+
+it('matches independent true-node positions and speeds, including direct motion and zodiac wrap', async () => {
+  let direct = false,
+    retrograde = false;
+  for (const fixture of nodes.cases) {
+    const data = await provider.calculateTransits({ utc: fixture.utc });
+    const north = data.bodies.find((body) => body.id === 'north-node')!;
+    const south = data.bodies.find((body) => body.id === 'south-node')!;
+    expect(data.metadata?.lunarNodeType).toBe('true');
+    expect(north.metadata?.nodeType).toBe('true');
+    expect(north.latitude).toBe(0);
+    expect(south.latitude).toBe(0);
+    expect(angularDistance(north.longitude, fixture.longitude), fixture.utc).toBeLessThan(1 / 60);
+    expect(angularDistance(north.longitude, south.longitude)).toBeCloseTo(180, 10);
+    expect(south.speed).toBe(north.speed);
+    expect(Math.abs(north.speed! - fixture.speed), fixture.utc).toBeLessThan(0.01);
+    // Nodes can briefly turn direct. Engines can disagree very near a station.
+    if (Math.abs(fixture.speed) > 0.01) {
+      expect(north.retrograde, fixture.utc).toBe(fixture.speed < 0);
+      expect(south.retrograde).toBe(north.retrograde);
+      direct ||= !north.retrograde;
+      retrograde ||= !!north.retrograde;
+    }
+  }
+  expect(direct && retrograde).toBe(true);
+});
+
+it('includes angles and nodes in house occupancy, selection, and calculated aspects', async () => {
+  const data = await provider.calculate({
+    utc: '2000-01-01T12:00:00Z',
+    latitude: 51.5074,
+    longitude: -0.1278,
+    houseSystem: 'whole-sign',
+  });
+  const model = createModel(data);
+  expect(model.angles.midheaven).not.toBe(model.houses[9]!.longitude);
+  for (const id of ['ascendant', 'midheaven', 'north-node', 'south-node']) {
+    const details = getSelectionDetails(model, { kind: 'body', id })!;
+    expect(details.object).toMatchObject({ id, house: expect.any(Number) });
+    expect(details.aspects.length).toBeGreaterThan(0);
+    expect(details.houses.some((house) => house.bodyIds.includes(id))).toBe(true);
   }
 });
 
@@ -73,6 +123,9 @@ it('reports polar Placidus as unavailable without switching the house system', a
   });
   expect(data.houseStatus).toBe('unavailable');
   expect(data.houses).toBeUndefined();
+  expect(data.bodies.find((body) => body.id === 'ascendant')?.longitude).toBe(
+    data.angles?.ascendant,
+  );
   expect(data.warnings?.[0]).toContain('Placidus');
   expect(
     (
@@ -88,6 +141,13 @@ it('reports polar Placidus as unavailable without switching the house system', a
     status: 'unavailable',
     angles: {},
   });
+  const polar = await provider.calculate({
+    utc: '2024-01-01T00:00:00Z',
+    latitude: 90,
+    longitude: 10,
+  });
+  expect(polar.bodies).toHaveLength(12);
+  expect(polar.bodies.some((body) => ['ascendant', 'midheaven'].includes(body.id))).toBe(false);
 });
 
 it('omits houses and angles for an uncertain reference time', async () => {
@@ -99,6 +159,9 @@ it('omits houses and angles for an uncertain reference time', async () => {
   });
   expect(data.houses).toBeUndefined();
   expect(data.angles).toBeUndefined();
+  expect(data.bodies).toHaveLength(12);
+  expect(data.bodies.some((body) => ['ascendant', 'midheaven'].includes(body.id))).toBe(false);
+  expect(data.bodies.some((body) => body.id === 'north-node')).toBe(true);
   expect(data).toMatchObject({ houseStatus: 'unknown', timeUncertain: true });
 });
 

@@ -15,6 +15,10 @@ export const syntheticNatal: ChartInput = {
     { id: 'uranus', name: 'Uranus', longitude: 202.5 },
     { id: 'neptune', name: 'Neptune', longitude: 263 },
     { id: 'pluto', name: 'Pluto', longitude: 186 },
+    { id: 'north-node', name: 'North Node', longitude: 100 },
+    { id: 'south-node', name: 'South Node', longitude: 280 },
+    { id: 'ascendant', name: 'Ascendant', longitude: 0 },
+    { id: 'midheaven', name: 'Midheaven', longitude: 270 },
   ],
   houses: Array.from({ length: 12 }, (_, i) => ({
     id: `h${i + 1}`,

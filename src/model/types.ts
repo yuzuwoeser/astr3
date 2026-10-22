@@ -1,5 +1,6 @@
 /** All longitudes are tropical ecliptic degrees unless the caller documents another convention. */
 export interface BodyInput {
+  /** Shared identity for planets and points, including angles and lunar nodes. */
   readonly id: string;
   readonly name: string;
   readonly longitude: number;
