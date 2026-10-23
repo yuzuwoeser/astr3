@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add individual celestial-body visibility controls, with separate natal/transit
+  settings, All/None presets, and a `bodyVisibility` API. Hidden bodies and their
+  connectors leave the wheel while their data and accessible selections remain.
+
 - Add opt-in transit time-step animation with direct astronomical samples,
   adaptive retrograde trajectory resolution, Pause/Resume, reduced-motion support,
   and a reusable `createTransitAnimation` controller. The demo adds Year stepping

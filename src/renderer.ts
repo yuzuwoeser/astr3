@@ -24,6 +24,7 @@ import {
 } from './model/math.js';
 import { createModel, getSelectionDetails, hasSelection, selectionKey } from './model/model.js';
 import { ASPECT_DEFINITIONS } from './model/aspects.js';
+import { resolveBodyVisibility } from './body-visibility.js';
 import type { Body, ChartInput, Selection } from './model/types.js';
 import type {
   Chart,
@@ -162,7 +163,10 @@ export function createWheel(
   const doc = container.ownerDocument;
   const win = doc.defaultView;
   if (!win) throw new Error('createChart requires a browser document.');
-  let options = { ...initialOptions };
+  let options = {
+    ...initialOptions,
+    bodyVisibility: resolveBodyVisibility(initialOptions.bodyVisibility),
+  };
   let visualWeight = weightProfile(options.chartWeight);
   let geometry = resolveWheelGeometry(options.layout, !!presentation, options.layers?.degrees);
   let model = createModel(options.data, options);
@@ -276,6 +280,7 @@ export function createWheel(
   function layers(): ChartLayers {
     return { ...LAYERS, ...options.layers };
   }
+  const bodyVisible = (id: string) => options.bodyVisibility[id] !== false;
   function glyph(body: Body): string {
     if (options.glyphs && Object.hasOwn(options.glyphs, body.id)) return options.glyphs[body.id]!;
     return (
@@ -302,7 +307,7 @@ export function createWheel(
   function describe(selection: Selection): string {
     if (selection.kind === 'body') {
       const body = model.bodies.find((body) => body.id === selection.id)!;
-      return `${body.name} · ${formatPosition(body.longitude)}${body.retrograde ? ' · retrograde' : ''}${body.house ? ` · ${presentation?.().bodyRefs.get(body.id)?.chart === 'transit' ? 'natal house' : 'house'} ${body.house}` : ''}`;
+      return `${body.name} · ${formatPosition(body.longitude)}${body.retrograde ? ' · retrograde' : ''}${body.house ? ` · ${presentation?.().bodyRefs.get(body.id)?.chart === 'transit' ? 'natal house' : 'house'} ${body.house}` : ''}${bodyVisible(body.id) ? '' : ' · hidden on wheel'}`;
     }
     if (selection.kind === 'aspect') {
       const aspect = model.aspects.find((aspect) => aspect.id === selection.id)!;
@@ -694,7 +699,8 @@ export function createWheel(
     const transitColor = p?.transitColor ?? colors.group;
     const alternative = geometry.layout === 'alternative';
     const axisRadius = geometry.axis;
-    const shownBodies = model.bodies.filter(
+    const plottedBodies = model.bodies.filter((body) => bodyVisible(body.id));
+    const shownBodies = plottedBodies.filter(
       (body) => !p || p.bodies[isTransit(body.id) ? 'transit' : 'natal'],
     );
     const primary = selected ?? hovered;
@@ -702,7 +708,7 @@ export function createWheel(
     const activeBodies = new Set(details?.bodies.map((body) => body.id));
     const activeAspects = new Set(details?.aspects.map((aspect) => aspect.id));
     const bodyAnchors = new Map(
-      model.bodies.map((body) => [body.id, polar(body.longitude, geometry.anchor, asc)]),
+      plottedBodies.map((body) => [body.id, polar(body.longitude, geometry.anchor, asc)]),
     );
     const dim = options.selectionEffects?.dimOpacity ?? 0.22;
     const opacity = (active: boolean) =>
@@ -898,6 +904,7 @@ export function createWheel(
         const body = model.bodies.find((body) => {
           const ref = p?.bodyRefs.get(body.id);
           return (
+            bodyVisible(body.id) &&
             (p ? ref?.chart === 'natal' && ref.id === id : body.id === id) &&
             Math.abs(signedDistance(body.longitude, value)) < 1e-8
           );
@@ -951,6 +958,7 @@ export function createWheel(
         for (const id of group.aspectIds)
           for (const bodyId of model.aspects.find((aspect) => aspect.id === id)!.bodyIds)
             ids.add(bodyId);
+        if ([...ids].some((id) => !bodyVisible(id))) continue;
         const polygon = convexHull(
           model.bodies.filter((body) => ids.has(body.id)).map((body) => bodyAnchors.get(body.id)!),
         );
@@ -968,6 +976,7 @@ export function createWheel(
       }
     if (visible.aspects)
       for (const aspect of model.aspects) {
+        if (!aspect.bodyIds.every(bodyVisible)) continue;
         if (p && !p.aspects[p.aspectFamilies.get(aspect.id)!]) continue;
         const active = !!primary && activeAspects.has(aspect.id);
         const style: LineStyle = options.lineStyles?.[aspect.type] ?? {};
@@ -1524,6 +1533,7 @@ export function createWheel(
         ...options,
         ...patch,
         layers: { ...options.layers, ...patch.layers },
+        bodyVisibility: resolveBodyVisibility(patch.bodyVisibility, options.bodyVisibility),
         theme: {
           ...options.theme,
           ...patch.theme,

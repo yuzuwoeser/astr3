@@ -464,6 +464,37 @@ input[type='datetime-local'] {
   accent-color: #52755c;
   margin: 0;
 }
+.body-controls {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.body-controls summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.body-help {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.body-options {
+  margin-top: 12px;
+}
+.body-presets {
+  display: flex;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+.body-presets button {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+}
 .selection-tag {
   display: inline-block;
   font-size: 8px;

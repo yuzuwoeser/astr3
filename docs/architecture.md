@@ -30,6 +30,8 @@ Picking compares shapes in CSS pixels. One semantic selection drives highlightin
 
 ## Application lifecycle
 
+Per-body visibility is renderer state: hidden bodies are excluded from glyph packing, exact markers, connected aspect/group graphics, and wheel picking. The model, original inputs, relationships, selections, and accessible list stay intact. Transit visibility maps are keyed by original IDs separately for each source; the adapter scopes them only when passing options to the shared renderer. Visibility does not change ephemeris or animation sampling.
+
 The internal wheel-geometry resolver supplies the selected `default` or `alternative` preset to camera fitting, rulers, house sectors, label bands, anchors and picking. The original constants remain unchanged. Alternative houses form the outer annulus, with zodiac second and both body bands inside; its aspect circle is independent of houses. The cache includes the complete band geometry and layout typography. Alternative house picking uses an annular polygon rather than a sector extending to the center. Layout is presentation state and never enters the headless model or provider request.
 
 Create after the host mounts. Subscribe to selection/hover for UI, use `update` for data and `setOptions` for display, aspect enablement, and orbs. Stable IDs preserve selection. Unsubscribe and dispose at unmount. Only the chart's own root is removed.

@@ -30,6 +30,7 @@ import type {
   TransitOrbs,
   TransitAnimation,
   TransitAnimationState,
+  ChartSide,
 } from '../src/index.js';
 import { study } from './fixtures.js';
 import './style.css';
@@ -59,6 +60,8 @@ let transitAbort: AbortController | undefined;
 let transitRevision = 0;
 let transitMode = false;
 let natalCaption = $('chart-caption').textContent ?? '';
+const bodyVisibility: Record<ChartSide, Record<string, boolean>> = { natal: {}, transit: {} };
+let bodyControlsKey = '';
 const orbLimits: Required<TransitOrbs> = {
   natal: { ...DEFAULT_ORBS },
   cross: { ...DEFAULT_ORBS },
@@ -400,7 +403,73 @@ window.addEventListener('pagehide', (event) => {
 });
 chart.on('update', () => {
   if (!transitMode) $('chart-title').textContent = chart.model.title;
+  renderBodyControls();
 });
+
+function setBodyVisibility(side: ChartSide, patch: Record<string, boolean>): void {
+  if (side === 'natal') chart.setOptions({ bodyVisibility: patch });
+  transitChart?.setOptions({ bodyVisibility: { [side]: patch } });
+  bodyVisibility[side] = { ...bodyVisibility[side], ...patch };
+  renderBodyControls();
+}
+
+function renderBodyControls(): void {
+  const sides: ChartSide[] = transitMode ? ['natal', 'transit'] : ['natal'];
+  const bodies = (side: ChartSide) =>
+    side === 'natal' ? chart.model.bodies : (transitChart?.model.transit.bodies ?? []);
+  const key = JSON.stringify(
+    sides.map((side) => [side, bodies(side).map(({ id, name }) => [id, name])]),
+  );
+  const host = $('body-visibility-controls');
+  if (key !== bodyControlsKey) {
+    bodyControlsKey = key;
+    host.replaceChildren();
+    for (const side of sides) {
+      const fieldset = create('fieldset', '', 'layers body-options');
+      const heading = side === 'natal' ? 'Natal' : 'Transiting';
+      fieldset.append(create('legend', `${heading} planets and points`));
+      const presets = create('div', '', 'body-presets');
+      for (const [name, visible] of [
+        ['All', true],
+        ['None', false],
+      ] as const) {
+        const button = create('button', name);
+        button.type = 'button';
+        button.dataset.bodyPreset = visible ? 'all' : 'none';
+        button.dataset.bodyChart = side;
+        button.setAttribute(
+          'aria-label',
+          `${visible ? 'Show' : 'Hide'} all ${heading.toLowerCase()} bodies`,
+        );
+        button.addEventListener('click', () =>
+          setBodyVisibility(
+            side,
+            Object.fromEntries(bodies(side).map((body) => [body.id, visible])),
+          ),
+        );
+        presets.append(button);
+      }
+      fieldset.append(presets);
+      for (const body of bodies(side)) {
+        const label = create('label', '');
+        const input = create('input', '');
+        input.type = 'checkbox';
+        input.dataset.bodyChart = side;
+        input.dataset.bodyId = body.id;
+        input.setAttribute('aria-label', `Show ${heading} ${body.name}`);
+        input.addEventListener('change', () =>
+          setBodyVisibility(side, { [body.id]: input.checked }),
+        );
+        label.append(input, document.createTextNode(body.name));
+        fieldset.append(label);
+      }
+      host.append(fieldset);
+    }
+  }
+  for (const input of host.querySelectorAll<HTMLInputElement>('input'))
+    input.checked =
+      bodyVisibility[input.dataset.bodyChart as ChartSide][input.dataset.bodyId!] !== false;
+}
 
 function updateCaptions(): void {
   $('chart-title').textContent = `${chart.model.title}${transitMode ? ' + transits' : ''}`;
@@ -475,8 +544,10 @@ $('chart-view').addEventListener('change', () => {
       orbs: orbLimits,
       enabledAspects: enabledAspectTypes,
       layers,
+      bodyVisibility,
     });
     window.astr3Transit = transitChart;
+    transitChart.on('update', renderBodyControls);
     transitAnimation = createTransitAnimation(transitChart, async (request, options) => {
       const { createAstronomyProvider } = await import('../src/ephemeris/index.js');
       return createAstronomyProvider().calculateTransits(request, options);
@@ -510,6 +581,7 @@ $('chart-view').addEventListener('change', () => {
   $('chart').hidden = transitMode;
   $('transit-chart').hidden = !transitMode;
   $('transit-controls').hidden = !transitMode;
+  renderBodyControls();
   for (const option of $<HTMLSelectElement>('orb-family').options)
     option.disabled = !transitMode && option.value !== 'natal';
   $<HTMLSelectElement>('orb-family').value = transitMode ? 'cross' : 'natal';
@@ -722,3 +794,4 @@ document.querySelectorAll<HTMLButtonElement>('[data-aspect-preset]').forEach((bu
 );
 renderOrbInputs();
 renderAspectLegend();
+renderBodyControls();

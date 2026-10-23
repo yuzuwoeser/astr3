@@ -3,6 +3,7 @@ import type { WheelPresentation } from './renderer.js';
 import { BODY_GLYPHS } from './model/math.js';
 import { createModel } from './model/model.js';
 import { ASPECT_DEFINITIONS } from './model/aspects.js';
+import { resolveBodyVisibility } from './body-visibility.js';
 import {
   createTransitModel,
   getTransitSelectionDetails,
@@ -21,7 +22,27 @@ import type {
   TransitSelectionDetails,
 } from './model/transits.js';
 import type { ChartInput, Selection } from './model/types.js';
-import type { Chart, ChartEvents, ChartLayers, ChartOptions } from './types.js';
+import type { BodyVisibility, Chart, ChartEvents, ChartLayers, ChartOptions } from './types.js';
+
+export type TransitBodyVisibility = Partial<Record<ChartSide, BodyVisibility>>;
+
+function resolveTransitBodyVisibility(
+  patch: TransitBodyVisibility | undefined,
+  previous: TransitBodyVisibility = {},
+): TransitBodyVisibility {
+  if (
+    patch !== undefined &&
+    (!patch ||
+      typeof patch !== 'object' ||
+      Array.isArray(patch) ||
+      Object.keys(patch).some((side) => side !== 'natal' && side !== 'transit'))
+  )
+    throw new RangeError('Transit bodyVisibility must contain natal/transit visibility records.');
+  return Object.freeze({
+    natal: resolveBodyVisibility(patch?.natal, previous.natal),
+    transit: resolveBodyVisibility(patch?.transit, previous.transit),
+  });
+}
 
 export interface TransitLayers extends ChartLayers {
   natalBodies: boolean;
@@ -32,13 +53,14 @@ export interface TransitLayers extends ChartLayers {
 }
 export interface TransitChartOptions extends Omit<
   ChartOptions,
-  'data' | 'orbs' | 'enabledAspects' | 'glyphs' | 'layers'
+  'data' | 'orbs' | 'enabledAspects' | 'glyphs' | 'layers' | 'bodyVisibility'
 > {
   data: TransitChartInput;
   orbs?: TransitOrbs;
   enabledAspects?: TransitAspectEnabledConfig;
   glyphs?: Partial<Record<ChartSide, Readonly<Record<string, string>>>>;
   layers?: Partial<TransitLayers>;
+  bodyVisibility?: TransitBodyVisibility;
   /** Defaults to the theme's group color. */
   transitColor?: string;
 }
@@ -156,12 +178,21 @@ function renderingOptions(options: TransitChartOptions): Omit<ChartOptions, 'dat
     orbs: _orbs,
     enabledAspects: _enabled,
     glyphs,
+    bodyVisibility,
     transitColor: _color,
     ...rest
   } = options;
   return {
     ...rest,
     enabledAspects: ALL_ASPECTS,
+    bodyVisibility: Object.fromEntries(
+      (['natal', 'transit'] as const).flatMap((chart) =>
+        Object.entries(bodyVisibility?.[chart] ?? {}).map(([id, visible]) => [
+          rawId(chart, 'body', id),
+          visible,
+        ]),
+      ),
+    ),
     glyphs: Object.fromEntries(
       (['natal', 'transit'] as const).flatMap((chart) =>
         Object.entries(glyphs?.[chart] ?? {}).map(([id, value]) => [
@@ -178,7 +209,10 @@ export function createTransitChart(
   container: HTMLElement,
   initialOptions: TransitChartOptions,
 ): TransitChart {
-  let options = { ...initialOptions };
+  let options: TransitChartOptions = {
+    ...initialOptions,
+    bodyVisibility: resolveTransitBodyVisibility(initialOptions.bodyVisibility),
+  };
   let model = createTransitModel(options.data, options);
   let presentation = display(model, options);
   const wheel = createWheel(
@@ -269,6 +303,7 @@ export function createTransitChart(
         ...options,
         ...patch,
         layers: { ...options.layers, ...patch.layers },
+        bodyVisibility: resolveTransitBodyVisibility(patch.bodyVisibility, options.bodyVisibility),
         orbs: Object.fromEntries(
           (['natal', 'cross', 'transit'] as const).map((family) => [
             family,

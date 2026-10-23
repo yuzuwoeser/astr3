@@ -15,5 +15,6 @@ export type {
   TransitChartOptions,
   TransitChartEvents,
   TransitLayers,
+  TransitBodyVisibility,
 } from './transit-renderer.js';
 export * from './model/index.js';

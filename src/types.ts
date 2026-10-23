@@ -35,6 +35,8 @@ export type ThemeOptions = Partial<Omit<ChartTheme, 'aspects'>> & {
 };
 export type ChartWeight = 'light' | 'regular' | 'bold';
 export type ChartLayout = 'default' | 'alternative';
+/** Omitted body IDs are visible; runtime patches merge by ID. */
+export type BodyVisibility = Readonly<Record<string, boolean>>;
 export interface ChartOptions extends ModelOptions {
   data: ChartInput;
   /** Ring arrangement. Defaults to the original layout. */
@@ -44,6 +46,8 @@ export interface ChartOptions extends ModelOptions {
   theme?: ThemeOptions;
   glyphs?: Readonly<Record<string, string>>;
   layers?: Partial<ChartLayers>;
+  /** Hide individual bodies and their connectors without removing model data. */
+  bodyVisibility?: BodyVisibility;
   lineStyles?: Partial<Record<AspectType, LineStyle>>;
   dimUnrelated?: boolean;
   selectionEffects?: { color?: string; dimOpacity?: number; lineWidth?: number };
