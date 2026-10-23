@@ -30,6 +30,7 @@ import { createChart } from 'astr3';
 
 const chart = createChart(document.querySelector<HTMLElement>('#wheel')!, {
   chartWeight: 'regular', // Omit to preserve the library's original Light styling.
+  layout: 'alternative', // Omit for the original 'default' arrangement.
   enabledAspects: { semisextile: true, quincunx: true },
   data: {
     bodies: [
@@ -83,6 +84,7 @@ chart.update(data);
 
 ## Included in v0.1
 
+- Two layouts: `default` keeps the original wheel; `alternative` puts houses outermost, zodiac second, and natal/transit symbols inside the zodiac, with a separate inner aspect circle. Choose **Chart layout** in the demo or call `chart.setOptions({ layout: 'alternative' })`.
 - Western natal wheels, arbitrary supplied points/cusps, independent AC/MC axes, degree labels, retrograde indicators, and unknown-house support.
 - Selectable Ascendant, Midheaven, North Node, and South Node with the same dots, aspects, house occupancy, and detail events as planets. The browser provider includes true lunar nodes in natal/transit calculations and AC/MC in natal calculations when defined.
 - Collision-separated glyphs and leader lines with fixed longitude markers. Planet labels stay outside the original inner house circle and clear of the outer degree scale; collective one/two-row placement stays within 30° of true positions. Crowded views hide captions first, then shrink symbols or show selectable cluster badges. Wheel text uses zoom-aware size presets.

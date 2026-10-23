@@ -78,7 +78,7 @@ try {
   writeFileSync(
     join(directory, 'consumer.ts'),
     `
-import { createChart, createTransitChart, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
+import { createChart, createTransitChart, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
 import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
@@ -87,13 +87,14 @@ const enabledAspects: AspectEnabledConfig = { quincunx: true, square: false };
 const model = createModel(input, { enabledAspects });
 const chartFactory: typeof createChart = createChart;
 const chartWeight: ChartWeight = 'regular';
-const options: Parameters<typeof createChart>[1] = { data: input, chartWeight, enabledAspects, lineStyles: { quincunx: { dash: [4, 3] } }, theme: { aspects: { quincunx: '#37836e' } } };
+const layout: ChartLayout = 'alternative';
+const options: Parameters<typeof createChart>[1] = { data: input, chartWeight, layout, enabledAspects, lineStyles: { quincunx: { dash: [4, 3] } }, theme: { aspects: { quincunx: '#37836e' } } };
 void [selection, model, chartFactory, createAstronomyProvider, options, calculateAspects(input.bodies, {}, enabledAspects), ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS];
 const pair: TransitChartInput = { natal: input, transit: input };
 const transitSelection: TransitSelection = { kind: 'body', chart: 'transit', id: 'sun' };
 const enabledFamilies: TransitAspectEnabledConfig = { natal: { semisextile: true }, cross: { quincunx: true } };
 const transitModel = createTransitModel(pair, { orbs: { cross: { trine: 3 } }, enabledAspects: enabledFamilies });
-const transitOptions: Parameters<typeof createTransitChart>[1] = { data: pair, enabledAspects: enabledFamilies, layers: { crossAspects: true }, glyphs: { transit: { sun: 'S' } } };
+const transitOptions: Parameters<typeof createTransitChart>[1] = { data: pair, layout, enabledAspects: enabledFamilies, layers: { crossAspects: true }, glyphs: { transit: { sun: 'S' } } };
 void [transitSelection, transitModel, transitOptions, createAstronomyProvider().calculateTransits];
 `,
   );

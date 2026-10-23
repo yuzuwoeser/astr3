@@ -35,7 +35,15 @@ import type {
   ChartWeight,
   LineStyle,
 } from './types.js';
-import { WHEEL, aspectPath, boxesOverlap, convexHull, layoutBodies, polar } from './layout.js';
+import {
+  aspectPath,
+  boxesOverlap,
+  convexHull,
+  layoutBodies,
+  pointInPolygon,
+  polar,
+} from './layout.js';
+import { housePolygon, resolveWheelGeometry } from './wheel-geometry.js';
 import type { BodyLayout, Box, Point } from './layout.js';
 import { chartText, createTextMeasurer } from './chart-text.js';
 import type { TextSize } from './chart-text.js';
@@ -50,15 +58,7 @@ export interface WheelPresentation {
   aspects: Record<AspectFamily, boolean>;
   transitColor?: string;
 }
-export const TRANSIT_WHEEL = {
-  extent: 464,
-  inner: 296,
-  nearOuter: 380,
-  outer: 400,
-  marker: WHEEL.outer,
-  preferred: 318,
-  axis: 440,
-} as const;
+export { TRANSIT_WHEEL } from './wheel-geometry.js';
 
 export const DARK_THEME: ChartTheme = {
   background: '#111c20',
@@ -135,6 +135,7 @@ const STYLE = `
 .astr3-body{min-width:34px;padding:2px 3px;border-radius:7px;background:var(--astr3-bg);border:1px solid transparent;font-size:23px}
 .astr3-body small{display:block;font-size:10px;letter-spacing:.01em;font-variant-numeric:tabular-nums;margin-top:2px}.astr3-body[data-active=true]{border-color:var(--astr3-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--astr3-accent) 18%,transparent)}
 .astr3-body[data-compact=true]{min-width:0}.astr3-body[data-compact=true] small{display:none}
+.astr3[data-layout=alternative] .astr3-body[data-compact=true]{padding:0 1px}
 .astr3-clusters{position:absolute;inset:0;pointer-events:none}.astr3-clusters .astr3-cluster{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;min-width:24px;min-height:24px;padding:2px 5px;line-height:1.15;font-size:12px;font-weight:var(--astr3-label-weight);border-radius:12px}.astr3-cluster[data-active=true]{border-color:var(--astr3-accent);color:var(--astr3-accent)}
 .astr3-label[data-dim=true]{opacity:var(--astr3-dim)}.astr3-controls{position:absolute;z-index:3;right:14px;bottom:14px;display:flex;gap:5px}
 .astr3 button{font:inherit;color:inherit;cursor:pointer;background:var(--astr3-bg);border:1px solid var(--astr3-ring);border-radius:7px;padding:7px 10px}.astr3 button:hover{border-color:var(--astr3-accent)}
@@ -163,6 +164,7 @@ export function createWheel(
   if (!win) throw new Error('createChart requires a browser document.');
   let options = { ...initialOptions };
   let visualWeight = weightProfile(options.chartWeight);
+  let geometry = resolveWheelGeometry(options.layout, !!presentation, options.layers?.degrees);
   let model = createModel(options.data, options);
   let selected: Selection | null = null,
     hovered: Selection | null = null;
@@ -188,6 +190,7 @@ export function createWheel(
   const teardown: (() => void)[] = [];
   const root = doc.createElement('div');
   root.className = 'astr3';
+  root.dataset.layout = geometry.layout;
   const style = doc.createElement('style');
   style.textContent = STYLE;
   root.append(style);
@@ -487,7 +490,7 @@ export function createWheel(
     const rect = stage.getBoundingClientRect();
     width = Math.max(1, rect.width);
     height = Math.max(1, rect.height);
-    const extent = presentation ? TRANSIT_WHEEL.extent : WHEEL.extent;
+    const extent = geometry.extent;
     const extentX = extent * Math.max(1, width / height),
       extentY = extent * Math.max(1, height / width);
     camera.left = -extentX;
@@ -656,7 +659,7 @@ export function createWheel(
     const font = win!.getComputedStyle(root);
     if (
       textMetrics.style(
-        `${font.fontFamily}/${font.fontStyle}/${visualWeight.fontWeight}/${visualWeight.symbolStroke}`,
+        `${font.fontFamily}/${font.fontStyle}/${visualWeight.fontWeight}/${visualWeight.symbolStroke}/${geometry.layout}`,
       )
     )
       layoutCache.clear();
@@ -673,7 +676,8 @@ export function createWheel(
     const dotExtentPx = (id: string) =>
       dotRadiusPx + (isTransit(id) ? (1.1 * visualWeight.strokeMultiplier) / 2 : 0);
     const transitColor = p?.transitColor ?? colors.group;
-    const axisRadius = p ? TRANSIT_WHEEL.axis : visible.degrees ? 318 : 305;
+    const alternative = geometry.layout === 'alternative';
+    const axisRadius = geometry.axis;
     const shownBodies = model.bodies.filter(
       (body) => !p || p.bodies[isTransit(body.id) ? 'transit' : 'natal'],
     );
@@ -682,7 +686,7 @@ export function createWheel(
     const activeBodies = new Set(details?.bodies.map((body) => body.id));
     const activeAspects = new Set(details?.aspects.map((aspect) => aspect.id));
     const bodyAnchors = new Map(
-      model.bodies.map((body) => [body.id, polar(body.longitude, WHEEL.house, asc)]),
+      model.bodies.map((body) => [body.id, polar(body.longitude, geometry.anchor, asc)]),
     );
     const dim = options.selectionEffects?.dimOpacity ?? 0.22;
     const opacity = (active: boolean) =>
@@ -691,13 +695,14 @@ export function createWheel(
     const activeWidth = options.selectionEffects?.lineWidth ?? 2.5;
     const reservedLabels: { element: HTMLElement; point: Point }[] = [];
     const activeClusters = new Set<string>();
-    const houseNumberSpace: Box[] = p
-      ? [...bodyAnchors.values()].map((point) => ({
-          ...point,
-          width: 9 / pixelsPerUnit,
-          height: 9 / pixelsPerUnit,
-        }))
-      : [];
+    const houseNumberSpace: Box[] =
+      p && !alternative
+        ? [...bodyAnchors.values()].map((point) => ({
+            ...point,
+            width: 9 / pixelsPerUnit,
+            height: 9 / pixelsPerUnit,
+          }))
+        : [];
     notice.textContent = chartError
       ? chartError.message
       : model.timeUncertain
@@ -709,16 +714,19 @@ export function createWheel(
             : '';
 
     if (visible.zodiac) {
-      circle(WHEEL.outer, colors.ring);
-      circle(WHEEL.zodiacInner, colors.ring);
+      circle(geometry.zodiac.outer, colors.ring);
+      circle(geometry.zodiac.inner, colors.ring);
       for (let sign = 0; sign < 12; sign++) {
         const color = colors.elements[sign % 4]!;
         stroke(
-          [polar(sign * 30, WHEEL.zodiacInner, asc), polar(sign * 30, WHEEL.outer, asc)],
+          [
+            polar(sign * 30, geometry.zodiac.inner, asc),
+            polar(sign * 30, geometry.zodiac.outer, asc),
+          ],
           colors.ring,
         );
         label(
-          polar(sign * 30 + 15, 269, asc),
+          polar(sign * 30 + 15, geometry.zodiac.label, asc),
           SIGN_GLYPHS[sign]!,
           text.glyph,
           color,
@@ -726,34 +734,33 @@ export function createWheel(
         ).title = SIGNS[sign]!;
       }
     }
+    if (alternative) {
+      if (visible.bodies || visible.aspects || visible.groups)
+        circle(geometry.anchor, colors.ring, 0.6);
+      if (visible.bodies || visible.degrees)
+        for (const scale of geometry.scales)
+          if (!visible.zodiac || scale.edge !== geometry.zodiac.inner)
+            circle(scale.edge, colors.ring, 0.7);
+    }
     if (visible.degrees)
       for (let degree = 0; degree < 360; degree++) {
         const major = degree % 10 === 0,
           minor = degree % 5 === 0;
-        stroke(
-          [polar(degree, 250, asc), polar(degree, major ? 242 : minor ? 245 : 248, asc)],
-          colors.muted,
-          0.65,
-          major ? 0.9 : 0.35,
-        );
-        stroke(
-          [
-            polar(degree, WHEEL.outer + 2, asc),
-            polar(degree, WHEEL.outer + (major ? 10 : minor ? 7 : 4), asc),
-          ],
-          colors.muted,
-          0.65,
-          major ? 0.9 : 0.35,
-        );
-        if (major && text.scale) {
-          for (const [side, radius] of [
-            ['inside', 232],
-            ['outside', WHEEL.outer + 30],
-          ] as const) {
-            const point = polar(degree, radius, asc);
+        for (const scale of geometry.scales) {
+          stroke(
+            [
+              polar(degree, scale.start, asc),
+              polar(degree, scale.start + scale.direction * (major ? 8 : minor ? 5 : 2), asc),
+            ],
+            colors.muted,
+            0.65,
+            major ? 0.9 : 0.35,
+          );
+          if (major && text.scale) {
+            const point = polar(degree, scale.label, asc);
             // Leave room for axis captions where they meet the outside scale.
             if (
-              side === 'outside' &&
+              scale.id === 'outside' &&
               visible.axes &&
               [model.angles.ascendant, model.angles.midheaven].some(
                 (value) =>
@@ -772,39 +779,41 @@ export function createWheel(
               colors.muted,
               'astr3-degree',
             );
-            element.dataset.scale = side;
+            element.dataset.scale = scale.id;
             reservedLabels.push({ element, point });
           }
         }
       }
     if (visible.houses && model.houses.length) {
-      circle(WHEEL.house, colors.ring, 0.6);
+      circle(geometry.house.ring, colors.ring, 0.6);
+      if (alternative && !visible.zodiac) circle(geometry.house.inner, colors.ring);
       for (let i = 0; i < model.houses.length; i++) {
         const house = model.houses[i]!,
           next = model.houses[(i + 1) % 12]!;
         const span = normalize(next.longitude - house.longitude);
         const selection: Selection = { kind: 'house', id: house.id };
-        const steps = Math.max(3, Math.ceil(span / 3));
-        const polygon = [
-          { x: 0, y: 0 },
-          ...Array.from({ length: steps + 1 }, (_, j) =>
-            polar(house.longitude + (span * j) / steps, WHEEL.houseOuter, asc),
-          ),
-        ];
+        const polygon = housePolygon(geometry, house.longitude, span, asc);
         const active = primary?.kind === 'house' && primary.id === house.id;
         if (active) fill(polygon, accent, 0.08);
         stroke(
-          [polar(house.longitude, 0, asc), polar(house.longitude, WHEEL.houseOuter, asc)],
+          [
+            polar(house.longitude, geometry.house.inner, asc),
+            polar(house.longitude, geometry.house.outer, asc),
+          ],
           active ? accent : colors.ring,
           active ? 1.6 : 0.75,
           0.65,
         );
-        const houseRadius = p
-          ? Math.max(
-              20,
-              Math.min(WHEEL.houseLabel, WHEEL.house - 10 / Math.max(pixelsPerUnit, 0.05)),
-            )
-          : WHEEL.houseLabel;
+        const houseRadius =
+          p && !alternative
+            ? Math.max(
+                20,
+                Math.min(
+                  geometry.house.label,
+                  geometry.anchor - 10 / Math.max(pixelsPerUnit, 0.05),
+                ),
+              )
+            : geometry.house.label;
         let labelPoint = polar(house.longitude + span / 2, houseRadius, asc);
         const houseLabel = label(
           labelPoint,
@@ -814,7 +823,31 @@ export function createWheel(
           '',
           selection,
         );
-        if (p) {
+        let showNumber = true;
+        if (alternative) {
+          const rect = labelSizes.get(houseLabel)!;
+          const box = {
+            ...labelPoint,
+            width: rect.width / pixelsPerUnit,
+            height: rect.height / pixelsPerUnit,
+          };
+          // Tiny or narrow sectors keep their full clickable band/list entry.
+          // Never move their number into the zodiac or another house.
+          showNumber =
+            [-1, 1].every((x) =>
+              [-1, 1].every((y) =>
+                pointInPolygon(
+                  {
+                    x: box.x + x * (box.width / 2 + 1 / pixelsPerUnit),
+                    y: box.y + y * (box.height / 2 + 1 / pixelsPerUnit),
+                  },
+                  polygon,
+                ),
+              ),
+            ) && !houseNumberSpace.some((other) => boxesOverlap(box, other, 2 / pixelsPerUnit));
+          if (showNumber) houseNumberSpace.push(box);
+          else houseLabel.remove();
+        } else if (p) {
           const rect = labelSizes.get(houseLabel)!;
           const size = { width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
           // Keep the number within its own sector; stagger it inward when the
@@ -836,7 +869,7 @@ export function createWheel(
           houseLabel.style.left = `${position.x}px`;
           houseLabel.style.top = `${position.y}px`;
         }
-        reservedLabels.push({ element: houseLabel, point: labelPoint });
+        if (showNumber) reservedLabels.push({ element: houseLabel, point: labelPoint });
         targets.push({ selection, priority: 3, shape: 'polygon', points: polygon.map(project) });
       }
     }
@@ -882,6 +915,20 @@ export function createWheel(
           point: opposite,
         });
       }
+    if (alternative && visible.bodies && primary && primary.kind !== 'house') {
+      const guideIds = primary.kind === 'body' ? new Set([primary.id]) : activeBodies;
+      for (const body of shownBodies) {
+        if (!guideIds.has(body.id)) continue;
+        const band = isTransit(body.id) ? geometry.transit : geometry.natal;
+        stroke(
+          [polar(body.longitude, band.marker, asc), bodyAnchors.get(body.id)!],
+          colors.muted,
+          0.7,
+          0.45,
+          [3, 4],
+        );
+      }
+    }
     if (visible.groups)
       for (const group of model.groups) {
         const ids = new Set(group.bodyIds);
@@ -916,7 +963,7 @@ export function createWheel(
           {
             type: aspect.type,
             markerRadii: [dotExtentPx(aspect.bodyIds[0]), dotExtentPx(aspect.bodyIds[1])],
-            ringRadius: WHEEL.house,
+            ringRadius: geometry.anchor,
           },
         );
         if (!path.points.length) continue;
@@ -964,10 +1011,11 @@ export function createWheel(
         height: 24,
       });
       const placeBand = (bodies: readonly Body[], transit = false) => {
+        const band = transit ? geometry.transit : geometry.natal;
         const fit = (
           size: number,
           compact: boolean,
-          outer: number = TRANSIT_WHEEL.outer,
+          outer: number = band.outer,
           clusters = false,
         ) => {
           const sizes = bodies.map((body) => measureBody(body, size, compact));
@@ -977,7 +1025,8 @@ export function createWheel(
             asc,
             pixelsPerUnit,
             reservedBoxes,
-            transit,
+            geometry.layout,
+            band,
             outer,
             compact,
             clusters,
@@ -990,7 +1039,7 @@ export function createWheel(
             pixelsPerUnit,
             (body) => sizes[bodies.indexOf(body)]!,
             reservedBoxes,
-            transit ? { ...TRANSIT_WHEEL, outer } : undefined,
+            { ...band, outer },
             compact ? 'compact' : 'full',
             clusters ? measureCluster : undefined,
           );
@@ -1001,13 +1050,7 @@ export function createWheel(
         // Prefer a closer transit band, retaining wider bounds for crowding.
         // Hide captions before moving outward; shrink glyphs only after
         // trying every bound at the current size.
-        const bounds = transit
-          ? [
-              TRANSIT_WHEEL.nearOuter,
-              (TRANSIT_WHEEL.nearOuter + TRANSIT_WHEEL.outer) / 2,
-              TRANSIT_WHEEL.outer,
-            ]
-          : [TRANSIT_WHEEL.outer];
+        const bounds = band.bounds;
         const sizes = [text.glyph, ...[24, 18, 14].filter((size) => size < text.glyph)];
         for (const size of sizes) {
           for (const outer of bounds) {
@@ -1020,7 +1063,7 @@ export function createWheel(
           }
         }
         const size = sizes.at(-1)!;
-        return { layout: fit(size, true, TRANSIT_WHEEL.outer, true), size };
+        return { layout: fit(size, true, band.outer, true), size };
       };
       const natal = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
       const transit = placeBand(
@@ -1134,7 +1177,7 @@ export function createWheel(
       }
       for (const body of shownBodies) {
         const placement = placements.get(body.id);
-        const markerRadius = isTransit(body.id) ? TRANSIT_WHEEL.marker : WHEEL.marker;
+        const markerRadius = (isTransit(body.id) ? geometry.transit : geometry.natal).marker;
         const marker = placement?.marker ?? polar(body.longitude, markerRadius, asc);
         const active = activeBodies.has(body.id);
         const color = active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
@@ -1157,7 +1200,11 @@ export function createWheel(
         }
         stroke(
           [
-            polar(body.longitude, isTransit(body.id) ? WHEEL.outer : markerRadius - 3, asc),
+            polar(
+              body.longitude,
+              !alternative && isTransit(body.id) ? markerRadius : markerRadius - 3,
+              asc,
+            ),
             polar(body.longitude, markerRadius + 4, asc),
           ],
           active ? accent : colors.foreground,
@@ -1469,9 +1516,16 @@ export function createWheel(
         selectionEffects: { ...options.selectionEffects, ...patch.selectionEffects },
       };
       const nextWeight = weightProfile(nextOptions.chartWeight);
+      const nextGeometry = resolveWheelGeometry(
+        nextOptions.layout,
+        !!presentation,
+        nextOptions.layers?.degrees,
+      );
       const nextModel = createModel(options.data, nextOptions);
       options = nextOptions;
       visualWeight = nextWeight;
+      geometry = nextGeometry;
+      root.dataset.layout = geometry.layout;
       model = nextModel;
       clearHover();
       closeChooser();

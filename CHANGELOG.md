@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add `layout: 'default' | 'alternative'` for natal and transit wheels. The
+  alternative places houses outermost, zodiac second and celestial symbols
+  inside, with separate inner aspect anchors and a shared demo selector.
+
 - Validate the packed consumer using local peer archives and an empty npm cache,
   so fresh CI installations pass without cached registry metadata.
 

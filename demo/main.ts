@@ -14,6 +14,7 @@ import type {
   Chart,
   ChartInput,
   ChartLayers,
+  ChartLayout,
   ChartWeight,
   HouseSystem,
   Selection,
@@ -361,6 +362,11 @@ $('theme-toggle').addEventListener('click', () => {
   $('theme-toggle').replaceChildren(document.createTextNode(light ? '☾ Dark' : '☼ Light'));
   document.querySelector('.wheel-panel')?.classList.toggle('light', light);
 });
+$<HTMLSelectElement>('chart-layout').addEventListener('change', (event) => {
+  const layout = (event.currentTarget as HTMLSelectElement).value as ChartLayout;
+  chart.setOptions({ layout });
+  transitChart?.setOptions({ layout });
+});
 $<HTMLSelectElement>('chart-weight').addEventListener('change', (event) => {
   chart.setOptions({
     chartWeight: (event.currentTarget as HTMLSelectElement).value as ChartWeight,
@@ -433,6 +439,7 @@ $('chart-view').addEventListener('change', () => {
     );
     transitChart = createTransitChart($('transit-chart'), {
       data: { natal: natalData, transit: transitData },
+      layout: $<HTMLSelectElement>('chart-layout').value as ChartLayout,
       chartWeight: $<HTMLSelectElement>('chart-weight').value as ChartWeight,
       theme: light ? LIGHT_THEME : DARK_THEME,
       orbs: orbLimits,

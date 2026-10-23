@@ -83,6 +83,7 @@ chart.setOptions({ enabledAspects: { square: false }, orbs: { quincunx: 2 } });
 
 Options:
 
+- `layout`: `'default'` (library and demo default) or `'alternative'`, typed as `ChartLayout`. Both constructors and `setOptions` accept it. Invalid values throw `RangeError` before changing live state. See [Layout presets](#layout-presets).
 - `chartWeight`: `light` (library default), `regular`, or `bold`. Changes chart strokes, label weight, and symbol strokes. Crowded labels may choose a smaller font to fit the measured weight. The demo starts at Regular and provides a Chart weight selector. Invalid values throw `RangeError`; invalid option updates leave the previous settings intact.
 - `theme`: patch background, foreground, muted, ring, accent, group, the four element colors, and per-type aspect colors. Exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
 - `glyphs`: body-ID-to-text overrides, falling back to the body's glyph, built-in symbol, or two name characters. Strings are text, never injected HTML. Use short glyphs.
@@ -125,21 +126,39 @@ chart.setOptions({ chartWeight: 'regular', glyphs: { sun: '☉' } });
 
 Selection events include programmatic changes and selected-data refreshes. Render panels idempotently; avoid unconditionally calling `select` from a selection listener.
 
+## Layout presets
+
+`layout: 'default'` retains the original natal and transit arrangement. `layout: 'alternative'` puts the actual house band outermost and zodiac signs immediately inside it. The natal ruler and symbols follow inside the zodiac; in a bi-wheel, the transit ruler/symbols come first, then the natal ruler/symbols. Both sources project onto one separate central aspect circle. The outer source ruler shares the zodiac's inner boundary, and both rulers use the same zodiac degrees rather than house-relative degrees.
+
+Alternative house dividers, highlights and picking stay within the outer annulus. Unknown or hidden houses leave that space reserved without invented annotations. House numbers that cannot fit their actual sector are omitted; the band and accessible house entries remain selectable. The two source symbol bands have equal widths; a natal-only chart uses an expanded single band. All symbols keep the same bounded packing, caption and overflow behavior. Compact alternative labels use slightly less padding.
+
+Alternative ruler dots stay on their source boundary and short leaders connect displaced symbols. A faint dashed radial guide connects an active body to its inner anchor; active aspects/groups guide their members. Guides add no picking targets. Natal/transit colors and inner circle/diamond markers retain their existing meaning. The inner aspect circle remains independent of house visibility.
+
+```ts
+import type { ChartLayout } from 'astr3';
+
+const layout: ChartLayout = 'alternative';
+chart.setOptions({ layout });
+chart.setOptions({ layout: 'default' });
+```
+
+Changing layout preserves data, stable selection IDs, zoom/pan, themes and aspect settings. Normal option-update events still apply; no ephemeris calculation is requested. Each preset fits its own outer bounds, including axis captions. Switching back restores default placement for the same data/view. The demo's **Default / Alternative** selector is shared across chart modes and retained through calculation/time changes. Layout is not part of `ChartInput` or the headless model; arbitrary ring reordering and radius controls are not exposed.
+
 ## Input and accessibility
 
 Click/tap to select; click empty space or press Escape to clear. Drag to pan; scroll/pinch or use buttons to zoom. Ctrl/Cmd wheel is left to the browser. Default orientation puts the ascendant at left, or Aries at left when unknown. Zodiac longitude advances counterclockwise.
 
-The house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. The zodiac has degree ticks on both inside and outside edges, with numbers when space permits. There is no duplicated house-degree scale.
+In the default layout, the house circle uses the original inner placement, with house numbers just inside it. House cusps share the zodiac degree scale; select a house to inspect its exact cusp position. The zodiac has degree ticks on both inside and outside edges, with numbers when space permits. There is no duplicated house-degree scale.
 
-Every planet or supplied point has a filled anchor dot on this circle at its exact longitude, including bodies without aspects. Aspect lines and supplied group outlines meet those anchors. Zodiac position dots sit directly on the zodiac's inner boundary for natal bodies and its outer boundary for transits. Moving a label never moves either marker.
+Every planet or supplied point has a filled inner anchor dot at its exact longitude, including bodies without aspects. Aspect lines and supplied group outlines meet those anchors. In the default layout, zodiac position dots sit directly on the zodiac's inner boundary for natal bodies and its outer boundary for transits. Moving a label never moves either marker.
 
-Conjunctions use deterministic inward bows whose depth decreases as the dots separate. In CSS pixels, let `d` be the distance between dot centers, `rA` and `rB` their normal visual radii, and `R` the house-circle radius. No connector is drawn when `d ≤ d0 = rA + rB + 2`. Beyond that threshold, midpoint depth is `min(20, R / 4) × d0 / d`. A symmetric quadratic Bézier joins the exact anchors, with its control point twice that depth inward from the chord midpoint; 17 points sample the curve. An antipodal pair falls back to a straight connector.
+Conjunctions use deterministic inward bows whose depth decreases as the dots separate. In CSS pixels, let `d` be the distance between dot centers, `rA` and `rB` their normal visual radii, and `R` the aspect-anchor circle radius. No connector is drawn when `d ≤ d0 = rA + rB + 2`. Beyond that threshold, midpoint depth is `min(20, R / 4) × d0 / d`. A symmetric quadratic Bézier joins the exact anchors, with its control point twice that depth inward from the chord midpoint; 17 points sample the curve. An antipodal pair falls back to a straight connector.
 
 Curves fade in with smoothstep opacity over the first 4 CSS pixels beyond the overlap threshold and become pickable at 50% geometric opacity. Hidden curves have no hit targets. Their conjunctions remain available in the model, accessible list, and selection API; selecting one highlights the endpoints without restoring a curve. Normal marker radii include transit outlines and chart weight, but ignore selection enlargement, so hovering or selecting does not change the geometry. Zoom/resizing follow visual spacing; panning, endpoint order, and orb edits for an unchanged pair do not reshape a bow. Other aspect types use straight connectors. There are no new configuration options.
 
 Anchor dots select the same body and expose the same hover/selection details as its symbol. They share relationship highlighting, dimming, theme colors, and chart weight, with a 6 CSS pixel picking radius for mouse and 12 for touch. Overlapping dots open the object chooser. The `bodies` layer controls the dots alongside symbols and outer markers; dots remain at the same radius when houses are hidden or unknown and when aspects are hidden.
 
-The complete planet label stays between the house circle and outer degree ticks, with 4 CSS pixels of clearance. A deterministic circular constraint solver fits labels together in one or two radial rows without adding circles. It preserves zodiac order within each row, balances angular displacement, and never moves a label more than 30° from its true longitude. Indicator lines terminate at label edges; exact longitude markers and house-circle anchors never move. These rules also apply when houses are unknown or hidden.
+In the default layout, the complete planet label stays between the house circle and outer degree ticks; alternative labels stay within their own source band. Both keep 4 CSS pixels of clearance. A deterministic circular constraint solver fits labels together in one or two radial rows without adding circles. It preserves zodiac order within each row, balances angular displacement, and never moves a label more than 30° from its true longitude. Indicator lines terminate at label edges; exact longitude markers and inner aspect anchors never move. These rules also apply when houses are unknown or hidden.
 
 Wheel text uses four size tiers based on effective scale (CSS pixels per wheel unit, including viewport size and camera zoom):
 

@@ -34,8 +34,11 @@ export type ThemeOptions = Partial<Omit<ChartTheme, 'aspects'>> & {
   aspects?: Partial<ChartTheme['aspects']>;
 };
 export type ChartWeight = 'light' | 'regular' | 'bold';
+export type ChartLayout = 'default' | 'alternative';
 export interface ChartOptions extends ModelOptions {
   data: ChartInput;
+  /** Ring arrangement. Defaults to the original layout. */
+  layout?: ChartLayout;
   /** Visual stroke/text weight. Defaults to light for existing integrations. */
   chartWeight?: ChartWeight;
   theme?: ThemeOptions;

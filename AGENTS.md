@@ -39,6 +39,7 @@ browser validation. A release needs the full sequence in
 | `src/ephemeris/`                                             | Optional Astronomy Engine adapter, node and house calculations                  |
 | `src/renderer.ts`                                            | Three.js wheel, HTML labels/accessibility, events, DOM/GPU lifecycle            |
 | `src/transit-renderer.ts`                                    | Source-qualified transit API over the shared renderer                           |
+| `src/wheel-geometry.ts`                                      | Default/alternative ring geometry, source bands and annular house sectors       |
 | `src/layout.ts`, `src/label-packing.ts`, `src/chart-text.ts` | Exact projection, bounded label placement, zoom-aware typography                |
 | `src/picking.ts`                                             | Screen-space targets and overlapping selection candidates                       |
 | `demo/`                                                      | Example application, forms, tooltips, explanations and time controls            |
