@@ -16,11 +16,11 @@ The model owns positions, actual cusps, signs/houses/aspects, IDs, and relations
 ## Boundaries
 
 - `astr3/model`: pure data/types/math, usable in Node/workers without Three.js.
-- `astr3`: renderer and model exports. No document access at import; instantiate on the client.
+- `astr3`: renderer, model exports, and an optional transit animation controller. No document access at import; instantiate on the client.
 - `astr3/ephemeris`: optional Astronomy Engine peer. No DOM/Three.js, and no network needed after assets load.
 - Demo: birth form, request orchestration, interpretation text, details, tooltip, and examples are application code.
 
-The orthographic renderer schedules frames on demand. Stroke geometry keeps widths/dashes in CSS pixels instead of relying on platform-dependent WebGL line widths. Projected HTML labels avoid CSS2DRenderer's browser-zoom assumptions. Labels and invisible targets use the same layout.
+The orthographic renderer schedules frames on demand. Stroke geometry keeps widths/dashes in CSS pixels instead of relying on platform-dependent WebGL line widths. Wheel triangles batch into one geometry with per-vertex RGBA and a reusable unlit material, retaining paint order without repeated shader compilation. Projected HTML labels avoid CSS2DRenderer's browser-zoom assumptions. Labels and invisible targets use the same layout. Resize observation requests a frame; stage-size writes occur during drawing, outside observer delivery.
 
 Chart-weight presets scale the shared stroke geometry and label typography together. Body-label measurements include glyph stroke and font weight, and the placement solver reserves the measured house-number bounds. Changing weight reruns this layout without changing astronomical positions or selection IDs. A hidden measurement probe caches typography/content dimensions; font loading invalidates those caches. Four text tiers choose all wheel font sizes before placement, and caption preflight removes secondary text before shrinking glyphs. Layout results are reused during appearance-only redraws and panning.
 
@@ -45,3 +45,5 @@ For a remote/worker provider: cancel the prior request, increment a revision, re
 Transit bi-wheels use a separate composite model with source-qualified identities and independent natal, cross-chart, and transit aspect families. The transit adapter projects that model into the shared renderer using internal scoped IDs; the public API retains callers' original IDs. Both modes share projection, DOM/GPU lifecycle, accessibility, picking, and interaction logic. In the default layout, transit labels pin outward from the zodiac without a separate rim, and all sources project to the same house-circle anchors. In the alternative, both symbol bands sit inside the zodiac and share a separate inner aspect circle. A presentation describes source bands and family visibility. The bounded label solver accepts a band geometry while retaining the original natal defaults.
 
 `calculateTransits` reuses the provider's planetary-position calculation without house calculations or location inputs. The demo owns transit UTC stepping and cancellation, and orb changes only rebuild the model. [Transit API](transits.md) documents identities, house semantics, and lifecycle. Synastry and cross-chart pattern groups remain future work.
+
+`createTransitAnimation` accepts a transit chart and an injected calculator. It preflights a bounded interval, refines uniform time spacing for trajectory detail, then applies directly calculated snapshots from a four-sample lookahead buffer. It owns animation frames, request cancellation, document visibility and reduced-motion subscriptions; chart disposal also disposes the controller. Renderer updates themselves remain immediate and never call the provider. The demo owns the animation toggle, calendar intervals, pause control, and time captions.

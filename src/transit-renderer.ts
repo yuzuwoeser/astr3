@@ -215,14 +215,18 @@ export function createTransitChart(
   function assertLive() {
     if (disposed) throw new Error('This chart has been disposed.');
   }
-  function commit(nextOptions: TransitChartOptions, nextModel: TransitChartModel) {
+  function commit(
+    nextOptions: TransitChartOptions,
+    nextModel: TransitChartModel,
+    renderingChanged = true,
+  ) {
     assertLive();
     const data = flatten(nextModel);
     createModel(data, { enabledAspects: ALL_ASPECTS }); // Validate before changing live state.
     const hadSelection = wheel.selection !== null;
     applying = true;
     try {
-      wheel.setOptions(renderingOptions(nextOptions));
+      if (renderingChanged) wheel.setOptions(renderingOptions(nextOptions));
       options = nextOptions;
       model = nextModel;
       presentation = display(model, options);
@@ -251,13 +255,13 @@ export function createTransitChart(
     update(data) {
       assertLive();
       const next = { ...options, data };
-      commit(next, createTransitModel(data, next));
+      commit(next, createTransitModel(data, next), false);
     },
     updateTransit(transit) {
       assertLive();
       const data = { ...options.data, transit };
       const next = createTransitModel(data, options);
-      commit({ ...options, data }, Object.freeze({ ...next, natal: model.natal }));
+      commit({ ...options, data }, Object.freeze({ ...next, natal: model.natal }), false);
     },
     setOptions(patch) {
       assertLive();
@@ -319,8 +323,20 @@ export function createTransitChart(
     dispose() {
       if (disposed) return;
       disposed = true;
-      wheel.dispose();
-      listeners.clear();
+      const failures: unknown[] = [];
+      try {
+        for (const listener of listeners.get('dispose') ?? []) {
+          try {
+            listener(undefined as never);
+          } catch (cause) {
+            failures.push(cause);
+          }
+        }
+      } finally {
+        wheel.dispose();
+        listeners.clear();
+      }
+      if (failures.length) throw failures[0];
     },
   };
 }

@@ -121,6 +121,7 @@ chart.setOptions({ chartWeight: 'regular', glyphs: { sun: '☉' } });
 | `update`    | `{ model }` after data/options change.                                                                                         |
 | `view`      | `{ zoom, pan: { x, y } }`; pan is in world units.                                                                              |
 | `error`     | `{ code, message, cause? }`; code is `WEBGL_UNAVAILABLE` or `CONTEXT_LOST`. Check `chart.error` for current state.             |
+| `dispose`   | `undefined`, emitted once when disposal starts, so companion controllers can release their resources.                          |
 
 `SelectionDetails` includes the selected object/reference and related bodies, houses, aspects, and groups. Bodies include sign, degree within sign, and optional house. Aspects include exact angle, actual separation, and absolute orb; applying/separating is not calculated. Groups include supplied bodies plus aspect endpoints. Houses return occupants; bodies return immediate aspects and endpoints without recursive graph expansion.
 

@@ -1,6 +1,7 @@
 import {
   createChart,
   createTransitChart,
+  createTransitAnimation,
   DARK_THEME,
   LIGHT_THEME,
   DEFAULT_ORBS,
@@ -27,6 +28,8 @@ import type {
   AspectType,
   AspectEnabledConfig,
   TransitOrbs,
+  TransitAnimation,
+  TransitAnimationState,
 } from '../src/index.js';
 import { study } from './fixtures.js';
 import './style.css';
@@ -37,6 +40,7 @@ declare global {
   interface Window {
     astr3: Chart;
     astr3Transit?: TransitChart;
+    astr3TransitAnimation?: TransitAnimation;
   }
 }
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -49,6 +53,7 @@ const houseSystem = $<HTMLSelectElement>('house-system');
 let abort: AbortController | undefined;
 let revision = 0;
 let transitChart: TransitChart | undefined;
+let transitAnimation: TransitAnimation | undefined;
 let transitData: ChartInput = { bodies: [] };
 let transitAbort: AbortController | undefined;
 let transitRevision = 0;
@@ -254,6 +259,7 @@ chart.on('hover', (event) => {
   tooltip.style.top = `${Math.max(8, Math.min(window.innerHeight - tooltip.offsetHeight - 8, event.y - 40))}px`;
 });
 function show(data: ChartInput, caption: string): void {
+  transitAnimation?.cancel();
   natalData = data;
   chart.update(data);
   $('chart-title').textContent = data.title ?? 'Natal chart';
@@ -388,6 +394,7 @@ window.addEventListener('pagehide', (event) => {
     abort?.abort();
     chart.dispose();
     transitAbort?.abort();
+    transitAnimation?.dispose();
     transitChart?.dispose();
   }
 });
@@ -400,7 +407,8 @@ function updateCaptions(): void {
   $('chart-caption').textContent =
     `${natalCaption}${transitMode && transitData.metadata?.utc ? ` · Transits ${transitData.metadata.utc}` : ''}`;
 }
-async function calculateTransit(): Promise<void> {
+async function calculateTransit(utc?: string): Promise<void> {
+  transitAnimation?.cancel();
   transitAbort?.abort();
   transitAbort = new AbortController();
   const ownRevision = ++transitRevision;
@@ -411,7 +419,7 @@ async function calculateTransit(): Promise<void> {
     const { createAstronomyProvider } = await import('../src/ephemeris/index.js');
     if (ownRevision !== transitRevision) return;
     const data = await createAstronomyProvider().calculateTransits(
-      { utc: `${transitTime.value}Z` },
+      { utc: utc ?? `${transitTime.value}Z` },
       { signal: transitAbort.signal },
     );
     if (ownRevision !== transitRevision) return;
@@ -429,8 +437,30 @@ async function calculateTransit(): Promise<void> {
       error instanceof Error ? error.message : 'Transit calculation failed.';
   }
 }
+function animationState(state: TransitAnimationState): void {
+  const active = ['preparing', 'playing', 'buffering', 'paused'].includes(state.status);
+  $('transit-pause').hidden = !active;
+  $('transit-pause').textContent = state.status === 'paused' ? 'Resume' : 'Pause';
+  const progress = $<HTMLProgressElement>('transit-progress');
+  progress.hidden = !active;
+  if (state.status === 'preparing') progress.removeAttribute('value');
+  else progress.value = state.progress;
+  const messages: Partial<Record<TransitAnimationState['status'], string>> = {
+    preparing: 'Preparing transit motion…',
+    playing: `Animating to ${state.to} · about ${(state.durationMs / 1000).toFixed(1)} seconds of playback.`,
+    buffering: 'Preparing the next transit position…',
+    paused: 'Transit animation paused.',
+    completed: 'Transits calculated locally. No data leaves your browser.',
+  };
+  if (messages[state.status]) $('transit-status').textContent = messages[state.status]!;
+}
 $('chart-view').addEventListener('change', () => {
   transitMode = $<HTMLSelectElement>('chart-view').value === 'transit';
+  if (!transitMode) {
+    transitAnimation?.cancel();
+    transitAbort?.abort();
+    ++transitRevision;
+  }
   if (transitMode && !transitChart) {
     const layers = Object.fromEntries(
       [...document.querySelectorAll<HTMLInputElement>('[data-layer], [data-transit-layer]')].map(
@@ -447,6 +477,21 @@ $('chart-view').addEventListener('change', () => {
       layers,
     });
     window.astr3Transit = transitChart;
+    transitAnimation = createTransitAnimation(transitChart, async (request, options) => {
+      const { createAstronomyProvider } = await import('../src/ephemeris/index.js');
+      return createAstronomyProvider().calculateTransits(request, options);
+    });
+    window.astr3TransitAnimation = transitAnimation;
+    transitAnimation.on('state', animationState);
+    transitAnimation.on('progress', ({ state, data }) => {
+      transitData = data;
+      transitTime.value = state.currentTime!.slice(0, 16);
+      $<HTMLProgressElement>('transit-progress').value = state.progress;
+      updateCaptions();
+    });
+    transitAnimation.on('error', ({ message }) => {
+      $('transit-status').textContent = message;
+    });
     transitChart.on('selection', (event) => {
       if (transitMode) inspect(event.details);
     });
@@ -492,16 +537,37 @@ for (const [id, direction] of [
 ] as const)
   $(id).addEventListener('click', () => {
     try {
-      transitTime.value = stepTransitTime(
-        `${transitTime.value}Z`,
+      const from = transitData.metadata?.utc as string | undefined;
+      const animate = $<HTMLInputElement>('transit-animate').checked && from && transitAnimation;
+      const to = stepTransitTime(
+        animate ? from : `${transitTime.value}Z`,
         $<HTMLSelectElement>('transit-step').value as TimeStep,
         direction,
-      ).slice(0, 16);
-      void calculateTransit();
+      );
+      if (animate) {
+        transitAbort?.abort();
+        ++transitRevision;
+        void transitAnimation!.play({ from, to }).catch(() => {}); // Reported by the error event.
+      } else {
+        transitTime.value = to.slice(0, 16);
+        void calculateTransit();
+      }
     } catch (error) {
       $('transit-status').textContent = (error as Error).message;
     }
   });
+$('transit-pause').addEventListener('click', () => {
+  if (transitAnimation?.state.status === 'paused') transitAnimation.resume();
+  else transitAnimation?.pause();
+});
+$('transit-animate').addEventListener('change', () => {
+  if ($<HTMLInputElement>('transit-animate').checked) return;
+  const state = transitAnimation?.state;
+  if (state?.to && ['preparing', 'playing', 'buffering', 'paused'].includes(state.status)) {
+    transitTime.value = state.to.slice(0, 16);
+    void calculateTransit(state.to);
+  }
+});
 $('transit-now').addEventListener('click', () => {
   transitTime.value = new Date().toISOString().slice(0, 16);
   void calculateTransit();

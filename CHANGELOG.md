@@ -4,6 +4,11 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add opt-in transit time-step animation with direct astronomical samples,
+  adaptive retrograde trajectory resolution, Pause/Resume, reduced-motion support,
+  and a reusable `createTransitAnimation` controller. The demo adds Year stepping
+  with leap-day clamping. Batch wheel drawing to keep animated updates responsive.
+
 - Add `layout: 'default' | 'alternative'` for natal and transit wheels. The
   alternative places houses outermost, zodiac second and celestial symbols
   inside, with separate inner aspect anchors and a shared demo selector.

@@ -78,7 +78,7 @@ try {
   writeFileSync(
     join(directory, 'consumer.ts'),
     `
-import { createChart, createTransitChart, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
+import { createChart, createTransitChart, createTransitAnimation, type TransitAnimation, type TransitAnimationState, type TransitAnimationOptions, type TransitCalculator, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
 import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
@@ -96,6 +96,17 @@ const enabledFamilies: TransitAspectEnabledConfig = { natal: { semisextile: true
 const transitModel = createTransitModel(pair, { orbs: { cross: { trine: 3 } }, enabledAspects: enabledFamilies });
 const transitOptions: Parameters<typeof createTransitChart>[1] = { data: pair, layout, enabledAspects: enabledFamilies, layers: { crossAspects: true }, glyphs: { transit: { sun: 'S' } } };
 void [transitSelection, transitModel, transitOptions, createAstronomyProvider().calculateTransits];
+const calculator: TransitCalculator = createAstronomyProvider().calculateTransits;
+const animationOptions: TransitAnimationOptions = { outerBodyIds: ['jupiter', 'saturn'] };
+function animate(chart: ReturnType<typeof createTransitChart>): TransitAnimation {
+  const animation = createTransitAnimation(chart, calculator, animationOptions);
+  const state: TransitAnimationState = animation.state;
+  animation.on('progress', ({ state, data }) => { void [state.currentTime, data.bodies]; });
+  chart.on('dispose', () => animation.dispose());
+  void [state, animation.pause, animation.resume, animation.cancel, animation.play];
+  return animation;
+}
+void animate;
 `,
   );
   writeFileSync(
@@ -120,12 +131,13 @@ void [transitSelection, transitModel, transitOptions, createAstronomyProvider().
     join(directory, 'runtime.mjs'),
     `
 import assert from 'node:assert/strict';
-import { createChart, createTransitChart } from 'astr3';
+import { createChart, createTransitChart, createTransitAnimation } from 'astr3';
 import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 assert.equal(typeof globalThis.document, 'undefined');
 assert.equal(typeof createChart, 'function');
 assert.equal(typeof createTransitChart, 'function');
+assert.equal(typeof createTransitAnimation, 'function');
 assert.equal(createTransitModel({ natal: { bodies: [] }, transit: { bodies: [] } }).crossAspects.length, 0);
 assert.equal(createModel({ bodies: [] }).houseStatus, 'unknown');
 assert.equal(ASPECT_DEFINITIONS.quincunx.angle, 150);

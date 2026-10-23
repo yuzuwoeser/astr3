@@ -38,8 +38,45 @@ All three families use the same [distance-aware conjunction bows](api.md#input-a
 
 ## Provider and demo time controls
 
+### Animated time steps
+
+`createTransitAnimation(chart, calculateTransits, options?)` is an opt-in browser controller exported from `astr3`. Inject a calculator with the same signature as the optional adapter's `calculateTransits`; the controller does not import Astronomy Engine. Existing `updateTransit` calls remain immediate.
+
+```ts
+import { createTransitAnimation } from 'astr3';
+import { createAstronomyProvider } from 'astr3/ephemeris';
+
+const provider = createAstronomyProvider();
+// `chart` is an existing TransitChart, currently displaying the `from` time.
+const animation = createTransitAnimation(chart, provider.calculateTransits);
+const unsubscribe = animation.on('progress', ({ state }) => {
+  console.log(state.currentTime, state.progress);
+});
+await animation.play({ from: '2024-04-08T18:00:00Z', to: '2024-04-15T18:00:00Z' });
+// Pause/Resume controls call animation.pause() and animation.resume().
+// Before an application-owned immediate data update, call animation.cancel().
+unsubscribe();
+animation.dispose(); // Also disposed automatically with its chart.
+```
+
+- `play({ from, to })` accepts `Date` or ISO timestamps with an explicit timezone, in either direction, within 1900–2100 and at most 366 days apart. It resolves on completion or cancellation, rejects on calculation/validation failure, and replaces any prior run. Invalid ranges throw before interrupting a valid run. For a new step during playback, use `animation.state.currentTime` as `from`.
+- `pause()` freezes the displayed time; `resume()` continues it. `cancel()` stops at the last displayed snapshot. `dispose()` cancels requests/frames, removes visibility and motion listeners, and unsubscribes from the chart. Disposal is idempotent; later mutations throw.
+- `state` is a frozen snapshot containing `status`, `from`, `to`, `currentTime` (ISO strings or `null`), `progress` (0–1), and `durationMs`. Status is `idle`, `preparing`, `playing`, `buffering`, `paused`, `completed`, `error`, or `disposed`. Time is initially unknown until the controller applies its first sample.
+- `on('state', listener)` reports status, interval, and planned-duration changes. `on('progress', listener)` receives `{ state, data }` after a calculated snapshot is committed; `data` is the calculator's `ChartInput`. `on('error', listener)` receives `{ message, cause }`. Subscriptions return unsubscribe functions. Failures stop playback and leave the last valid chart intact.
+- The controller honors `prefers-reduced-motion: reduce` by applying only the endpoint. A preference change during playback finishes at that endpoint. Hidden pages suspend time; user pauses remain paused when the page returns. Settings and camera changes remain available during playback. Applications must cancel before replacing chart data themselves.
+
+Every displayed timestamp is calculated directly: longitude, speed, retrograde flags, aspects, picking, and accessible details describe the same instant. Labels still use bounded collision packing, independently of exact longitude markers. No endpoint interpolation or per-frame longitude displacement is used to create motion.
+
+Preflight checks midpoint positions against each segment's angular chord, targeting at most **0.05°** deviation. It refines the uniform time spacing around curved paths and reversals, then fixes the speed before playback. Intervals up to seven days protect every body's trajectory and use gaps of at most six simulated hours. Longer intervals allow coarser inner-body motion but protect Jupiter through Pluto, with gaps of at most one simulated day. Stations trigger further refinement. These are animation-resolution targets, tested against dense provider trajectories, not an additional ephemeris accuracy guarantee or an exact station-finding API. The preflight checks cannot prove a bound for arbitrary custom trajectories.
+
+`options.outerBodyIds` can identify the bodies to protect in longer intervals when a provider uses different IDs; defaults are `jupiter`, `saturn`, `uranus`, `neptune`, and `pluto`. Body IDs must remain stable throughout a run. Custom calculators should honor the supplied abort signal; revision checks also discard obsolete results from calculators that ignore it.
+
+Preferred active durations are 0.6 seconds for up to one hour, 1 second for up to one day, 2 seconds for up to seven days, 4 seconds for up to 31 days, and 15 seconds for longer steps. Sampling limits may lengthen these before playback, targeting at most 30 displayed samples per second. Preflight uses constant sample storage; playback keeps four lookahead samples. Slow calculations or rendering extend elapsed time rather than skipping trajectory samples. Preparation, buffering, and pauses are excluded from `durationMs`. More than 8,192 required frames fails with a request to choose a shorter interval.
+
+### Calculation and demo controls
+
 `createAstronomyProvider().calculateTransits({ utc }, { signal? })` returns the same ten geocentric planetary positions/speeds and two true lunar nodes as `calculate`, with UTC metadata, without calculating houses or requiring coordinates. Natal calculations also include Ascendant and Midheaven when defined. Cross aspects can connect transit planets/nodes to natal planets, nodes, AC, and MC; each point uses the same house-circle anchor geometry. Select them with their normal body IDs and explicit source, for example `{ chart: 'transit', kind: 'body', id: 'north-node' }`. Natal AC/MC axis captions also select their source-qualified points. Transit AC/MC are not calculated from UTC alone.
 
 The adapter uses the same 1900–2100 range, tropical frame, numerical conventions, and cancellation limits described in [calculations](calculations.md). It does not label an exact transit instant as an uncertain birth time. Existing provider contracts remain usable; any application can supply positions calculated elsewhere.
 
-The demo owns UTC date/time, Now, and hour/day/week/month stepping. Months clamp to the last valid day; no local timezone or DST interpretation is performed. Obsolete requests are cancelled and revision-checked; failures keep the previous valid chart. **Aspects** controls provide Major/Minor sections, individual switches, editable orbs, and Major only / All / None presets for the selected family. Disabling a type retains its orb value; settings survive time/view changes during the session. The legend shows the union of enabled types in currently visible families. Original supplied inputs are retained so re-enabling restores their aspects/groups. Continuous playback and timeline scrubbing are deferred.
+The demo owns UTC date/time, Now, and hour/day/week/month/year stepping. Month and year steps clamp to the last valid day, including February 29; no local timezone or DST interpretation is performed. **Animate time changes** starts off. When enabled, Previous/Next animates the chosen interval with Pause/Resume and progress controls. Repeated steps start from the displayed time. Disabling animation finishes at the requested endpoint; date entry and Now apply immediately. Leaving transit mode cancels playback. Obsolete requests are cancelled and revision-checked; failures keep the previous valid chart. **Aspects** controls provide Major/Minor sections, individual switches, editable orbs, and Major only / All / None presets for the selected family. Disabling a type retains its orb value; settings survive time/view changes during the session. The legend shows the union of enabled types in currently visible families. Original supplied inputs are retained so re-enabling restores their aspects/groups. Continuous autoplay and timeline scrubbing are deferred.

@@ -56,6 +56,7 @@ export interface ChartError {
   readonly cause?: unknown;
 }
 export interface ChartEvents {
+  dispose: undefined;
   selection: {
     selection: Selection | null;
     details: SelectionDetails | null;

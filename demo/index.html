@@ -97,10 +97,25 @@
                   <option value="hour">Hour</option>
                   <option value="day" selected>Day</option>
                   <option value="week">Week</option>
-                  <option value="month">Month</option></select
+                  <option value="month">Month</option>
+                  <option value="year">Year</option></select
                 ><button id="transit-next" type="button" aria-label="Next transit step">→</button
                 ><button id="transit-now" type="button">Now</button>
               </div>
+              <div class="transit-animation">
+                <label><input id="transit-animate" type="checkbox" /> Animate time changes</label>
+                <button id="transit-pause" type="button" hidden>Pause</button>
+                <progress
+                  id="transit-progress"
+                  max="1"
+                  value="0"
+                  aria-label="Time adjustment progress"
+                  hidden
+                ></progress>
+              </div>
+              <p class="animation-help">
+                Longer steps take more time to preserve retrograde motion. Respects reduced motion.
+              </p>
               <p id="transit-status" class="calculation-status" role="status">
                 Choose a transit time.
               </p>

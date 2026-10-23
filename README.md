@@ -17,6 +17,8 @@ Open the local URL printed by Vite. The initial wheel uses synthetic teaching da
 
 ## Use the library
 
+In transit view, enable **Animate time changes** to follow calculated motion between Previous/Next steps, from hours through years. Pause/Resume stops at the displayed time; turning animation off finishes the step immediately. The reusable [`createTransitAnimation` controller](docs/transits.md#animated-time-steps) preserves retrograde paths with adaptive sampling and honors reduced motion.
+
 This repository produces an npm-ready package; npm publication is pending. Install the local package tarball in an application:
 
 ```sh

@@ -185,6 +185,19 @@ export function createWheel(
   const camera = new OrthographicCamera(-330, 330, 330, -330, 0.1, 100);
   camera.position.z = 10;
   const drawing = new Group();
+  // All wheel triangles share the same unlit pipeline. Vertex RGBA preserves
+  // their paint order while avoiding hundreds of draw calls and shader rebuilds.
+  const drawingMaterial = new MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    side: DoubleSide,
+    forceSinglePass: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const drawingVertices: number[] = [];
+  const drawingColors: number[] = [];
+  const paintColors = new Map<string, Color>();
   scene.add(drawing);
   const listeners = new Map<keyof ChartEvents, Set<(payload: never) => void>>();
   const teardown: (() => void)[] = [];
@@ -515,27 +528,24 @@ export function createWheel(
     for (const child of [...drawing.children]) {
       if (child instanceof Mesh) {
         child.geometry.dispose();
-        for (const material of Array.isArray(child.material) ? child.material : [child.material])
-          material.dispose();
       }
       drawing.remove(child);
     }
   }
-  let order = 0;
   function mesh(geometry: BufferGeometry, color: string, opacity: number): void {
-    const object = new Mesh(
-      geometry,
-      new MeshBasicMaterial({
-        color,
-        opacity,
-        transparent: true,
-        side: DoubleSide,
-        depthTest: false,
-        depthWrite: false,
-      }),
-    );
-    object.renderOrder = order++;
-    drawing.add(object);
+    let shade = paintColors.get(color);
+    if (!shade) {
+      shade = new Color(color);
+      paintColors.set(color, shade);
+    }
+    const positions = geometry.getAttribute('position');
+    const indices = geometry.getIndex();
+    for (let i = 0; i < (indices?.count ?? positions.count); i++) {
+      const index = indices ? indices.getX(i) : i;
+      drawingVertices.push(positions.getX(index), positions.getY(index), positions.getZ(index));
+      drawingColors.push(shade.r, shade.g, shade.b, opacity);
+    }
+    geometry.dispose();
   }
   function fill(points: readonly Point[], color: string, opacity: number): void {
     if (points.length < 3) return;
@@ -653,6 +663,10 @@ export function createWheel(
   function draw(): void {
     frame = 0;
     if (disposed) return;
+    // ResizeObserver only requests a frame. Writing an observed container's
+    // descendant size during observer delivery produces a resize feedback error.
+    const stageHeight = `${Math.max(280, container.getBoundingClientRect().width)}px`;
+    if (stage.style.height !== stageHeight) stage.style.height = stageHeight;
     viewport();
     const text = chartText(pixelsPerUnit);
     stage.dataset.textTier = text.tier;
@@ -664,9 +678,11 @@ export function createWheel(
     )
       layoutCache.clear();
     clearDrawing();
+    drawingVertices.length = 0;
+    drawingColors.length = 0;
+    paintColors.clear();
     labels.replaceChildren();
     targets = [];
-    order = 0;
     const colors = theme(),
       visible = layers(),
       asc = model.angles.ascendant ?? 0;
@@ -1266,6 +1282,12 @@ export function createWheel(
         button.remove();
         clusterButtons.delete(id);
       }
+    if (drawingVertices.length) {
+      const batch = new BufferGeometry();
+      batch.setAttribute('position', new Float32BufferAttribute(drawingVertices, 3));
+      batch.setAttribute('color', new Float32BufferAttribute(drawingColors, 4));
+      drawing.add(new Mesh(batch, drawingMaterial));
+    }
     if (renderer && !contextLost) renderer.render(scene, camera);
   }
   function requestDraw(): void {
@@ -1448,8 +1470,6 @@ export function createWheel(
   }
   // A responsive square leaves the accessible list in normal document flow.
   function resize(): void {
-    const rect = container.getBoundingClientRect();
-    stage.style.height = `${Math.max(280, rect.width)}px`;
     closeChooser();
     requestDraw();
   }
@@ -1570,19 +1590,35 @@ export function createWheel(
     dispose() {
       if (disposed) return;
       disposed = true;
-      if (frame) win.cancelAnimationFrame(frame);
-      observer.disconnect();
-      textMetrics.dispose();
-      layoutCache.clear();
-      clusterButtons.clear();
-      for (const dispose of teardown) dispose();
-      closeChooser();
-      listeners.clear();
-      pointers.clear();
-      clearDrawing();
-      renderer?.dispose();
-      renderer?.forceContextLoss();
-      root.remove();
+      const failures: unknown[] = [];
+      try {
+        for (const listener of listeners.get('dispose') ?? []) {
+          try {
+            listener(undefined as never);
+          } catch (cause) {
+            failures.push(cause);
+          }
+        }
+      } finally {
+        if (frame) win.cancelAnimationFrame(frame);
+        observer.disconnect();
+        textMetrics.dispose();
+        layoutCache.clear();
+        clusterButtons.clear();
+        for (const dispose of teardown) dispose();
+        closeChooser();
+        listeners.clear();
+        pointers.clear();
+        clearDrawing();
+        drawingMaterial.dispose();
+        drawingVertices.length = 0;
+        drawingColors.length = 0;
+        paintColors.clear();
+        renderer?.dispose();
+        renderer?.forceContextLoss();
+        root.remove();
+      }
+      if (failures.length) throw failures[0];
     },
   };
 }

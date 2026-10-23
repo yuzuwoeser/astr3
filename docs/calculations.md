@@ -6,6 +6,8 @@
 
 `calculateTransits({ utc }, { signal? })` uses the same planetary calculation as `calculate`, without latitude/longitude inputs or house/angle calculation. The transit bi-wheel projects those positions into natal houses through its model; it never substitutes transit-time cusps for natal cusps.
 
+The optional [transit animation controller](transits.md#animated-time-steps) calls an injected calculator for every displayed timestamp. Its sub-day/station sampling and 0.05° trajectory-resolution target govern playback detail; they do not change the astronomical conventions or numerical accuracy limits below.
+
 - Absolute UTC as `Date`, or ISO timestamp with `Z`/explicit offset. Local civil time, DST ambiguity, and place lookup belong to applications. Latitude is north positive; longitude is east positive.
 - Supported adapter dates: 1900-01-01 through 2100-12-31 UTC. The core renderer has no date range.
 - Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto; tropical, geocentric, true ecliptic/equinox of date. `GeoVector(..., true)` includes light-time and aberration corrections before ecliptic conversion.

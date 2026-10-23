@@ -173,7 +173,11 @@ describe('transit calculation and UTC stepping', () => {
     expect(stepTransitTime('2024-02-28T12:15Z', 'day', 1)).toBe('2024-02-29T12:15:00.000Z');
     expect(stepTransitTime('2024-12-31T23:15Z', 'hour', 1)).toBe('2025-01-01T00:15:00.000Z');
     expect(stepTransitTime('2024-01-01T12:15Z', 'week', -1)).toBe('2023-12-25T12:15:00.000Z');
+    expect(stepTransitTime('2024-02-29T12:15Z', 'year', 1)).toBe('2025-02-28T12:15:00.000Z');
+    expect(stepTransitTime('2024-02-29T12:15Z', 'year', -1)).toBe('2023-02-28T12:15:00.000Z');
+    expect(stepTransitTime('2023-03-01T12:15Z', 'year', 1)).toBe('2024-03-01T12:15:00.000Z');
     expect(() => stepTransitTime('1900-01-01T00:00Z', 'day', -1)).toThrow('1900');
     expect(() => stepTransitTime('2100-12-31T23:00Z', 'hour', 1)).toThrow('2100');
+    expect(() => stepTransitTime('2100-01-01T00:00Z', 'year', 1)).toThrow('2100');
   });
 });
