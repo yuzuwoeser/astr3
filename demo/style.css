@@ -60,14 +60,32 @@ a {
   font-family: 'Righteous', system-ui, sans-serif;
   font-style: normal;
   font-weight: 400;
+  font-kerning: normal;
   letter-spacing: normal;
   line-height: 1;
   font-size: 31px;
   display: inline-block;
+  flex-shrink: 0;
   white-space: nowrap;
+  padding: 0.28em 0.34em;
+  border-radius: 4px;
+  background: #111c20;
+  color: #76c7b2;
 }
-.wordmark-accent {
-  color: #788f69;
+.wordmark-a {
+  color: #76c7b2;
+}
+.wordmark-s {
+  color: #80b9ee;
+}
+.wordmark-t {
+  color: #b5a0e8;
+}
+.wordmark-r {
+  color: #ef9399;
+}
+.wordmark-3 {
+  color: #eacb92;
 }
 .masthead-note {
   font-size: 10px;

@@ -1,5 +1,7 @@
 # ASTR3
 
+<img src="demo/public/brand/astr3-logo-preview.svg" alt="ASTR3 — Righteous in five colors" width="320" />
+
 Explorable astrology wheels for the browser. A framework-neutral TypeScript library built with Three.js, released under MIT.
 
 Select a planet, point, house, aspect, or supplied configuration. Highlight its relationships and connect the selection to your own explanations, tables, tooltips, or panels. Rendering works with precomputed data; the optional browser adapter calculates a natal chart without a backend.
@@ -7,10 +9,18 @@ Select a planet, point, house, aspect, or supplied configuration. Highlight its 
 ## Name and wordmark
 
 The display name is **ASTR3**. The demo renders its wordmark as live text in
-Righteous Regular (400), with the **3** accented in `#788f69`. The font is served
-locally; no SVG or PNG logo is required. Repository Markdown uses the uppercase
-name with its host's normal typography. The npm package, imports, URLs and code
-identifiers continue to use `astr3`.
+Righteous Regular (400), served locally. Each character uses the supplied logo
+palette: **A** mint `#76C7B2`, **S** sky blue `#80B9EE`, **T** lavender `#B5A0E8`,
+**R** coral `#EF9399`, and **3** gold `#EACB92`, on a dark `#111C20` background.
+The live text preserves the font's native spacing and stays readable if the font
+cannot load.
+
+Reusable [transparent](demo/public/brand/astr3-logo.svg) and
+[dark-background](demo/public/brand/astr3-logo-preview.svg) SVGs and the
+[palette](demo/public/brand/palette.json) are included for other uses. The SVGs
+contain the original glyph outlines and need no installed font. Repository prose
+uses the uppercase name; the npm package, imports, URLs and code identifiers
+continue to use `astr3`.
 
 ASTR3's source code is MIT licensed. The demo bundles the original, unmodified
 Righteous font under the [SIL Open Font License 1.1](https://openfontlicense.org/).

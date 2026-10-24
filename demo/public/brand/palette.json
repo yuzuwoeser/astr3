@@ -1,0 +1,33 @@
+{
+  "text": "ASTR3",
+  "font": "Righteous",
+  "weight": 400,
+  "background": "#111C20",
+  "characters": [
+    {
+      "character": "A",
+      "name": "Mint",
+      "hex": "#76C7B2"
+    },
+    {
+      "character": "S",
+      "name": "Sky blue",
+      "hex": "#80B9EE"
+    },
+    {
+      "character": "T",
+      "name": "Lavender",
+      "hex": "#B5A0E8"
+    },
+    {
+      "character": "R",
+      "name": "Coral",
+      "hex": "#EF9399"
+    },
+    {
+      "character": "3",
+      "name": "Gold",
+      "hex": "#EACB92"
+    }
+  ]
+}

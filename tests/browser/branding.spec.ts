@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('renders local Righteous 400 text wordmarks with an accented 3', async ({ page }) => {
+test('renders local Righteous 400 text wordmarks in the five-color logo palette', async ({
+  page,
+}) => {
   const fonts: string[] = [];
   page.on('request', (request) => {
     if (request.resourceType() === 'font') fonts.push(request.url());
@@ -30,9 +32,20 @@ test('renders local Righteous 400 text wordmarks with an accented 3', async ({ p
     await expect(wordmark).toHaveText('ASTR3');
     await expect(wordmark).toHaveCSS('font-family', /Righteous/);
     await expect(wordmark).toHaveCSS('font-weight', '400');
+    await expect(wordmark).toHaveCSS('font-kerning', 'normal');
     await expect(wordmark).toHaveCSS('letter-spacing', 'normal');
-    await expect(wordmark.locator('.wordmark-accent')).toHaveText('3');
-    await expect(wordmark.locator('.wordmark-accent')).toHaveCSS('color', 'rgb(120, 143, 105)');
+    await expect(wordmark).toHaveCSS('background-color', 'rgb(17, 28, 32)');
+    for (const [character, color] of [
+      ['A', 'rgb(118, 199, 178)'],
+      ['S', 'rgb(128, 185, 238)'],
+      ['T', 'rgb(181, 160, 232)'],
+      ['R', 'rgb(239, 147, 153)'],
+      ['3', 'rgb(234, 203, 146)'],
+    ] as const) {
+      const glyph = wordmark.locator('span', { hasText: character });
+      await expect(glyph).toHaveText(character);
+      await expect(glyph).toHaveCSS('color', color);
+    }
     await expect(wordmark.locator('img, svg')).toHaveCount(0);
   }
   expect(fonts.length).toBeGreaterThan(0);
