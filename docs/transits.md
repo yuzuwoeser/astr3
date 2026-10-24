@@ -2,6 +2,12 @@
 
 `createTransitChart(container, options)` mounts a natal + transit wheel. Existing `createChart` natal integrations are unchanged. Import `createTransitModel`, `getTransitSelectionDetails`, and transit data types from `astr3/model` for headless use.
 
+Mounted transit charts also expose `exportSvg()` and `exportPng()` with the same
+[export options and limits](api.md#svg-and-png-export) as natal charts. Exports
+retain source visibility, colors and aspect-family switches without exposing
+internal scoped IDs. During animation, an export captures the displayed sample
+when called; playback can continue independently.
+
 ## Data and identity
 
 `data` is `{ natal: ChartInput, transit: ChartInput, crossAspects?: CrossAspectInput[] }`. IDs must be unique within each source chart, as for natal charts; the same ID may appear in both charts. Transit houses/axes are ignored. The natal house system and orientation stay fixed as time changes. Transiting bodies expose a separate `natalHouse`, or `undefined` when natal cusps are unknown. Their derived `house` is not populated from transit-time cusps.

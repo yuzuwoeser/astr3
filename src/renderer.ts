@@ -11,54 +11,33 @@ import {
   Scene,
   Shape,
   ShapeGeometry,
-  Vector3,
   WebGLRenderer,
 } from 'three';
-import {
-  BODY_GLYPHS,
-  SIGN_GLYPHS,
-  SIGNS,
-  formatPosition,
-  normalize,
-  signedDistance,
-} from './model/math.js';
+import { formatPosition } from './model/math.js';
 import { createModel, getSelectionDetails, hasSelection, selectionKey } from './model/model.js';
 import { ASPECT_DEFINITIONS } from './model/aspects.js';
 import { resolveBodyVisibility } from './body-visibility.js';
-import type { Body, ChartInput, Selection } from './model/types.js';
+import type { ChartInput, Selection } from './model/types.js';
 import type {
   Chart,
   ChartError,
+  ChartExportOptions,
   ChartEvents,
   ChartLayers,
   ChartOptions,
   ChartTheme,
-  ChartWeight,
-  LineStyle,
 } from './types.js';
-import {
-  aspectPath,
-  boxesOverlap,
-  convexHull,
-  layoutBodies,
-  pointInPolygon,
-  polar,
-} from './layout.js';
-import { housePolygon, resolveWheelGeometry } from './wheel-geometry.js';
-import type { BodyLayout, Box, Point } from './layout.js';
-import { chartText, createTextMeasurer } from './chart-text.js';
-import type { TextSize } from './chart-text.js';
+import type { BodyLayout, Point } from './layout.js';
+import { resolveWheelGeometry } from './wheel-geometry.js';
+import { createTextMeasurer } from './chart-text.js';
 import { hitTest } from './picking.js';
 import type { HitTarget } from './picking.js';
-import type { AspectFamily, BodyReference, ChartSide } from './model/transits.js';
+import { buildWheelDrawing, weightProfile } from './wheel-drawing.js';
+import type { WheelPresentation, WheelLabel } from './wheel-drawing.js';
+import type { ExportSnapshot } from './chart-export.js';
+import { validateExportDimensions } from './export-options.js';
 
-export interface WheelPresentation {
-  bodyRefs: ReadonlyMap<string, BodyReference>;
-  aspectFamilies: ReadonlyMap<string, AspectFamily>;
-  bodies: Record<ChartSide, boolean>;
-  aspects: Record<AspectFamily, boolean>;
-  transitColor?: string;
-}
+export type { WheelPresentation } from './wheel-drawing.js';
 export { TRANSIT_WHEEL } from './wheel-geometry.js';
 
 export const DARK_THEME: ChartTheme = {
@@ -114,18 +93,6 @@ const LAYERS: ChartLayers = {
   groups: true,
   degrees: true,
 };
-const WEIGHT_PROFILES = {
-  light: { strokeMultiplier: 1, fontWeight: 400, symbolStroke: 0 },
-  regular: { strokeMultiplier: 1.5, fontWeight: 500, symbolStroke: 0.15 },
-  bold: { strokeMultiplier: 2, fontWeight: 650, symbolStroke: 0.3 },
-} as const;
-
-function weightProfile(weight: ChartWeight = 'light') {
-  if (!Object.hasOwn(WEIGHT_PROFILES, weight)) {
-    throw new RangeError('chartWeight must be light, regular, or bold.');
-  }
-  return WEIGHT_PROFILES[weight];
-}
 const STYLE = `
 .astr3{position:relative;isolation:isolate;font-family:system-ui,sans-serif;color:var(--astr3-fg);background:var(--astr3-bg);width:100%;min-width:0;border-radius:inherit}
 .astr3 *{box-sizing:border-box}.astr3-stage{position:relative;width:100%;height:100%;min-height:280px;overflow:hidden;touch-action:none;border-radius:inherit;outline-offset:-3px}
@@ -233,7 +200,6 @@ export function createWheel(
   stage.append(canvas, labels, clusterLayer, notice, controls);
   const clusterButtons = new Map<string, HTMLButtonElement>();
   const textMetrics = createTextMeasurer(root);
-  const labelSizes = new WeakMap<HTMLElement, TextSize>();
   const layoutCache = new Map<string, BodyLayout>();
   const access = doc.createElement('details');
   access.className = 'astr3-access';
@@ -281,13 +247,6 @@ export function createWheel(
     return { ...LAYERS, ...options.layers };
   }
   const bodyVisible = (id: string) => options.bodyVisibility[id] !== false;
-  function glyph(body: Body): string {
-    if (options.glyphs && Object.hasOwn(options.glyphs, body.id)) return options.glyphs[body.id]!;
-    return (
-      body.glyph ??
-      (Object.hasOwn(BODY_GLYPHS, body.id) ? BODY_GLYPHS[body.id]! : body.name.slice(0, 2))
-    );
-  }
   function applyTheme(): void {
     const colors = theme();
     for (const [name, value] of Object.entries({
@@ -525,10 +484,6 @@ export function createWheel(
       renderer.setSize(width, height, false);
     }
   }
-  function project(point: Point): Point {
-    const vector = new Vector3(point.x, point.y, 0).project(camera);
-    return { x: ((vector.x + 1) / 2) * width, y: ((1 - vector.y) / 2) * height };
-  }
   function clearDrawing(): void {
     for (const child of [...drawing.children]) {
       if (child instanceof Mesh) {
@@ -568,8 +523,7 @@ export function createWheel(
     dash?: readonly [number, number],
   ): void {
     const vertices: number[] = [];
-    const thickness =
-      Math.max(0.25, lineWidth * visualWeight.strokeMultiplier) / Math.max(pixelsPerUnit, 0.01) / 2;
+    const thickness = lineWidth / Math.max(pixelsPerUnit, 0.01) / 2;
     let travelled = 0;
     const add = (a: Point, b: Point) => {
       const length = Math.hypot(b.x - a.x, b.y - a.y);
@@ -621,60 +575,14 @@ export function createWheel(
     geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
     mesh(geometry, color, opacity);
   }
-  function circle(
-    radius: number,
-    color: string,
-    opacity = 1,
-    center: Point = { x: 0, y: 0 },
-    lineWidth = 1,
-  ): void {
-    stroke(
-      Array.from({ length: 181 }, (_, i) => ({
-        x: Math.cos((i * Math.PI) / 90) * radius + center.x,
-        y: Math.sin((i * Math.PI) / 90) * radius + center.y,
-      })),
-      color,
-      lineWidth,
-      opacity,
-    );
-  }
-  function label(
-    point: Point,
-    text: string,
-    size: number,
-    color: string,
-    className = '',
-    selection?: Selection,
-  ): HTMLElement {
-    const element = doc.createElement('span');
-    element.className = `astr3-label ${className}`;
-    element.textContent = text;
-    const screen = project(point);
-    element.style.left = `${screen.x}px`;
-    element.style.top = `${screen.y}px`;
-    element.style.fontSize = `${size}px`;
-    element.style.color = color;
-    if (selection) {
-      element.dataset.object = selectionKey(selection);
-      element.dataset.active = String(
-        selected?.kind === selection.kind && selected.id === selection.id,
-      );
-    }
-    labelSizes.set(element, textMetrics.measure({ text, size, className }));
-    labels.append(element);
-    return element;
-  }
-
   function draw(): void {
     frame = 0;
     if (disposed) return;
-    // ResizeObserver only requests a frame. Writing an observed container's
-    // descendant size during observer delivery produces a resize feedback error.
+    // ResizeObserver only requests a frame. Stage-size writes belong here,
+    // outside observer delivery, to avoid resize feedback errors.
     const stageHeight = `${Math.max(280, container.getBoundingClientRect().width)}px`;
     if (stage.style.height !== stageHeight) stage.style.height = stageHeight;
     viewport();
-    const text = chartText(pixelsPerUnit);
-    stage.dataset.textTier = text.tier;
     const font = win!.getComputedStyle(root);
     if (
       textMetrics.style(
@@ -682,608 +590,79 @@ export function createWheel(
       )
     )
       layoutCache.clear();
+    const result = buildWheelDrawing({
+      model,
+      options,
+      colors: theme(),
+      visible: layers(),
+      geometry,
+      view: { width, height, pixelsPerUnit, pan },
+      selected,
+      hovered,
+      presentation: presentation?.(),
+      measure: textMetrics.measure,
+      cache: layoutCache,
+    });
+    stage.dataset.textTier = result.textTier;
+    if (result.labelMode) stage.dataset.labelMode = result.labelMode;
+    else delete stage.dataset.labelMode;
+    notice.textContent = chartError ? chartError.message : result.notice;
+    targets = result.targets;
     clearDrawing();
     drawingVertices.length = 0;
     drawingColors.length = 0;
     paintColors.clear();
     labels.replaceChildren();
-    targets = [];
-    const colors = theme(),
-      visible = layers(),
-      asc = model.angles.ascendant ?? 0;
-    const p = presentation?.();
-    const isTransit = (id: string) => p?.bodyRefs.get(id)?.chart === 'transit';
-    const dotRadiusPx = 2.5 * Math.sqrt(visualWeight.strokeMultiplier);
-    const dotExtentPx = (id: string) =>
-      dotRadiusPx + (isTransit(id) ? (1.1 * visualWeight.strokeMultiplier) / 2 : 0);
-    const transitColor = p?.transitColor ?? colors.group;
-    const alternative = geometry.layout === 'alternative';
-    const axisRadius = geometry.axis;
-    const plottedBodies = model.bodies.filter((body) => bodyVisible(body.id));
-    const shownBodies = plottedBodies.filter(
-      (body) => !p || p.bodies[isTransit(body.id) ? 'transit' : 'natal'],
-    );
-    const primary = selected ?? hovered;
-    const details = primary ? getSelectionDetails(model, primary) : null;
-    const activeBodies = new Set(details?.bodies.map((body) => body.id));
-    const activeAspects = new Set(details?.aspects.map((aspect) => aspect.id));
-    const bodyAnchors = new Map(
-      plottedBodies.map((body) => [body.id, polar(body.longitude, geometry.anchor, asc)]),
-    );
-    const dim = options.selectionEffects?.dimOpacity ?? 0.22;
-    const opacity = (active: boolean) =>
-      !primary || active || options.dimUnrelated === false ? 1 : dim;
-    const accent = options.selectionEffects?.color ?? colors.accent;
-    const activeWidth = options.selectionEffects?.lineWidth ?? 2.5;
-    const reservedLabels: { element: HTMLElement; point: Point }[] = [];
-    const activeClusters = new Set<string>();
-    const houseNumberSpace: Box[] =
-      p && !alternative
-        ? [...bodyAnchors.values()].map((point) => ({
-            ...point,
-            width: 9 / pixelsPerUnit,
-            height: 9 / pixelsPerUnit,
-          }))
-        : [];
-    notice.textContent = chartError
-      ? chartError.message
-      : model.timeUncertain
-        ? 'REFERENCE SNAPSHOT · birth time uncertain'
-        : model.houseStatus === 'unavailable'
-          ? 'Houses unavailable · choose another system'
-          : model.houseStatus === 'unknown'
-            ? 'Houses unknown'
-            : '';
-
-    if (visible.zodiac) {
-      circle(geometry.zodiac.outer, colors.ring);
-      circle(geometry.zodiac.inner, colors.ring);
-      for (let sign = 0; sign < 12; sign++) {
-        const color = colors.elements[sign % 4]!;
-        stroke(
-          [
-            polar(sign * 30, geometry.zodiac.inner, asc),
-            polar(sign * 30, geometry.zodiac.outer, asc),
-          ],
-          colors.ring,
-        );
-        label(
-          polar(sign * 30 + 15, geometry.zodiac.label, asc),
-          SIGN_GLYPHS[sign]!,
-          text.glyph,
-          color,
-          'astr3-symbol',
-        ).title = SIGNS[sign]!;
+    for (const shape of result.shapes) {
+      if (shape.kind === 'stroke')
+        stroke(shape.points, shape.color, shape.width, shape.opacity, shape.dash);
+      else if (shape.kind === 'fill') fill(shape.points, shape.color, shape.opacity);
+      else {
+        const disc = new CircleGeometry(shape.radius, 24);
+        disc.translate(shape.center.x, shape.center.y, 0);
+        mesh(disc, shape.color, shape.opacity);
       }
     }
-    if (alternative) {
-      if (visible.bodies || visible.aspects || visible.groups)
-        circle(geometry.anchor, colors.ring, 0.6);
-      if (visible.bodies || visible.degrees)
-        for (const scale of geometry.scales)
-          if (!visible.zodiac || scale.edge !== geometry.zodiac.inner)
-            circle(scale.edge, colors.ring, 0.7);
-    }
-    if (visible.degrees)
-      for (let degree = 0; degree < 360; degree++) {
-        const major = degree % 10 === 0,
-          minor = degree % 5 === 0;
-        for (const scale of geometry.scales) {
-          stroke(
-            [
-              polar(degree, scale.start, asc),
-              polar(degree, scale.start + scale.direction * (major ? 8 : minor ? 5 : 2), asc),
-            ],
-            colors.muted,
-            0.65,
-            major ? 0.9 : 0.35,
-          );
-          if (major && text.scale) {
-            const point = polar(degree, scale.label, asc);
-            // Leave room for axis captions where they meet the outside scale.
-            if (
-              scale.id === 'outside' &&
-              visible.axes &&
-              [model.angles.ascendant, model.angles.midheaven].some(
-                (value) =>
-                  value !== undefined &&
-                  [value, value + 180].some((angle) => {
-                    const axis = polar(angle, axisRadius, asc);
-                    return Math.hypot(axis.x - point.x, axis.y - point.y) < 16 / pixelsPerUnit;
-                  }),
-              )
-            )
-              continue;
-            const element = label(
-              point,
-              String(degree % 30),
-              text.scale,
-              colors.muted,
-              'astr3-degree',
-            );
-            element.dataset.scale = scale.id;
-            reservedLabels.push({ element, point });
-          }
-        }
-      }
-    if (visible.houses && model.houses.length) {
-      circle(geometry.house.ring, colors.ring, 0.6);
-      if (alternative && !visible.zodiac) circle(geometry.house.inner, colors.ring);
-      for (let i = 0; i < model.houses.length; i++) {
-        const house = model.houses[i]!,
-          next = model.houses[(i + 1) % 12]!;
-        const span = normalize(next.longitude - house.longitude);
-        const selection: Selection = { kind: 'house', id: house.id };
-        const polygon = housePolygon(geometry, house.longitude, span, asc);
-        const active = primary?.kind === 'house' && primary.id === house.id;
-        if (active) fill(polygon, accent, 0.08);
-        stroke(
-          [
-            polar(house.longitude, geometry.house.inner, asc),
-            polar(house.longitude, geometry.house.outer, asc),
-          ],
-          active ? accent : colors.ring,
-          active ? 1.6 : 0.75,
-          0.65,
-        );
-        const houseRadius =
-          p && !alternative
-            ? Math.max(
-                20,
-                Math.min(
-                  geometry.house.label,
-                  geometry.anchor - 10 / Math.max(pixelsPerUnit, 0.05),
-                ),
-              )
-            : geometry.house.label;
-        let labelPoint = polar(house.longitude + span / 2, houseRadius, asc);
-        const houseLabel = label(
-          labelPoint,
-          String(house.number),
-          text.number,
-          active ? accent : colors.muted,
-          '',
-          selection,
-        );
-        let showNumber = true;
-        if (alternative) {
-          const rect = labelSizes.get(houseLabel)!;
-          const box = {
-            ...labelPoint,
-            width: rect.width / pixelsPerUnit,
-            height: rect.height / pixelsPerUnit,
-          };
-          // Tiny or narrow sectors keep their full clickable band/list entry.
-          // Never move their number into the zodiac or another house.
-          showNumber =
-            [-1, 1].every((x) =>
-              [-1, 1].every((y) =>
-                pointInPolygon(
-                  {
-                    x: box.x + x * (box.width / 2 + 1 / pixelsPerUnit),
-                    y: box.y + y * (box.height / 2 + 1 / pixelsPerUnit),
-                  },
-                  polygon,
-                ),
-              ),
-            ) && !houseNumberSpace.some((other) => boxesOverlap(box, other, 2 / pixelsPerUnit));
-          if (showNumber) houseNumberSpace.push(box);
-          else houseLabel.remove();
-        } else if (p) {
-          const rect = labelSizes.get(houseLabel)!;
-          const size = { width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
-          // Keep the number within its own sector; stagger it inward when the
-          // compact bi-wheel makes neighboring house labels or anchors collide.
-          for (
-            let radius = houseRadius;
-            radius >= 5 / pixelsPerUnit;
-            radius -= (rect.height + 3) / pixelsPerUnit
-          ) {
-            const candidate = polar(house.longitude + span / 2, radius, asc);
-            const box = { ...candidate, ...size };
-            if (!houseNumberSpace.some((other) => boxesOverlap(box, other, 2 / pixelsPerUnit))) {
-              labelPoint = candidate;
-              break;
-            }
-          }
-          houseNumberSpace.push({ ...labelPoint, ...size });
-          const position = project(labelPoint);
-          houseLabel.style.left = `${position.x}px`;
-          houseLabel.style.top = `${position.y}px`;
-        }
-        if (showNumber) reservedLabels.push({ element: houseLabel, point: labelPoint });
-        targets.push({ selection, priority: 3, shape: 'polygon', points: polygon.map(project) });
-      }
-    }
-    if (visible.axes)
-      for (const [id, name, value] of [
-        ['ascendant', 'AC', model.angles.ascendant],
-        ['midheaven', 'MC', model.angles.midheaven],
-      ] as const) {
-        if (value === undefined) continue;
-        const body = model.bodies.find((body) => {
-          const ref = p?.bodyRefs.get(body.id);
-          return (
-            bodyVisible(body.id) &&
-            (p ? ref?.chart === 'natal' && ref.id === id : body.id === id) &&
-            Math.abs(signedDistance(body.longitude, value)) < 1e-8
+    for (const value of result.labels) paintLabel(value);
+    const activeClusters = new Set(result.badges.map((badge) => badge.id));
+    for (const badge of result.badges) {
+      let button = clusterButtons.get(badge.id);
+      if (!button) {
+        button = doc.createElement('button');
+        button.type = 'button';
+        button.className = 'astr3-cluster';
+        button.dataset.cluster = badge.id;
+        button.setAttribute('aria-haspopup', 'true');
+        button.setAttribute('aria-expanded', 'false');
+        const candidates: Selection[] = badge.bodyIds.map((id) => ({ kind: 'body', id }));
+        button.addEventListener('click', () => {
+          const rect = button!.getBoundingClientRect(),
+            parent = stage.getBoundingClientRect();
+          showChooser(
+            candidates,
+            { x: rect.x + rect.width / 2 - parent.x, y: rect.y + rect.height / 2 - parent.y },
+            button,
           );
         });
-        const active = !!body && activeBodies.has(body.id);
-        stroke(
-          [polar(value, axisRadius - 4, asc), polar(value + 180, axisRadius - 4, asc)],
-          active ? accent : colors.muted,
-          active ? activeWidth : 1,
-          body ? opacity(active) * 0.55 : 0.55,
-          [5, 5],
-        );
-        const point = polar(value, axisRadius, asc);
-        const selection: Selection | undefined = body ? { kind: 'body', id: body.id } : undefined;
-        const element = label(point, name, text.number, accent, 'astr3-axis', selection);
-        element.dataset.axis = id;
-        element.style.opacity = String(body ? opacity(active) : 1);
-        if (selection) {
-          const rect = labelSizes.get(element)!;
-          targets.push({
-            selection,
-            priority: 0,
-            shape: 'box',
-            box: { ...project(point), width: rect.width, height: rect.height },
-          });
-        }
-        reservedLabels.push({ element, point });
-        const opposite = polar(value + 180, axisRadius, asc);
-        reservedLabels.push({
-          element: label(opposite, name === 'AC' ? 'DC' : 'IC', text.number, colors.muted),
-          point: opposite,
-        });
+        clusterButtons.set(badge.id, button);
+        clusterLayer.append(button);
       }
-    if (alternative && visible.bodies && primary && primary.kind !== 'house') {
-      const guideIds = primary.kind === 'body' ? new Set([primary.id]) : activeBodies;
-      for (const body of shownBodies) {
-        if (!guideIds.has(body.id)) continue;
-        const band = isTransit(body.id) ? geometry.transit : geometry.natal;
-        stroke(
-          [polar(body.longitude, band.marker, asc), bodyAnchors.get(body.id)!],
-          colors.muted,
-          0.7,
-          0.45,
-          [3, 4],
-        );
-      }
-    }
-    if (visible.groups)
-      for (const group of model.groups) {
-        const ids = new Set(group.bodyIds);
-        for (const id of group.aspectIds)
-          for (const bodyId of model.aspects.find((aspect) => aspect.id === id)!.bodyIds)
-            ids.add(bodyId);
-        if ([...ids].some((id) => !bodyVisible(id))) continue;
-        const polygon = convexHull(
-          model.bodies.filter((body) => ids.has(body.id)).map((body) => bodyAnchors.get(body.id)!),
-        );
-        const active = primary?.kind === 'group' && primary.id === group.id;
-        if (polygon.length >= 3) {
-          fill(polygon, colors.group, active ? 0.17 : 0.045);
-          if (active) stroke([...polygon, polygon[0]!], colors.group, activeWidth, 0.9);
-          targets.push({
-            selection: { kind: 'group', id: group.id },
-            priority: 2,
-            shape: 'polygon',
-            points: polygon.map(project),
-          });
-        }
-      }
-    if (visible.aspects)
-      for (const aspect of model.aspects) {
-        if (!aspect.bodyIds.every(bodyVisible)) continue;
-        if (p && !p.aspects[p.aspectFamilies.get(aspect.id)!]) continue;
-        const active = !!primary && activeAspects.has(aspect.id);
-        const style: LineStyle = options.lineStyles?.[aspect.type] ?? {};
-        const color = active ? accent : colors.aspects[aspect.type];
-        const path = aspectPath(
-          bodyAnchors.get(aspect.bodyIds[0])!,
-          bodyAnchors.get(aspect.bodyIds[1])!,
-          pixelsPerUnit,
-          {
-            type: aspect.type,
-            markerRadii: [dotExtentPx(aspect.bodyIds[0]), dotExtentPx(aspect.bodyIds[1])],
-            ringRadius: geometry.anchor,
-          },
-        );
-        if (!path.points.length) continue;
-        stroke(
-          path.points,
-          color,
-          active ? activeWidth : (style.width ?? 1.1),
-          opacity(activeAspects.has(aspect.id)) * 0.85 * path.opacity,
-          style.dash ?? (ASPECT_DEFINITIONS[aspect.type].major ? undefined : [4, 3]),
-        );
-        if (path.opacity < 0.5) continue;
-        for (let i = 1; i < path.points.length; i++)
-          targets.push({
-            selection: { kind: 'aspect', id: aspect.id },
-            priority: 1,
-            shape: 'line',
-            a: project(path.points[i - 1]!),
-            b: project(path.points[i]!),
-          });
-      }
-    if (visible.bodies) {
-      const reservedBoxes = reservedLabels.map(({ element, point }) => {
-        const rect = labelSizes.get(element)!;
-        return { ...point, width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
-      });
-      const symbolScale = (body: Body) => (['AC', 'MC'].includes(glyph(body)) ? 0.72 : 1);
-      const caption = (body: Body) =>
-        `${visible.degrees ? formatPosition(body.longitude).split(' ')[0] : ''}${body.retrograde ? ' ℞' : ''}`;
-      const measureBody = (body: Body, size: number, compact: boolean) => {
-        const measured = textMetrics.measure({
-          text: glyph(body),
-          size: size * symbolScale(body),
-          body: true,
-          compact,
-          caption: compact ? undefined : caption(body),
-          captionSize: text.caption,
-        });
-        return {
-          width: measured.width + visualWeight.symbolStroke,
-          height: measured.height + visualWeight.symbolStroke,
-        };
-      };
-      const measureCluster = (count: number) => ({
-        width: Math.max(24, textMetrics.measure({ text: String(count), size: 12 }).width + 12),
-        height: 24,
-      });
-      const placeBand = (bodies: readonly Body[], transit = false) => {
-        const band = transit ? geometry.transit : geometry.natal;
-        const fit = (
-          size: number,
-          compact: boolean,
-          outer: number = band.outer,
-          clusters = false,
-        ) => {
-          const sizes = bodies.map((body) => measureBody(body, size, compact));
-          const key = JSON.stringify([
-            bodies.map((body) => [body.id, body.longitude]),
-            sizes,
-            asc,
-            pixelsPerUnit,
-            reservedBoxes,
-            geometry.layout,
-            band,
-            outer,
-            compact,
-            clusters,
-          ]);
-          const cached = layoutCache.get(key);
-          if (cached) return cached;
-          const result = layoutBodies(
-            bodies,
-            asc,
-            pixelsPerUnit,
-            (body) => sizes[bodies.indexOf(body)]!,
-            reservedBoxes,
-            { ...band, outer },
-            compact ? 'compact' : 'full',
-            clusters ? measureCluster : undefined,
-          );
-          if (layoutCache.size >= 24) layoutCache.delete(layoutCache.keys().next().value!);
-          layoutCache.set(key, result);
-          return result;
-        };
-        // Prefer a closer transit band, retaining wider bounds for crowding.
-        // Hide captions before moving outward; shrink glyphs only after
-        // trying every bound at the current size.
-        const bounds = band.bounds;
-        const sizes = [text.glyph, ...[24, 18, 14].filter((size) => size < text.glyph)];
-        for (const size of sizes) {
-          for (const outer of bounds) {
-            if (size === text.glyph && text.caption) {
-              const full = fit(size, false, outer);
-              if (full.placements.length === bodies.length) return { layout: full, size };
-            }
-            const layout = fit(size, true, outer);
-            if (layout.placements.length === bodies.length) return { layout, size };
-          }
-        }
-        const size = sizes.at(-1)!;
-        return { layout: fit(size, true, band.outer, true), size };
-      };
-      const natal = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
-      const transit = placeBand(
-        shownBodies.filter((body) => isTransit(body.id)),
-        true,
+      button.textContent = String(badge.bodyIds.length);
+      button.setAttribute(
+        'aria-label',
+        `${badge.bodyIds.length} clustered bodies: ${badge.bodyIds.map((id) => model.bodies.find((body) => body.id === id)!.name).join(', ')}`,
       );
-      const placements = new Map(
-        [...natal.layout.placements, ...transit.layout.placements].map((placement) => [
-          placement.id,
-          placement,
-        ]),
-      );
-      const clusters = [...natal.layout.clusters, ...transit.layout.clusters];
-      const grouped = clusters.reduce((count, cluster) => count + cluster.bodyIds.length, 0);
-      const overflow = placements.size + grouped < shownBodies.length;
-      stage.dataset.labelMode = overflow
-        ? 'markers'
-        : clusters.length
-          ? 'clustered'
-          : natal.layout.compact || transit.layout.compact
-            ? 'compact'
-            : 'full';
-      if (overflow || clusters.length)
-        notice.textContent = [
-          notice.textContent,
-          clusters.length
-            ? 'Choose a cluster or zoom in to reveal symbols'
-            : 'Zoom in to reveal planet symbols',
-        ]
-          .filter(Boolean)
-          .join(' · ');
-      for (const cluster of clusters) {
-        activeClusters.add(cluster.id);
-        let button = clusterButtons.get(cluster.id);
-        if (!button) {
-          button = doc.createElement('button');
-          button.type = 'button';
-          button.className = 'astr3-cluster';
-          button.dataset.cluster = cluster.id;
-          button.setAttribute('aria-haspopup', 'true');
-          button.setAttribute('aria-expanded', 'false');
-          const candidates: Selection[] = cluster.bodyIds.map((id) => ({ kind: 'body', id }));
-          button.addEventListener('click', () => {
-            const rect = button!.getBoundingClientRect(),
-              parent = stage.getBoundingClientRect();
-            showChooser(
-              candidates,
-              { x: rect.x + rect.width / 2 - parent.x, y: rect.y + rect.height / 2 - parent.y },
-              button,
-            );
-          });
-          clusterButtons.set(cluster.id, button);
-          clusterLayer.append(button);
-        }
-        const screen = project(cluster.label);
-        button.textContent = String(cluster.bodyIds.length);
-        button.setAttribute(
-          'aria-label',
-          `${cluster.bodyIds.length} clustered bodies: ${cluster.bodyIds.map((id) => model.bodies.find((body) => body.id === id)!.name).join(', ')}`,
-        );
-        button.dataset.active = String(cluster.bodyIds.some((id) => activeBodies.has(id)));
-        const active = cluster.bodyIds.some((id) => activeBodies.has(id));
-        button.style.opacity = String(opacity(active));
-        button.style.color = active
-          ? accent
-          : isTransit(cluster.bodyIds[0]!)
-            ? transitColor
-            : colors.foreground;
-        if (p) button.dataset.chart = isTransit(cluster.bodyIds[0]!) ? 'transit' : 'natal';
-        button.style.left = `${screen.x}px`;
-        button.style.top = `${screen.y}px`;
-        button.style.width = `${cluster.box.width * pixelsPerUnit}px`;
-        button.style.height = `${cluster.box.height * pixelsPerUnit}px`;
-      }
-      const elements = new Map<string, HTMLElement>();
-      for (const body of shownBodies) {
-        const placement = placements.get(body.id);
-        if (!placement) continue;
-        const band = isTransit(body.id) ? transit : natal;
-        const element = label(
-          placement.label,
-          '',
-          band.size * symbolScale(body),
-          activeBodies.has(body.id)
-            ? accent
-            : isTransit(body.id)
-              ? transitColor
-              : colors.foreground,
-          'astr3-body',
-          { kind: 'body', id: body.id },
-        );
-        const ref = p?.bodyRefs.get(body.id);
-        if (ref) {
-          element.dataset.chart = ref.chart;
-          element.dataset.bodyId = ref.id;
-        }
-        element.dataset.compact = String(band.layout.compact);
-        element.dataset.dim = String(opacity(activeBodies.has(body.id)) < 1);
-        element.title = describe({ kind: 'body', id: body.id });
-        const symbol = doc.createElement('span');
-        symbol.className = 'astr3-symbol';
-        symbol.textContent = glyph(body);
-        element.append(symbol);
-        if (!band.layout.compact && caption(body)) {
-          const small = doc.createElement('small');
-          small.textContent = caption(body);
-          small.style.fontSize = `${text.caption}px`;
-          element.append(small);
-        }
-        elements.set(body.id, element);
-      }
-      for (const body of shownBodies) {
-        const placement = placements.get(body.id);
-        const markerRadius = (isTransit(body.id) ? geometry.transit : geometry.natal).marker;
-        const marker = placement?.marker ?? polar(body.longitude, markerRadius, asc);
-        const active = activeBodies.has(body.id);
-        const color = active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
-          alpha = opacity(active);
-        const selection: Selection = { kind: 'body', id: body.id };
-        if (placement) {
-          const dx = marker.x - placement.label.x,
-            dy = marker.y - placement.label.y;
-          const factor = Math.min(
-            1,
-            placement.box.width / 2 / Math.max(Math.abs(dx), 1e-9),
-            placement.box.height / 2 / Math.max(Math.abs(dy), 1e-9),
-          );
-          stroke(
-            [marker, { x: placement.label.x + dx * factor, y: placement.label.y + dy * factor }],
-            colors.muted,
-            0.7,
-            alpha * 0.7,
-          );
-        }
-        stroke(
-          [
-            polar(
-              body.longitude,
-              !alternative && isTransit(body.id) ? markerRadius : markerRadius - 3,
-              asc,
-            ),
-            polar(body.longitude, markerRadius + 4, asc),
-          ],
-          active ? accent : colors.foreground,
-          active ? 2 : 1.5,
-          alpha,
-        );
-        circle(2.3 / pixelsPerUnit, color, alpha, marker, 1.5);
-        targets.push({
-          selection,
-          priority: 0,
-          shape: 'circle',
-          center: project(marker),
-          radius: 6,
-        });
-        const element = elements.get(body.id);
-        if (!placement || !element) continue;
-        const screen = project(placement.label);
-        element.style.left = `${screen.x}px`;
-        element.style.top = `${screen.y}px`;
-        const box: Box = {
-          ...screen,
-          width: placement.box.width * pixelsPerUnit,
-          height: placement.box.height * pixelsPerUnit,
-        };
-        targets.push({ selection, priority: 0, shape: 'box', box });
-      }
-      // Draw every planet's anchor above the aspect network and leader lines.
-      // Anchors remain available when symbols compact or overflow the label band.
-      for (const body of shownBodies) {
-        const anchor = bodyAnchors.get(body.id)!;
-        const active = activeBodies.has(body.id);
-        const radius = (dotRadiusPx + (active ? 0.5 : 0)) / pixelsPerUnit;
-        if (isTransit(body.id)) {
-          const diamond = [
-            { x: anchor.x, y: anchor.y + radius },
-            { x: anchor.x + radius, y: anchor.y },
-            { x: anchor.x, y: anchor.y - radius },
-            { x: anchor.x - radius, y: anchor.y },
-          ];
-          stroke([...diamond, diamond[0]!], active ? accent : transitColor, 1.1, opacity(active));
-        } else {
-          const geometry = new CircleGeometry(radius, 24);
-          geometry.translate(anchor.x, anchor.y, 0);
-          mesh(geometry, active ? accent : colors.foreground, opacity(active));
-        }
-        targets.push({
-          selection: { kind: 'body', id: body.id },
-          priority: 0,
-          shape: 'circle',
-          center: project(anchor),
-          radius: 6,
-        });
-      }
-    } else delete stage.dataset.labelMode;
+      button.dataset.active = String(badge.active);
+      if (badge.chart) button.dataset.chart = badge.chart;
+      Object.assign(button.style, {
+        left: `${badge.x}px`,
+        top: `${badge.y}px`,
+        width: `${badge.width}px`,
+        height: `${badge.height}px`,
+        opacity: String(badge.opacity),
+        color: badge.color,
+      });
+    }
     for (const [id, button] of clusterButtons)
       if (!activeClusters.has(id)) {
         if (chooserReturn === button) closeChooser();
@@ -1298,6 +677,94 @@ export function createWheel(
       drawing.add(new Mesh(batch, drawingMaterial));
     }
     if (renderer && !contextLost) renderer.render(scene, camera);
+  }
+  function paintLabel(value: WheelLabel): void {
+    const element = doc.createElement('span');
+    element.className = `astr3-label ${value.className ?? ''}`;
+    Object.assign(element.style, {
+      left: `${value.x}px`,
+      top: `${value.y}px`,
+      fontSize: `${value.size}px`,
+      color: value.color,
+      opacity: String(value.opacity),
+    });
+    Object.assign(element.dataset, value.dataset);
+    if (value.selection) {
+      element.dataset.object = selectionKey(value.selection);
+      element.dataset.active = String(value.active);
+    }
+    if (value.body) {
+      element.title = describe(value.selection!);
+      const symbol = doc.createElement('span');
+      symbol.className = 'astr3-symbol';
+      symbol.textContent = value.text;
+      element.append(symbol);
+      if (value.caption) {
+        const small = doc.createElement('small');
+        small.textContent = value.caption;
+        small.style.fontSize = `${value.captionSize}px`;
+        element.append(small);
+      }
+    } else {
+      element.textContent = value.text;
+      if (value.title) element.title = value.title;
+    }
+    labels.append(element);
+  }
+  function captureExport(settings: ChartExportOptions): ExportSnapshot {
+    assertLive();
+    const viewMode = settings.view ?? 'full';
+    if (viewMode !== 'full' && viewMode !== 'current')
+      throw new RangeError('Export view must be full or current.');
+    if (settings.transparent !== undefined && typeof settings.transparent !== 'boolean')
+      throw new TypeError('Export transparent must be a boolean.');
+    const size = settings.size ?? 1024;
+    const rect = stage.getBoundingClientRect();
+    const sourceWidth = viewMode === 'full' ? size : Math.max(1, rect.width || width);
+    const sourceHeight = viewMode === 'full' ? size : Math.max(1, rect.height || height);
+    const outputHeight = (size * sourceHeight) / sourceWidth;
+    validateExportDimensions(size, outputHeight);
+    const p = presentation?.();
+    const colors = theme();
+    return {
+      model,
+      options: {
+        ...options,
+        glyphs: { ...options.glyphs },
+        bodyVisibility: { ...options.bodyVisibility },
+        selectionEffects: { ...options.selectionEffects },
+        lineStyles: Object.fromEntries(
+          Object.entries(options.lineStyles ?? {}).map(([key, value]) => [
+            key,
+            { ...value, dash: value.dash ? [...value.dash] : undefined },
+          ]),
+        ),
+      },
+      colors: { ...colors, elements: [...colors.elements], aspects: { ...colors.aspects } },
+      visible: layers(),
+      geometry,
+      view: {
+        width: sourceWidth,
+        height: sourceHeight,
+        pixelsPerUnit:
+          (Math.min(sourceWidth, sourceHeight) / (2 * geometry.extent)) *
+          (viewMode === 'full' ? 1 : zoom),
+        pan: viewMode === 'full' ? { x: 0, y: 0 } : { ...pan },
+      },
+      selected: viewMode === 'current' && selected ? { ...selected } : null,
+      presentation: p
+        ? {
+            ...p,
+            bodyRefs: new Map(p.bodyRefs),
+            aspectFamilies: new Map(p.aspectFamilies),
+            bodies: { ...p.bodies },
+            aspects: { ...p.aspects },
+          }
+        : undefined,
+      outputWidth: size,
+      outputHeight,
+      transparent: settings.transparent ?? false,
+    };
   }
   function requestDraw(): void {
     if (!frame && !disposed) frame = win!.requestAnimationFrame(draw);
@@ -1586,6 +1053,18 @@ export function createWheel(
     zoomBy(factor) {
       assertLive();
       changeZoom(factor);
+    },
+    async exportSvg(settings = {}) {
+      const snapshot = captureExport(settings);
+      const { renderSvg } = await import('./chart-export.js');
+      return renderSvg(snapshot);
+    },
+    async exportPng(settings = {}) {
+      const snapshot = captureExport(settings);
+      const pixelRatio = settings.pixelRatio ?? 2;
+      validateExportDimensions(snapshot.outputWidth, snapshot.outputHeight, pixelRatio);
+      const { renderPng } = await import('./chart-export.js');
+      return renderPng(snapshot, doc, pixelRatio);
     },
     on(event, listener) {
       assertLive();

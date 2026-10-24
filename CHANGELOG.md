@@ -4,6 +4,11 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add browser SVG and PNG export to natal and transit charts, with outlined text,
+  full/current-view options, transparent backgrounds and demo download actions.
+  Share wheel construction with the interactive renderer and load export fonts
+  only on demand; unsupported custom text reports its missing characters.
+
 - Match the supplied five-color logo palette in the header and footer, with a
   dark background for contrast. Add reusable outlined SVG logos and palette
   assets, and display the logo in the README.

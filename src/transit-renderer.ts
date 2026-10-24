@@ -286,6 +286,8 @@ export function createTransitChart(
     get error() {
       return wheel.error;
     },
+    exportSvg: (options) => wheel.exportSvg(options),
+    exportPng: (options) => wheel.exportPng(options),
     update(data) {
       assertLive();
       const next = { ...options, data };

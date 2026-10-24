@@ -4,7 +4,9 @@
 flowchart TD
     P[Replaceable ephemeris provider] --> M[Headless chart model]
     D[Precomputed data] --> M
-    M --> R[Three.js wheel and HTML labels]
+    M --> L[Shared wheel layout and drawing description]
+    L --> R[Three.js wheel and HTML labels]
+    L --> E[Outlined SVG and PNG export]
     M --> A[Accessible HTML list]
     R <--> S[Browser selection state]
     A <--> S
@@ -19,6 +21,19 @@ The model owns positions, actual cusps, signs/houses/aspects, IDs, and relations
 - `astr3`: renderer, model exports, and an optional transit animation controller. No document access at import; instantiate on the client.
 - `astr3/ephemeris`: optional Astronomy Engine peer. No DOM/Three.js, and no network needed after assets load.
 - Demo: birth form, request orchestration, interpretation text, details, tooltip, and examples are application code.
+
+The internal wheel drawing builder produces ordered shapes, positioned label
+specifications, cluster badges and hit targets without DOM or GPU access. Both
+backends use the existing geometry and bounded packing solver with injected text
+measurement: a cached DOM probe for interaction, outline metrics for export. The
+interactive painter consumes the description as Three.js triangles and HTML.
+
+Exports snapshot model/display state before asynchronously importing the SVG
+writer and font data. Full exports fit their own viewport; current-view exports
+preserve camera/aspect ratio and scale the resulting drawing. Visible text uses
+precomputed, licensed Noto outlines, with explicit failures for unsupported
+characters. The SVG is self-contained; PNG uses a temporary SVG object URL and 2D
+canvas, released on success or failure. Export never reads the WebGL framebuffer.
 
 The orthographic renderer schedules frames on demand. Stroke geometry keeps widths/dashes in CSS pixels instead of relying on platform-dependent WebGL line widths. Wheel triangles batch into one geometry with per-vertex RGBA and a reusable unlit material, retaining paint order without repeated shader compilation. Projected HTML labels avoid CSS2DRenderer's browser-zoom assumptions. Labels and invisible targets use the same layout. Resize observation requests a frame; stage-size writes occur during drawing, outside observer delivery.
 

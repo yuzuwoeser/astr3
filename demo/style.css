@@ -212,6 +212,32 @@ h1 {
   text-align: right;
   white-space: nowrap;
 }
+.wheel-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 20px;
+  font-size: 12px;
+}
+.wheel-export button {
+  background: transparent;
+  color: inherit;
+  border: 1px solid #405357;
+  border-radius: 7px;
+  padding: 8px 12px;
+}
+.wheel-export button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+#export-status {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+#export-status:empty {
+  display: none;
+}
 .sidebar {
   border: 1px solid var(--line);
   border-radius: 16px;

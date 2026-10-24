@@ -59,6 +59,18 @@ export interface ChartError {
   readonly message: string;
   readonly cause?: unknown;
 }
+export interface ChartExportOptions {
+  /** Fit the entire wheel, or preserve the current camera and selection. */
+  view?: 'full' | 'current';
+  /** Output width in pixels. Full exports are square. Defaults to 1024. */
+  size?: number;
+  /** Omit the canvas background; label backgrounds remain for legibility. */
+  transparent?: boolean;
+}
+export interface ChartPngExportOptions extends ChartExportOptions {
+  /** Raster scale relative to size. Defaults to 2. */
+  pixelRatio?: number;
+}
 export interface ChartEvents {
   dispose: undefined;
   selection: {
@@ -82,6 +94,10 @@ export interface Chart {
   clearSelection(): void;
   resetView(): void;
   zoomBy(factor: number): void;
+  /** Standalone vector SVG with outlined text; does not trigger a download. */
+  exportSvg(options?: ChartExportOptions): Promise<string>;
+  /** Rasterize the same SVG to an image/png Blob. */
+  exportPng(options?: ChartPngExportOptions): Promise<Blob>;
   on<K extends keyof ChartEvents>(
     event: K,
     listener: (payload: ChartEvents[K]) => void,

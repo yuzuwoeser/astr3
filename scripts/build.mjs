@@ -1,4 +1,4 @@
-import { rmSync } from 'node:fs';
+import { copyFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -13,4 +13,9 @@ const result = spawnSync(
   ],
   { stdio: 'inherit', cwd: fileURLToPath(new URL('..', import.meta.url)) },
 );
+if (result.status === 0)
+  copyFileSync(
+    new URL('export-fonts/OFL.txt', import.meta.url),
+    new URL('../dist/export-fonts-OFL.txt', import.meta.url),
+  );
 process.exit(result.status ?? 1);

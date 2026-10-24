@@ -1,5 +1,14 @@
 ASTR3 source code is MIT licensed. The library build does not bundle dependency code.
 
+The library includes ASTR3 export outline data derived from Noto Sans Regular,
+Noto Sans Symbols Regular and Noto Sans Symbols 2 Regular under the SIL Open Font
+License 1.1. The font copyright notices and full license are in
+export-fonts-OFL.txt alongside the installed JavaScript (dist/ in the tarball),
+and scripts/export-fonts/OFL.txt in source. Source revisions and SHA-256 hashes
+are recorded in scripts/export-fonts/sources.json. The derived outline data
+remains OFL-licensed. Generated chart documents do not inherit that license.
+The demo's THIRD_PARTY_LICENSES.txt also contains these notices.
+
 The demo bundles the unmodified Righteous Regular (400) font by Brian J.
 Bonislawsky DBA Astigmatic (AOETI), under the SIL Open Font License 1.1.
 Its copyright notice and full license accompany the font in demo/public/fonts/OFL.txt

@@ -95,6 +95,14 @@ strings and metadata are data; avoid unsafe HTML interpolation. If WebGL fails,
 `chart.error` describes it and the accessible list remains usable. Subscribe to
 `error` for later context failures and check current `chart.error`.
 
+Mounted natal and transit charts can export with `await chart.exportSvg()` or
+`await chart.exportPng()`. Defaults fit the entire wheel; `{ view: 'current' }`
+retains its camera and selection. Exports work during WebGL failure, capture the
+current data at call time, and load font outlines only when requested. Unsupported
+custom glyphs reject with character details. See [SVG and PNG export](api.md#svg-and-png-export)
+for sizing, transparency, font coverage and saving files. There is no standalone
+server-rendering/export factory.
+
 Framework integrations should create once after mount, call `update(data)` for
 data changes, `setOptions` for settings, and dispose at unmount. Avoid rebuilding
 the entire chart for every hover. Selection events can fire on programmatic

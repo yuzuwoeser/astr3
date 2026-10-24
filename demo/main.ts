@@ -76,6 +76,39 @@ const aspectTypes = Object.keys(ASPECT_DEFINITIONS) as AspectType[];
 const transitTime = $<HTMLInputElement>('transit-utc');
 transitTime.value = new Date().toISOString().slice(0, 16);
 
+const exportButtons = ['export-svg', 'export-png'].map((id) => $<HTMLButtonElement>(id));
+for (const [index, button] of exportButtons.entries()) {
+  button.addEventListener('click', async () => {
+    if (exportButtons.some((entry) => entry.disabled)) return;
+    const activeChart = transitMode ? transitChart : chart;
+    if (!activeChart) return;
+    const format = index === 0 ? 'svg' : 'png';
+    const filename = `astr3-${transitMode ? 'transit' : 'natal'}.${format}`;
+    const status = $('export-status');
+    exportButtons.forEach((entry) => (entry.disabled = true));
+    status.textContent = `Preparing ${format.toUpperCase()}…`;
+    try {
+      const blob =
+        format === 'svg'
+          ? new Blob([await activeChart.exportSvg()], { type: 'image/svg+xml' })
+          : await activeChart.exportPng();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status.textContent = `${format.toUpperCase()} download ready.`;
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : 'Could not export this chart.';
+    } finally {
+      exportButtons.forEach((entry) => (entry.disabled = false));
+    }
+  });
+}
+
 const create = <K extends keyof HTMLElementTagNameMap>(
   tag: K,
   content: string,

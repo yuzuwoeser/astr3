@@ -120,10 +120,11 @@ chart.update(data);
 - Eleven aspect types with independent enablement and orbs: five major aspects enabled by default, plus semi-sextile, semi-square, quintile, sesquiquadrate, biquintile, and quincunx. Disabled types leave the model, explorer, and relationship details. Supplied groups have selectable interiors and accessible entries.
 - Pointer/touch selection, overlap chooser, relationship highlights, application HTML tooltip events, and programmatic selection.
 - Zoom/pan/reset, keyboard controls, an accessible HTML object list, and reduced-motion behavior.
+- Browser SVG/PNG export for natal and transit charts, with portable outlined text and full/current-view options. See [export options](docs/api.md#svg-and-png-export).
 - Dark/light themes, Light/Regular/Bold chart weight, custom glyph strings, aspect line widths/dashes, layers, dimming, and selection styles.
 - Validated data updates, resource disposal, and recovery after WebGL context restoration.
 
-The initial API is versioned 0.x and may change before 1.0. Automatic patterns, synastry, standalone transit houses, multi-selection, time playback, export, 3D presentation, and framework wrappers are deferred.
+The initial API is versioned 0.x and may change before 1.0. Automatic patterns, synastry, standalone transit houses, multi-selection, continuous time playback, 3D presentation, and framework wrappers are deferred.
 
 ## Natal + transit bi-wheels
 

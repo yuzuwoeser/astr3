@@ -113,6 +113,67 @@ chart.setOptions({ chartWeight });
 chart.setOptions({ chartWeight: 'regular', glyphs: { sun: '☉' } });
 ```
 
+## SVG and PNG export
+
+Both mounted chart types expose `exportSvg(options?): Promise<string>` and
+`exportPng(options?): Promise<Blob>`. Exports are generated entirely in the browser;
+SVG contains vector shapes and outlined text, and PNG rasterizes that same SVG.
+Export does not capture the WebGL canvas and also works when WebGL is unavailable.
+
+```ts
+import type { ChartExportOptions, ChartPngExportOptions } from 'astr3';
+
+const svgOptions: ChartExportOptions = { size: 1024, view: 'full' };
+const svg = await chart.exportSvg(svgOptions);
+const pngOptions: ChartPngExportOptions = { size: 1024, pixelRatio: 2 };
+const png = await chart.exportPng(pngOptions); // image/png, 2048 × 2048
+```
+
+| Option        | Default  | Behavior                                                                                                                                                                                                  |
+| ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`        | `'full'` | Fit the complete wheel and omit selection effects. `'current'` preserves the current camera and selection, uses the viewport aspect ratio, and scales the result to `size` wide. Hover is always ignored. |
+| `size`        | `1024`   | Output width in pixels. Full exports are square; packing and text tiers use this size. Current-view exports lay out at the mounted viewport dimensions before scaling.                                    |
+| `transparent` | `false`  | Omit the overall background. Body labels and cluster badges retain theme-colored backgrounds for legibility.                                                                                              |
+| `pixelRatio`  | `2`      | PNG only: multiply SVG output dimensions when rasterizing.                                                                                                                                                |
+
+Current theme, chart weight, layout, layers, body visibility, glyph overrides,
+line styles and aspect settings are retained. Export includes count badges and
+chart-status notices, but excludes controls, object lists, tooltips, overlap
+choosers and WebGL error messages. A count badge in a file is static; use a larger
+full-chart `size` to reveal more individual labels. No hidden data is appended.
+
+Export captures chart state when called, before loading export code. Data/options
+updates and animation can continue without changing an in-progress export. Export
+emits no chart events and does not change the model, view, focus or selection.
+A call started before disposal may finish; calls made after disposal reject.
+
+The lazily loaded export fonts derive from Noto Sans, Noto Sans Symbols and Noto
+Sans Symbols 2. Paths require no installed fonts or external resources, and text
+is not editable as SVG text. The interactive chart continues to use its existing
+HTML/system-font typography. Export measures the bundled outlines before packing,
+so glyph appearance and label placement can differ slightly from the live view.
+Light/Regular/Bold use synthetic outline strokes.
+
+Supported visible text includes built-in zodiac/body glyphs (including Chiron,
+lunar nodes and AC/MC), printable ASCII, Latin-1 U+00A0–U+00FF, retrograde ℞,
+primes ′/″, en/em dashes and ellipsis. Text-presentation selector U+FE0E is ignored.
+Unsupported visible text rejects the export with the label, missing characters
+and Unicode code points; it is never silently replaced. Arbitrary titles remain
+escaped accessible XML text and do not require outline coverage. Caller metadata
+and internal transit IDs are not serialized.
+
+`size` and `pixelRatio` must be positive finite numbers. Rounded output dimensions
+must be at least 1 pixel, at most 8,192 pixels per side and at most 32 million
+pixels overall; both SVG and raster dimensions are checked before allocation.
+Invalid options reject without changing the chart. PNG decoding, canvas, or
+encoding failures also reject. Export supports literal hex/named/rgb()/hsl()
+colors; unresolved CSS variables, context-dependent colors and paint URLs reject.
+
+Methods return content without downloading it. Applications own filenames and
+saving; the demo provides **Download SVG** and **Download PNG** actions with full
+chart defaults. For example, create a Blob from the SVG string with MIME type
+`image/svg+xml`, create an object URL, and revoke that URL after download.
+
 ## Events and details
 
 | Event       | Payload                                                                                                                        |

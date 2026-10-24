@@ -8,7 +8,7 @@
 
 - [Getting started](README.md): local demo, tarball installation, natal and transit examples.
 - [Agent integration](docs/agent-integration.md): entry-point selection, headless example, browser lifecycle and common mistakes.
-- [API contracts](docs/api.md): input, aspects, default/alternative layouts, per-body visibility, options, events, picking and accessibility.
+- [API contracts](docs/api.md): input, aspects, default/alternative layouts, per-body visibility, options, SVG/PNG export, events, picking and accessibility.
 - [Transit API](docs/transits.md): composite models, source-qualified selections, transit updates and accurate time-step animation.
 - [Calculation conventions](docs/calculations.md): coordinate conventions, houses, nodes and measured accuracy limits.
 - [Architecture](docs/architecture.md): model, provider, renderer and application boundaries.

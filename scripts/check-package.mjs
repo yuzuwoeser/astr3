@@ -29,6 +29,9 @@ try {
     'CHANGELOG.md',
     'llms.txt',
     'docs/agent-integration.md',
+    'dist/export-fonts-OFL.txt',
+    'dist/chart-export.js',
+    'dist/export-font-data.js',
     'docs/releasing.md',
   ])
     if (!pack.files.some((file) => file.path === path))
@@ -78,7 +81,7 @@ try {
   writeFileSync(
     join(directory, 'consumer.ts'),
     `
-import { createChart, createTransitChart, createTransitAnimation, type BodyVisibility, type TransitBodyVisibility, type TransitAnimation, type TransitAnimationState, type TransitAnimationOptions, type TransitCalculator, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
+import { createChart, createTransitChart, createTransitAnimation, type ChartExportOptions, type ChartPngExportOptions, type BodyVisibility, type TransitBodyVisibility, type TransitAnimation, type TransitAnimationState, type TransitAnimationOptions, type TransitCalculator, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
 import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
@@ -109,6 +112,14 @@ function animate(chart: ReturnType<typeof createTransitChart>): TransitAnimation
   return animation;
 }
 void animate;
+const exportOptions: ChartExportOptions = { view: 'current', size: 1024, transparent: true };
+const pngOptions: ChartPngExportOptions = { ...exportOptions, pixelRatio: 2 };
+function exportCharts(natal: ReturnType<typeof createChart>, transit: ReturnType<typeof createTransitChart>) {
+  const svg: Promise<string> = natal.exportSvg(exportOptions);
+  const png: Promise<Blob> = transit.exportPng(pngOptions);
+  return [svg, png, natal.exportPng(), transit.exportSvg()];
+}
+void exportCharts;
 `,
   );
   writeFileSync(
