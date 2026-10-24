@@ -170,8 +170,9 @@ encoding failures also reject. Export supports literal hex/named/rgb()/hsl()
 colors; unresolved CSS variables, context-dependent colors and paint URLs reject.
 
 Methods return content without downloading it. Applications own filenames and
-saving; the demo provides **Download SVG** and **Download PNG** actions with full
-chart defaults. **Download large SVG** uses a 4096 × 4096 full-chart layout, giving
+saving; the demo's **Download SVG** uses an 800 × 800 full-chart layout and
+**Download PNG** rasterizes that layout at 2× for a 1600 × 1600 image.
+**Download large SVG** uses a 1600 × 1600 full-chart layout, giving
 symbols and degree/retrograde captions more room before compacting. Its filename
 ends in `-large.svg`. Existing layer and body visibility settings still apply;
 extremely dense charts may still compact labels. For example, create a Blob from the SVG string with MIME type

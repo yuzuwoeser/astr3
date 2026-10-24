@@ -4,7 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
-- Add **Download large SVG** to the demo, using a 4096 × 4096 layout to retain
+- Adjust demo downloads to 800 × 800 for standard SVG and 1600 × 1600 for large
+  SVG and PNG. Library export defaults remain unchanged.
+
+- Add **Download large SVG** to the demo to retain
   more labels and degree/retrograde captions in crowded natal and transit charts.
 
 - Add browser SVG and PNG export to natal and transit charts, with outlined text,

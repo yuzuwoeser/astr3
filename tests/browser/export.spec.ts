@@ -247,12 +247,12 @@ test('captures the displayed transit sample while time-step animation continues'
   await page.waitForFunction(() => window.astr3TransitAnimation?.state.status === 'playing');
   const result = await page.evaluate(async () => {
     const chart = window.astr3Transit!;
-    const expected = await chart.exportSvg({ size: 512 });
+    const expected = chart.exportSvg({ size: 512 });
     const pending = chart.exportSvg({ size: 512 });
     const time = window.astr3TransitAnimation!.state.currentTime;
     window.astr3TransitAnimation!.cancel();
     chart.updateTransit({ bodies: [{ id: 'sun', name: 'Sun', longitude: 222 }] });
-    return { expected, captured: await pending, time };
+    return { expected: await expected, captured: await pending, time };
   });
   expect(result.time).toBeTruthy();
   expect(result.captured).toBe(result.expected);
@@ -265,14 +265,14 @@ test('demo downloads both formats and reports export errors', async ({ page }) =
   const svgFile = await downloadSvg;
   expect(svgFile.suggestedFilename()).toBe('astr3-natal.svg');
   const svg = await readFile((await svgFile.path())!, 'utf8');
-  expect(svg).toContain('<svg');
+  expect(svg).toContain('width="800" height="800"');
   const downloadPng = page.waitForEvent('download');
   await page.locator('#export-png').click();
   const pngFile = await downloadPng;
   const png = await readFile((await pngFile.path())!);
   expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-  expect(png.readUInt32BE(16)).toBe(2048);
-  expect(png.readUInt32BE(20)).toBe(2048);
+  expect(png.readUInt32BE(16)).toBe(1600);
+  expect(png.readUInt32BE(20)).toBe(1600);
   await page.evaluate(() => window.astr3.setOptions({ glyphs: { sun: '中' } }));
   await page.locator('#export-svg').click();
   await expect(page.locator('#export-status')).toContainText('U+4E2D');
@@ -307,7 +307,8 @@ for (const layout of ['default', 'alternative'] as const) {
         );
       } else await page.evaluate((data) => window.astr3.update(data), data);
       const standard = await page.evaluate(
-        (mode) => (mode === 'transit' ? window.astr3Transit! : window.astr3).exportSvg(),
+        (mode) =>
+          (mode === 'transit' ? window.astr3Transit! : window.astr3).exportSvg({ size: 800 }),
         mode,
       );
       const download = page.waitForEvent('download');
@@ -336,9 +337,11 @@ for (const layout of ['default', 'alternative'] as const) {
         },
         { standard, svg },
       );
-      expect(result.large.width).toBe('4096');
-      expect(result.large.height).toBe('4096');
-      expect(result.large.captions).toBe(mode === 'transit' ? 12 : 6);
+      expect(result.large.width).toBe('1600');
+      expect(result.large.height).toBe('1600');
+      // The smaller large preset restores at least one band's full captions;
+      // tightly crowded transit bands can still compact independently.
+      expect(result.large.captions).toBeGreaterThanOrEqual(data.bodies.length);
       expect(result.large.captions).toBeGreaterThan(result.standard.captions);
       await expect(page.locator('#export-status')).toHaveText('Large SVG download ready.');
     }

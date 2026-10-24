@@ -77,9 +77,9 @@ const transitTime = $<HTMLInputElement>('transit-utc');
 transitTime.value = new Date().toISOString().slice(0, 16);
 
 const exportActions = [
-  { id: 'export-svg', format: 'svg', size: 1024, suffix: '' },
-  { id: 'export-svg-large', format: 'svg', size: 4096, suffix: '-large' },
-  { id: 'export-png', format: 'png', size: 1024, suffix: '' },
+  { id: 'export-svg', format: 'svg', size: 800, suffix: '' },
+  { id: 'export-svg-large', format: 'svg', size: 1600, suffix: '-large' },
+  { id: 'export-png', format: 'png', size: 800, suffix: '' },
 ] as const;
 const exportButtons = exportActions.map(({ id }) => $<HTMLButtonElement>(id));
 for (const { id, format, size, suffix } of exportActions) {
