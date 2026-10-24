@@ -18,6 +18,7 @@ for (const layout of ['default', 'alternative']) {
   test(`animates exact times with synchronized selection, labels and pause/resume in ${layout} layout`, async ({
     page,
   }) => {
+    await page.clock.install();
     await ready(page);
     await page.locator('#chart-layout').selectOption(layout);
     const trace = await page.evaluateHandle(() => {
@@ -39,7 +40,7 @@ for (const layout of ['default', 'alternative']) {
     await page.locator('#transit-pause').click();
     await expect(page.locator('#transit-pause')).toHaveText('Resume');
     const paused = await page.evaluate(() => window.astr3TransitAnimation!.state.currentTime);
-    await page.waitForTimeout(150);
+    await page.clock.runFor(150);
     expect(await page.evaluate(() => window.astr3TransitAnimation!.state.currentTime)).toBe(paused);
     expect(await page.evaluate(() => window.astr3Transit!.model.transit.metadata!.utc)).toBe(
       paused,
@@ -65,9 +66,10 @@ for (const layout of ['default', 'alternative']) {
     if (await chooser.count()) await chooser.filter({ hasText: 'Mars' }).click();
     await expect(page.locator('#inspector-heading')).toHaveText('Transiting Mars');
     await page.locator('#transit-pause').click();
-    await expect
-      .poll(() => page.evaluate(() => window.astr3TransitAnimation!.state.status))
-      .toBe('completed');
+    const duration = await page.evaluate(() => window.astr3TransitAnimation!.state.durationMs);
+    // Run every frame, including the first scheduled turn, regardless of renderer speed.
+    await page.clock.runFor(duration + 100);
+    expect(await page.evaluate(() => window.astr3TransitAnimation!.state.status)).toBe('completed');
     await expect(page.locator('#transit-utc')).toHaveValue('2024-04-15T18:00');
     const summary = await trace.evaluate((trace) => ({
       times: trace.times,

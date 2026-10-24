@@ -100,6 +100,7 @@ for (const layout of ['default', 'alternative'] as const) {
 test('keeps natal and transit visibility independent through updates, layouts and animation', async ({
   page,
 }) => {
+  await page.clock.install();
   await ready(page);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.getByRole('checkbox', { name: 'Show Natal Sun', exact: true }).uncheck();
@@ -130,9 +131,10 @@ test('keeps natal and transit visibility independent through updates, layouts an
   await page.locator('#transit-next').click();
   await page.waitForFunction(() => window.astr3TransitAnimation!.state.status === 'playing');
   await page.getByRole('checkbox', { name: 'Show Transiting Sun', exact: true }).uncheck();
-  await expect
-    .poll(() => page.evaluate(() => window.astr3TransitAnimation!.state.status))
-    .toBe('completed');
+  const duration = await page.evaluate(() => window.astr3TransitAnimation!.state.durationMs);
+  // Run every frame, including the first scheduled turn, regardless of renderer speed.
+  await page.clock.runFor(duration + 100);
+  expect(await page.evaluate(() => window.astr3TransitAnimation!.state.status)).toBe('completed');
   await expect(page.locator('#transit-chart .astr3-body[data-chart=transit]')).toHaveCount(0);
   await expect
     .poll(() => page.evaluate(() => window.astr3Transit!.model.transit.metadata!.utc))
