@@ -528,10 +528,14 @@ test('updates atomically, preserves stable selection, and clears missing objects
 
 test('supports zoom, pan, reset, themes, and layers without drag selecting', async ({ page }) => {
   await ready(page);
-  const label = page.locator('[data-object="body:sun"]');
-  const before = await label.boundingBox();
+  // Query and measure in one browser turn: a redraw can replace the label node.
+  const labelX = () =>
+    page.evaluate(
+      () => document.querySelector('[data-object="body:sun"]')!.getBoundingClientRect().x,
+    );
+  const before = await labelX();
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  await expect.poll(async () => (await label.boundingBox())?.x).not.toBe(before?.x);
+  await expect.poll(labelX).not.toBe(before);
   const p = await point(page, 0, 0);
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();
@@ -539,9 +543,7 @@ test('supports zoom, pan, reset, themes, and layers without drag selecting', asy
   await page.mouse.up();
   expect(await page.evaluate(() => window.astr3.selection)).toBeNull();
   await page.getByRole('button', { name: 'Reset view' }).click();
-  await expect
-    .poll(async () => Math.round((await label.boundingBox())!.x))
-    .toBe(Math.round(before!.x));
+  await expect.poll(async () => Math.round(await labelX())).toBe(Math.round(before));
   await page.getByRole('button', { name: 'Switch to light chart' }).click();
   await expect(page.locator('.wheel-panel')).toHaveClass(/light/);
   await page.locator('input[data-layer=aspects]').uncheck();
