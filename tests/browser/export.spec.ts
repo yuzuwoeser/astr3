@@ -277,8 +277,73 @@ test('demo downloads both formats and reports export errors', async ({ page }) =
   await page.locator('#export-svg').click();
   await expect(page.locator('#export-status')).toContainText('U+4E2D');
   await expect(page.locator('#export-svg')).toBeEnabled();
+  await expect(page.locator('#export-svg-large')).toBeEnabled();
   await expect(page.locator('#export-png')).toBeEnabled();
 });
+
+for (const layout of ['default', 'alternative'] as const) {
+  test(`large SVG download restores crowded natal/transit captions in ${layout} layout`, async ({
+    page,
+  }) => {
+    await ready(page);
+    await page.locator('#chart-layout').selectOption(layout);
+    const data = {
+      title: 'Synthetic crowded export study',
+      bodies: Array.from({ length: 6 }, (_, i) => ({
+        id: `point-${i}`,
+        name: `Point ${i}`,
+        longitude: (359 + i / 10) % 360,
+        glyph: '☉',
+        retrograde: i % 2 === 0,
+      })),
+      aspects: [],
+    };
+    for (const mode of ['natal', 'transit'] as const) {
+      if (mode === 'transit') {
+        await transits(page);
+        await page.evaluate(
+          (data) => window.astr3Transit!.update({ natal: data, transit: data }),
+          data,
+        );
+      } else await page.evaluate((data) => window.astr3.update(data), data);
+      const standard = await page.evaluate(
+        (mode) => (mode === 'transit' ? window.astr3Transit! : window.astr3).exportSvg(),
+        mode,
+      );
+      const download = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Download large SVG', exact: true }).click();
+      const file = await download;
+      expect(file.suggestedFilename()).toBe(`astr3-${mode}-large.svg`);
+      const svg = await readFile((await file.path())!, 'utf8');
+      const result = await page.evaluate(
+        ({ standard, svg }) => {
+          function inspect(source: string) {
+            const xml = new DOMParser().parseFromString(source, 'image/svg+xml');
+            // Body labels contain a background rectangle and separate outlined
+            // symbol/caption groups; cluster badges have only one text group.
+            const captions = [...xml.querySelectorAll('g[opacity]')].filter(
+              (group) =>
+                group.querySelector(':scope > rect') &&
+                group.querySelectorAll(':scope > g[fill]').length === 2,
+            );
+            return {
+              width: xml.documentElement.getAttribute('width'),
+              height: xml.documentElement.getAttribute('height'),
+              captions: captions.length,
+            };
+          }
+          return { standard: inspect(standard), large: inspect(svg) };
+        },
+        { standard, svg },
+      );
+      expect(result.large.width).toBe('4096');
+      expect(result.large.height).toBe('4096');
+      expect(result.large.captions).toBe(mode === 'transit' ? 12 : 6);
+      expect(result.large.captions).toBeGreaterThan(result.standard.captions);
+      await expect(page.locator('#export-status')).toHaveText('Large SVG download ready.');
+    }
+  });
+}
 
 test('current-view exports preserve rectangular viewports and survive disposal after capture', async ({
   page,

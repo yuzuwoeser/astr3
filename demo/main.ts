@@ -76,22 +76,28 @@ const aspectTypes = Object.keys(ASPECT_DEFINITIONS) as AspectType[];
 const transitTime = $<HTMLInputElement>('transit-utc');
 transitTime.value = new Date().toISOString().slice(0, 16);
 
-const exportButtons = ['export-svg', 'export-png'].map((id) => $<HTMLButtonElement>(id));
-for (const [index, button] of exportButtons.entries()) {
+const exportActions = [
+  { id: 'export-svg', format: 'svg', size: 1024, suffix: '' },
+  { id: 'export-svg-large', format: 'svg', size: 4096, suffix: '-large' },
+  { id: 'export-png', format: 'png', size: 1024, suffix: '' },
+] as const;
+const exportButtons = exportActions.map(({ id }) => $<HTMLButtonElement>(id));
+for (const { id, format, size, suffix } of exportActions) {
+  const button = $<HTMLButtonElement>(id);
   button.addEventListener('click', async () => {
     if (exportButtons.some((entry) => entry.disabled)) return;
     const activeChart = transitMode ? transitChart : chart;
     if (!activeChart) return;
-    const format = index === 0 ? 'svg' : 'png';
-    const filename = `astr3-${transitMode ? 'transit' : 'natal'}.${format}`;
+    const filename = `astr3-${transitMode ? 'transit' : 'natal'}${suffix}.${format}`;
+    const exportName = suffix ? 'Large SVG' : format.toUpperCase();
     const status = $('export-status');
     exportButtons.forEach((entry) => (entry.disabled = true));
-    status.textContent = `Preparing ${format.toUpperCase()}…`;
+    status.textContent = `Preparing ${exportName}…`;
     try {
       const blob =
         format === 'svg'
-          ? new Blob([await activeChart.exportSvg()], { type: 'image/svg+xml' })
-          : await activeChart.exportPng();
+          ? new Blob([await activeChart.exportSvg({ size })], { type: 'image/svg+xml' })
+          : await activeChart.exportPng({ size });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -100,7 +106,7 @@ for (const [index, button] of exportButtons.entries()) {
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      status.textContent = `${format.toUpperCase()} download ready.`;
+      status.textContent = `${exportName} download ready.`;
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : 'Could not export this chart.';
     } finally {

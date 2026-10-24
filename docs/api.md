@@ -171,7 +171,10 @@ colors; unresolved CSS variables, context-dependent colors and paint URLs reject
 
 Methods return content without downloading it. Applications own filenames and
 saving; the demo provides **Download SVG** and **Download PNG** actions with full
-chart defaults. For example, create a Blob from the SVG string with MIME type
+chart defaults. **Download large SVG** uses a 4096 × 4096 full-chart layout, giving
+symbols and degree/retrograde captions more room before compacting. Its filename
+ends in `-large.svg`. Existing layer and body visibility settings still apply;
+extremely dense charts may still compact labels. For example, create a Blob from the SVG string with MIME type
 `image/svg+xml`, create an object URL, and revoke that URL after download.
 
 ## Events and details

@@ -4,6 +4,9 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add **Download large SVG** to the demo, using a 4096 × 4096 layout to retain
+  more labels and degree/retrograde captions in crowded natal and transit charts.
+
 - Add browser SVG and PNG export to natal and transit charts, with outlined text,
   full/current-view options, transparent backgrounds and demo download actions.
   Share wheel construction with the interactive renderer and load export fonts
