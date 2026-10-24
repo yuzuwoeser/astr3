@@ -1,7 +1,12 @@
-# Working on astr3
+# Working on ASTR3
 
 These instructions apply to the entire repository. For agents integrating the
 library into another application, start with [docs/agent-integration.md](docs/agent-integration.md).
+
+Use **ASTR3** for the display name and project-name prose. Technical identifiers
+such as package imports, URLs, CSS classes and JavaScript globals use `astr3`.
+The demo wordmark is live text in Righteous Regular (400), with a green `3`;
+keep the locally bundled font and its SIL OFL copyright/license notices together.
 
 ## Setup and checks
 

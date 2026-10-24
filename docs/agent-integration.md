@@ -1,8 +1,8 @@
-# Integrating astr3 with an agent
+# Integrating ASTR3 with an agent
 
 This guide is for an agent building an application or inspecting chart data.
-For an agent editing astr3 itself, use [AGENTS.md](../AGENTS.md).
-astr3 exposes TypeScript/JavaScript APIs. It does not include an MCP server,
+For an agent editing ASTR3 itself, use [AGENTS.md](../AGENTS.md).
+ASTR3 exposes TypeScript/JavaScript APIs. It does not include an MCP server,
 LLM tool endpoint, interpretation service or framework wrapper.
 
 ## Choose an entry point
@@ -62,7 +62,7 @@ the library did not detect a grand trine. Select the group with
 Use model data and relationship details for structured agent outputs. Do not infer
 longitudes from screen coordinates: label placement deliberately moves symbols.
 An interpretation is application content, not an astronomical result supplied by
-astr3. Do not claim the library validates an interpretation.
+ASTR3. Do not claim the library validates an interpretation.
 
 ## Mount the same input in a browser
 

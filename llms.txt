@@ -1,4 +1,4 @@
-# astr3
+# ASTR3
 
 > MIT TypeScript library for explorable Western astrology wheels with Three.js.
 > Browser rendering, headless models, optional local ephemeris, natal and transit charts.

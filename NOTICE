@@ -1,4 +1,10 @@
-astr3 is MIT licensed. The library build does not bundle dependency code.
+ASTR3 source code is MIT licensed. The library build does not bundle dependency code.
+
+The demo bundles the unmodified Righteous Regular (400) font by Brian J.
+Bonislawsky DBA Astigmatic (AOETI), under the SIL Open Font License 1.1.
+Its copyright notice and full license accompany the font in demo/public/fonts/OFL.txt
+and are included in the demo's THIRD_PARTY_LICENSES.txt. The font is a demo asset,
+not part of the library build, and remains under its original license.
 
 Three.js — https://github.com/mrdoob/three.js
 MIT License. Used as an external peer dependency.

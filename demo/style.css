@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Righteous';
+  src: url('/fonts/Righteous-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
   font-family: 'DM Sans', system-ui, sans-serif;
   color: #263a3e;
@@ -49,22 +57,17 @@ a {
 }
 .wordmark {
   text-decoration: none;
-  letter-spacing: -2px;
-  font-size: 31px;
-  font-weight: 700;
-  display: flex;
-  gap: 2px;
-  align-items: center;
-}
-.wordmark > span:last-child {
-  color: #788f69;
-}
-.mark {
-  font-size: 32px;
-  line-height: 1;
-  letter-spacing: 0;
-  margin-right: 8px;
+  font-family: 'Righteous', system-ui, sans-serif;
+  font-style: normal;
   font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1;
+  font-size: 31px;
+  display: inline-block;
+  white-space: nowrap;
+}
+.wordmark-accent {
+  color: #788f69;
 }
 .masthead-note {
   font-size: 10px;
@@ -589,8 +592,13 @@ footer > span:last-child {
   font-size: 8px;
   letter-spacing: 1px;
 }
-.footer-star {
-  padding: 0 6px;
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.wordmark.footer-wordmark {
+  font-size: 20px;
 }
 #tooltip {
   position: fixed;

@@ -1,8 +1,22 @@
-# astr3
+# ASTR3
 
 Explorable astrology wheels for the browser. A framework-neutral TypeScript library built with Three.js, released under MIT.
 
 Select a planet, point, house, aspect, or supplied configuration. Highlight its relationships and connect the selection to your own explanations, tables, tooltips, or panels. Rendering works with precomputed data; the optional browser adapter calculates a natal chart without a backend.
+
+## Name and wordmark
+
+The display name is **ASTR3**. The demo renders its wordmark as live text in
+Righteous Regular (400), with the **3** accented in `#788f69`. The font is served
+locally; no SVG or PNG logo is required. Repository Markdown uses the uppercase
+name with its host's normal typography. The npm package, imports, URLs and code
+identifiers continue to use `astr3`.
+
+ASTR3's source code is MIT licensed. The demo bundles the original, unmodified
+Righteous font under the [SIL Open Font License 1.1](https://openfontlicense.org/).
+Its copyright notice and full license ship alongside the font and in the demo's
+third-party notices. The font's license permits personal and commercial use and
+bundling with software; it does not change ASTR3's code license.
 
 ## Run the demo
 

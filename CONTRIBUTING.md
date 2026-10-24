@@ -1,6 +1,6 @@
-# Contributing to astr3
+# Contributing to ASTR3
 
-astr3 is an MIT-licensed TypeScript library. Issues and pull requests are welcome.
+ASTR3 is an MIT-licensed TypeScript library. Issues and pull requests are welcome.
 The 0.x API may change; discuss a substantial public API change in an issue first.
 Do not include private birth information in reports, screenshots or fixtures.
 
@@ -41,7 +41,7 @@ npm run format:check
 
 `npm run check` combines the first five commands. The package check installs the
 actual tarball into an isolated consumer and checks ESM imports, SSR-safe imports
-and TypeScript declarations. It packs the installed peers alongside astr3 and
+and TypeScript declarations. It packs the installed peers alongside ASTR3 and
 installs those local archives offline with an isolated empty npm cache. It does
 not depend on cached registry metadata. Run `npm ci` first to install the peers.
 

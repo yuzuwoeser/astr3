@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Adopt ASTR3 as the display name and a live-text Righteous Regular (400)
+  wordmark with an accented green 3. Bundle the original font locally with
+  its SIL OFL license and retain lowercase `astr3` technical identifiers.
+
 - Add individual celestial-body visibility controls, with separate natal/transit
   settings, All/None presets, and a `bodyVisibility` API. Hidden bodies and their
   connectors leave the wheel while their data and accessible selections remain.

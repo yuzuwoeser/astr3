@@ -6,14 +6,15 @@
     <meta name="theme-color" content="#111c20" />
     <meta
       name="description"
-      content="An explorable astrology wheel built with astr3, an open source TypeScript and Three.js library."
+      content="An explorable astrology wheel built with ASTR3, an open source TypeScript and Three.js library."
     />
-    <title>astr3 — an explorable sky</title>
+    <title>ASTR3 — an explorable sky</title>
+    <link rel="preload" href="/fonts/Righteous-Regular.ttf" as="font" type="font/ttf" crossorigin />
   </head>
   <body>
     <header class="masthead">
-      <a class="wordmark" href="./" aria-label="astr3 home"
-        ><span class="mark" aria-hidden="true">✳</span> astr<span>3</span></a
+      <a class="wordmark" href="./" aria-label="ASTR3 home"
+        >ASTR<span class="wordmark-accent">3</span></a
       >
       <span class="masthead-note">OPEN SOURCE CHART EXPLORER</span>
       <a
@@ -246,10 +247,14 @@
       <section id="aspect-legend" class="legend" aria-label="Aspect legend"></section>
     </main>
     <footer>
-      <span>astr3 <span class="footer-star">✳</span> The sky, connected.</span
+      <span class="footer-brand"
+        ><span class="wordmark footer-wordmark">ASTR<span class="wordmark-accent">3</span></span
+        ><span>The sky, connected.</span></span
       ><span
-        ><a href="./THIRD_PARTY_LICENSES.txt" target="_blank" rel="noreferrer">MIT LICENSES</a> ·
-        BROWSER CALCULATION · FRAMEWORK NEUTRAL</span
+        ><a href="./THIRD_PARTY_LICENSES.txt" target="_blank" rel="noreferrer"
+          >THIRD-PARTY LICENSES</a
+        >
+        · BROWSER CALCULATION · FRAMEWORK NEUTRAL</span
       >
     </footer>
     <div id="tooltip" role="tooltip" hidden></div>
