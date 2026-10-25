@@ -60,11 +60,11 @@ writeFileSync(
   new URL('export-fonts/sources.json', import.meta.url),
   JSON.stringify(sources, null, 2) + '\n',
 );
-// Include notices in published demo artifacts as well as the npm distribution.
-const demoLicense = new URL('../demo/public/THIRD_PARTY_LICENSES.txt', import.meta.url);
-const existing = readFileSync(demoLicense, 'utf8').split('\nASTR3 export outlines')[0];
+// Include notices in published website artifacts as well as the npm distribution.
+const siteLicense = new URL('../site/public/THIRD_PARTY_LICENSES.txt', import.meta.url);
+const existing = readFileSync(siteLicense, 'utf8').split('\nASTR3 export outlines')[0];
 writeFileSync(
-  demoLicense,
+  siteLicense,
   existing.trimEnd() + '\n\nASTR3 export outlines — Noto fonts\n\n' + license,
 );
 console.log(`Generated ${characters.size} outlined characters.`);

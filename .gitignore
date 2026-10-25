@@ -1,6 +1,6 @@
 node_modules/
 dist/
-demo-dist/
+site-dist/
 coverage/
 test-results/
 playwright-report/
@@ -32,3 +32,9 @@ private/
 .claude/
 .gstack/
 .context/
+
+.site-cache/
+site/.generated/
+
+# Ignore artifacts left by pre-migration checkouts.
+demo-dist/

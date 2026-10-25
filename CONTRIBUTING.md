@@ -7,7 +7,8 @@ Do not include private birth information in reports, screenshots or fixtures.
 ## Start locally
 
 Use **Node.js 24 LTS**, matching CI. Node 22.12.0 or newer is supported by the
-package. npm and Git are required; Python and an ephemeris service are not.
+package. npm and Git are required; `tar`, `zip`, and `unzip` are needed for website
+builds/tests (included on typical macOS/Linux setups). Python and an ephemeris service are not required.
 
 ```sh
 git clone https://github.com/yuzuwoeser/astr3.git
@@ -17,8 +18,8 @@ npm exec playwright -- install chromium
 npm run dev
 ```
 
-Open the Vite URL. Choose a synthetic or public calculated preset, then try
-selecting a body, aspect, house or supplied group. The example application owns
+Open the Vite URL and select **Playground**. Choose a synthetic or public
+calculated preset, then try selecting a body, aspect, house or supplied group. The example application owns
 forms, tooltip text and time controls; the library owns rendering and selection.
 
 ## Make and verify a change
@@ -30,15 +31,17 @@ work manually or with a coding agent.
 ```sh
 npm run typecheck
 npm test
-npm run build
-npm run build:demo
+npm run build:site
+npm run typecheck:examples
+npm run test:recipes
 npm run test:package
 npm run test:browser
 npm run format:check
 ```
 
-`npm run check` combines the first five commands. The package check installs the
-actual tarball into an isolated consumer and checks ESM imports, SSR-safe imports
+`npm run check` combines types, unit tests, the site/library builds, framework
+checks, recipe syntax checks, and the packed consumer check. The package check
+installs the actual tarball into an isolated consumer and checks ESM imports, SSR-safe imports
 and TypeScript declarations. It packs the installed peers alongside ASTR3 and
 installs those local archives offline with an isolated empty npm cache. It does
 not depend on cached registry metadata. Run `npm ci` first to install the peers.
@@ -58,6 +61,14 @@ Add tests for changed behavior and regressions rather than duplicating the
 implementation. Keep calculation reference tests independent of the algorithm
 under test. Fixtures and optional regeneration provenance are documented in
 [calculations](docs/calculations.md).
+
+The website lives in `site/`; runnable examples and the explorer live in
+`examples/`. See [the examples contributor guide](https://github.com/yuzuwoeser/astr3/blob/main/examples/README.md)
+for the registry and build flow. Framework previews compile against a local npm
+package and load on demand in isolated iframes. Restart `dev` after editing an
+example to rebuild previews. `build:demo` remains an alias for `build:site`.
+Run `npm run test:pages` separately for production routes and examples under
+`/astr3/`; these tests do not run inside `check`.
 
 ## Submit a pull request
 
@@ -79,9 +90,9 @@ Keep examples runnable with invented positions or documented public reference
 dates/locations. Describe public behavior in the [API reference](docs/api.md)
 and implementation detail in [architecture](docs/architecture.md). Update
 `llms.txt` when navigation changes. Check relative links in the packed docs as
-well as the checkout: demo assets and development scripts are not packaged.
+well as the checkout: website/example assets and development scripts are not packaged.
 
-The [brand notes](https://github.com/yuzuwoeser/astr3/blob/main/demo/public/brand/README.txt)
+The [brand notes](https://github.com/yuzuwoeser/astr3/blob/main/site/public/brand/README.txt)
 record wordmark colors, SVG assets, and font attribution. The
 [export font guide](https://github.com/yuzuwoeser/astr3/blob/main/scripts/export-fonts/README.md)
 describes optional outline regeneration and provenance. Keep copyright/license

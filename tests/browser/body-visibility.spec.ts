@@ -6,7 +6,7 @@ import type { ChartLayout, BodyVisibility } from '../../src/types.js';
 import type { TransitBodyVisibility } from '../../src/transit-renderer.js';
 
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/playground/');
   await expect(page.locator('#chart .astr3-body')).toHaveCount(14);
   await page.locator('#body-controls summary').click();
 }

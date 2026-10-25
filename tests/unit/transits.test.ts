@@ -7,7 +7,7 @@ import {
 } from '../../src/model/index.js';
 import type { TransitChartInput } from '../../src/model/index.js';
 import { createAstronomyProvider } from '../../src/ephemeris/index.js';
-import { stepTransitTime } from '../../demo/transit-time.js';
+import { stepTransitTime } from '../../examples/playground/transit-time.js';
 
 const input: TransitChartInput = {
   natal: {

@@ -20,7 +20,13 @@ try {
       root,
     ),
   );
-  if (pack.files.some((file) => file.path.startsWith('tests/') || file.path.startsWith('demo/')))
+  if (
+    pack.files.some((file) =>
+      ['tests/', 'demo/', 'site/', 'site-dist/', 'examples/', '.site-cache/'].some((prefix) =>
+        file.path.startsWith(prefix),
+      ),
+    )
+  )
     throw new Error('Development files leaked into the package.');
   for (const path of [
     'AGENTS.md',

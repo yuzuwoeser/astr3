@@ -1,8 +1,9 @@
-# GitHub Pages demo
+# GitHub Pages website
 
-The demo's publication URL is <https://yuzuwoeser.github.io/astr3/>. Source stays
-in `demo/`; only built `demo-dist/` contents are uploaded. Development and ordinary
-`npm run build:demo` builds continue using `/`.
+The website's publication URL is <https://yuzuwoeser.github.io/astr3/>. Source stays
+in `site/`; canonical example code and guides live in `examples/`. Only built
+`site-dist/` contents are uploaded. Development and ordinary
+`npm run build:site` builds continue using `/`.
 
 ## Build and preview
 
@@ -14,11 +15,24 @@ npm run build:pages
 npm run preview:pages
 ```
 
-Open <http://127.0.0.1:4174/astr3/>. The build passes `--base /astr3/` to Vite,
-which rewrites scripts, CSS, font preload/font URLs, and lazy-loaded ephemeris
+Open <http://127.0.0.1:4174/astr3/>. The build uses `--base /astr3/` for the site and
+every compiled preview, rewriting scripts, CSS, font preload/font URLs, and lazy-loaded ephemeris
 and export chunks. Public assets and licenses keep their relative paths. Do not
-edit or commit `demo-dist/`. Preview is for local verification; Pages hosts the
+edit or commit `site-dist/`. Preview is for local verification; Pages hosts the
 production files.
+
+The landing page is `/astr3/`; the complete chart explorer is
+`/astr3/playground/`. Examples and integration guides have static routes beneath
+`/astr3/examples/` and `/astr3/integrations/`, including direct deep links.
+`build:site` builds at `/`; `build:demo` remains its compatibility alias.
+`tar` and `zip` are required for packed-library checks and the browser download.
+
+The build reads `examples/registry.mjs`, compiles real framework applications
+against an extracted local ASTR3 package, and generates guide pages from their
+README/source files. Missing sources/previews and duplicate IDs fail the build.
+The browser distribution is emitted to `downloads/browser/` and ZIPped as
+`downloads/astr3-browser.zip`; its dependencies and optional ephemeris are
+self-hostable. Framework dependencies remain development/example dependencies.
 
 ## Production smoke tests
 
@@ -34,6 +48,9 @@ tests continue using port 4173.
 `test:pages` rebuilds the Pages output and starts preview for Chromium desktop
 and mobile tests. Coverage includes selection, both layouts, local calculations,
 transit mode, all three downloads, bundled fonts, branding assets and licenses.
+It also checks website navigation, canonical source tabs, every framework
+preview, lifecycle cleanup, Rails Turbo visits/cache restoration, and standalone
+browser modules with optional calculations.
 Tests fail on browser errors, failed requests, or application asset requests
 outside `/astr3/`. Results live under `test-results/pages/`, separately from
 development-browser results. Run the suites serially and keep source/output files
@@ -63,8 +80,8 @@ on `main`.
 
 ## Verify and recover
 
-Follow the environment URL from the successful deployment. Verify the chart,
-Righteous wordmark, preset calculation, transit mode, and SVG/PNG downloads.
+Follow the environment URL from the successful deployment. Verify the landing
+page and integration links, then the playground chart, Righteous wordmark, preset calculation, transit mode, and SVG/PNG downloads.
 Chart calculations and inputs remain in the visitor's browser.
 
 For a blank page, missing font, or failed lazy import, inspect network/console

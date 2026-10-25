@@ -7,7 +7,7 @@ test('renders local Righteous 400 text wordmarks in the five-color logo palette'
   page.on('request', (request) => {
     if (request.resourceType() === 'font') fonts.push(request.url());
   });
-  await page.goto('/');
+  await page.goto('/playground/');
   await expect(page).toHaveTitle('ASTR3 — an explorable sky');
   await expect(page.getByRole('link', { name: 'ASTR3 home', exact: true })).toHaveText('ASTR3');
   await expect(page.locator('meta[name=description]')).toHaveAttribute(
@@ -59,7 +59,7 @@ test('renders local Righteous 400 text wordmarks in the five-color logo palette'
   expect(license).toContain('SIL OPEN FONT LICENSE Version 1.1');
   await expect(page.getByRole('link', { name: 'THIRD-PARTY LICENSES' })).toHaveAttribute(
     'href',
-    './THIRD_PARTY_LICENSES.txt',
+    '/THIRD_PARTY_LICENSES.txt',
   );
   const notices = await page.request.get('/THIRD_PARTY_LICENSES.txt');
   expect(await notices.text()).toContain(license);
@@ -67,7 +67,7 @@ test('renders local Righteous 400 text wordmarks in the five-color logo palette'
 
 test('keeps the ASTR3 name and home link readable when the font cannot load', async ({ page }) => {
   await page.route('**/fonts/Righteous-Regular.ttf', (route) => route.abort());
-  await page.goto('/');
+  await page.goto('/playground/');
   const status = await page.evaluate(async () => {
     await document.fonts.ready;
     return [...document.fonts]
@@ -85,7 +85,7 @@ test('keeps the ASTR3 name and home link readable when the font cannot load', as
 });
 
 test('fits header and footer wordmarks at narrow and wide viewport widths', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/playground/');
   await page.evaluate(() => document.fonts.ready);
   for (const width of [360, 740, 1280]) {
     await page.setViewportSize({ width, height: 900 });

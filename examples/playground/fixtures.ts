@@ -1,5 +1,5 @@
-import { ASPECT_DEFINITIONS, calculateAspects } from '../src/model/index.js';
-import type { ChartInput } from '../src/model/index.js';
+import { ASPECT_DEFINITIONS, calculateAspects } from 'astr3/model';
+import type { ChartInput } from 'astr3/model';
 
 const bodies = [
   { id: 'sun', name: 'Sun', longitude: 78.4 },

@@ -1,8 +1,8 @@
 # ASTR3
 
-[Browser demo on GitHub Pages](https://yuzuwoeser.github.io/astr3/) · [Deployment and preview](docs/github-pages.md)
+[Project website and playground](https://yuzuwoeser.github.io/astr3/) · [Deployment and preview](docs/github-pages.md)
 
-<img src="https://raw.githubusercontent.com/yuzuwoeser/astr3/main/demo/public/brand/astr3-logo-preview.svg" alt="ASTR3" width="320" />
+<img src="https://raw.githubusercontent.com/yuzuwoeser/astr3/main/site/public/brand/astr3-logo-preview.svg" alt="ASTR3" width="320" />
 
 Explorable astrology wheels for the browser. A framework-neutral TypeScript library built with Three.js, released under MIT.
 
@@ -108,9 +108,9 @@ Use `createTransitChart` with `{ data: { natal, transit } }`. Both sides accept
 or `'transit'`, and cross-aspect selections use `'cross'`. Houses and axes come
 from the natal chart. See the [working example and transit API](docs/transits.md).
 
-## Run the demo
+## Website, playground, and integrations
 
-From a checkout, run `npm ci` and `npm run dev`, then open the Vite URL. The initial
+From a checkout, run `npm ci` and `npm run dev`, then open the Vite URL and choose **Playground**. The initial
 wheel uses synthetic teaching data with a supplied grand trine. Choose a preset or
 enter UTC time and coordinates to calculate locally with Astronomy Engine.
 
@@ -120,8 +120,16 @@ Layout, theme, and chart weight affect presentation. Birth information is never
 sent to a calculation service. See [demo time controls](docs/transits.md#demo-controls)
 for transit-specific behavior.
 
+The website includes runnable JavaScript/TypeScript, React, Vue.js, Svelte, and
+Angular examples, plus HTML, PHP, WordPress, and Ruby on Rails integration guides.
+[Integration overview](docs/integrations.md) explains the browser download and
+canonical examples. `site/` owns the website; `examples/` owns the source shown
+in its guides. `npm run dev` builds previews before starting Vite; restart it
+after changing an example.
+
 ## Documentation and validation
 
+- [Framework, CMS, and server-rendered integrations](docs/integrations.md)
 - [Agent integration: headless data and browser lifecycle](docs/agent-integration.md)
 - [API, exported helpers, events, and data contracts](docs/api.md)
 - [Transit bi-wheel API](docs/transits.md)
@@ -142,4 +150,4 @@ run separately with `npm run test:browser`; setup and coverage limits are in
 ASTR3 source is MIT licensed. Dependency and bundled font attribution is in
 [NOTICE](NOTICE). The Righteous wordmark font and Noto export outlines retain
 their SIL OFL licenses. Reusable logos and palette specifications are in the
-[brand asset notes](https://github.com/yuzuwoeser/astr3/blob/main/demo/public/brand/README.txt).
+[brand asset notes](https://github.com/yuzuwoeser/astr3/blob/main/site/public/brand/README.txt).

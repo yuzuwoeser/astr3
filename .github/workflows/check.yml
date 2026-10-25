@@ -28,7 +28,7 @@ jobs:
           (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
-          path: demo-dist/
+          path: site-dist/
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -55,7 +55,7 @@ jobs:
           tar -xzf "$scanner_dir/gitleaks.tar.gz" -C "$scanner_dir" gitleaks
           "$scanner_dir/gitleaks" git --log-opts=--all --redact --no-banner .
   deploy:
-    name: Deploy demo to GitHub Pages
+    name: Deploy website to GitHub Pages
     needs: [check, secrets]
     if: >-
       github.repository == 'yuzuwoeser/astr3' &&

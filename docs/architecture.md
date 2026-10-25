@@ -186,12 +186,20 @@ remain in the application.
 
 ## Development and release
 
-`npm run check` verifies types, unit/reference tests, both builds, and the packed
+`npm run check` verifies types, unit/reference tests, library/website builds,
+framework compiler checks, available backend syntax checks, and the packed
 consumer. Browser checks run separately in Chromium with desktop and mobile
 touch emulation; physical devices, Firefox, and Safari remain unverified.
 [Contributing](../CONTRIBUTING.md) describes setup and focused checks; the
 [release checklist](releasing.md) covers identity, history, and artifact review.
 
 The package contains ESM, declarations, source maps with inline sources, docs,
-license, and notices. Dependencies stay external to the library build. Demo code
-and assets are excluded from the package; the demo lazy-loads the ephemeris.
+license, and notices. Dependencies stay external to the library build. Website and example source
+and assets are excluded from the package; the playground lazy-loads the ephemeris.
+
+`examples/` owns runnable applications and integration recipes. A registry drives
+the website gallery, static detail routes, source tabs, and on-demand iframe
+previews. `site/` supplies navigation and branding. Website builds compile
+examples against an extracted local tarball and create a separate self-hostable
+browser distribution; they do not add framework dependencies to the library.
+See [integrations](integrations.md) and [GitHub Pages](github-pages.md).

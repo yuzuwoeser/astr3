@@ -807,3 +807,19 @@ footer > span:last-child {
     gap: 5px;
   }
 }
+
+.playground-nav {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 16px 48px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+  font-size: 13px;
+  color: #325b50;
+}
+@media (max-width: 740px) {
+  .playground-nav {
+    padding: 16px 20px;
+  }
+}

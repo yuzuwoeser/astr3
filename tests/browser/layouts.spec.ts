@@ -29,7 +29,7 @@ const fixture: ChartInput = {
   ],
 };
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/playground/');
   await expect(page.locator('#chart .astr3-body')).toHaveCount(14);
 }
 async function enableTransits(page: Page) {

@@ -1,0 +1,20 @@
+{
+  "name": "@astr3-example/react",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix ../.. run dev -- --open /previews/react/",
+    "build": "npm --prefix ../.. run build:site",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "astr3": "file:../..",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

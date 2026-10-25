@@ -6,7 +6,8 @@
 
 ## Integration
 
-- [Getting started](README.md): tarball installation, a mounted chart example, capabilities and local demo.
+- [Getting started](README.md): tarball installation, a mounted chart example, capabilities and local website/playground.
+- [Framework and website integrations](docs/integrations.md): example registry, live guides, browser download, WordPress/PHP and Rails recipes.
 - [Agent integration](docs/agent-integration.md): entry-point selection, headless example, browser lifecycle and common mistakes.
 - [API contracts](docs/api.md): entry points and exported types, normalized models, math/selection helpers, renderer options, events, SVG/PNG export, accessibility and calculation signatures.
 - [Transit API](docs/transits.md): a working wheel example, composite models and helpers, source-qualified selections, renderer/animation events and demo controls.
@@ -15,7 +16,7 @@
 
 ## Contributing
 
-- [GitHub Pages demo](docs/github-pages.md): production build/preview, smoke tests, automatic deployment and recovery.
+- [GitHub Pages website](docs/github-pages.md): production build/preview, smoke tests, automatic deployment and recovery.
 - [Repository agent instructions](AGENTS.md): source map, invariants, checks and local commits.
 - [Contributing](CONTRIBUTING.md): reproducible setup and review workflow.
 - [Release checklist](docs/releasing.md): history, privacy, builds and packed artifacts.

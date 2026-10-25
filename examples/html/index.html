@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HTML + ASTR3 — no build tools</title>
+    <link rel="stylesheet" href="./preview.css" />
+  </head>
+  <body>
+    <main>
+      <h1>HTML + ASTR3</h1>
+      <p>A self-hosted browser module. No npm, CDN, or build tools.</p>
+      <div class="controls">
+        <button id="rotate">Rotate positions</button>
+        <button id="toggle">Unmount chart</button>
+        <button id="svg">Download SVG</button>
+        <button id="png">Download PNG</button>
+        <button id="calculate">Calculate J2000</button>
+      </div>
+      <output id="longitude">Sun longitude: 0°</output>
+      <div id="example">
+        <div class="chart-host"></div>
+        <p role="status"></p>
+      </div>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

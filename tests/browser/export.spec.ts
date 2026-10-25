@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/playground/');
   await expect(page.locator('#chart .astr3-body')).toHaveCount(14);
 }
 async function transits(page: Page) {

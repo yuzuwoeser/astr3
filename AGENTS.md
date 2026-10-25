@@ -5,9 +5,9 @@ library into another application, start with [docs/agent-integration.md](docs/ag
 
 Use **ASTR3** for the display name and project-name prose. Technical identifiers
 such as package imports, URLs, CSS classes and JavaScript globals use `astr3`.
-The demo wordmark is live text in Righteous Regular (400), with mint, sky blue,
+The website wordmark is live text in Righteous Regular (400), with mint, sky blue,
 lavender, coral and gold characters on a dark background. Match the palette in
-`demo/public/brand/palette.json`; keep the locally bundled font and its SIL OFL
+`site/public/brand/palette.json`; keep the locally bundled font and its SIL OFL
 copyright/license notices together.
 
 ## Setup and checks
@@ -20,24 +20,24 @@ npm exec playwright -- install chromium
 npm run dev
 ```
 
-The demo URL is printed by Vite. Development-browser tests use port 4173; Pages
+The website URL is printed by Vite. Development-browser tests use port 4173; Pages
 production smoke tests use port 4174. Stop unrelated servers on those ports before
 running the corresponding suite. In Linux CI, install Chromium with
 `npm exec playwright -- install --with-deps chromium`.
 
 ```sh
-npm run typecheck      # TypeScript, including demo and tests
+npm run typecheck      # TypeScript, including website, playground and tests
 npm test              # Unit tests and independent numerical reference fixtures
 npm run check         # Types, unit/reference tests, both builds, packed consumer
 npm run test:browser  # Chromium desktop and mobile touch emulation
-npm run test:pages    # Build and smoke-test the production demo beneath /astr3/
+npm run test:pages    # Build and smoke-test the production website beneath /astr3/
 npm run format:check
 ```
 
 Run focused checks while editing. Before completing a change, run the checks
 appropriate to it. Public API, calculation, layout, picking, accessibility, and
-lifecycle changes need their relevant tests. Renderer or demo changes also need
-browser validation. A release needs the full sequence in
+lifecycle changes need their relevant tests. Renderer or website/example changes
+also need browser validation. A release needs the full sequence in
 [docs/releasing.md](docs/releasing.md). Browser tests do not run inside `npm run check`.
 
 ## Where to work
@@ -53,7 +53,8 @@ browser validation. A release needs the full sequence in
 | `src/wheel-geometry.ts`                                      | Default/alternative ring geometry, source bands and annular house sectors       |
 | `src/layout.ts`, `src/label-packing.ts`, `src/chart-text.ts` | Exact projection, bounded label placement, zoom-aware typography                |
 | `src/picking.ts`                                             | Screen-space targets and overlapping selection candidates                       |
-| `demo/`                                                      | Example application, forms, tooltips, explanations and time controls            |
+| `site/`                                                      | Project website, generated navigation, branding and Pages configuration         |
+| `examples/`                                                  | Runnable playground, framework examples and backend integration recipes         |
 | `tests/unit/`, `tests/browser/`, `tests/fixtures/`           | Behavioral tests and public/synthetic reference data                            |
 | `scripts/`                                                   | Builds and package consumer validation                                          |
 | `docs/`                                                      | Public contracts, integration and calculation explanations                      |
@@ -94,7 +95,7 @@ old expected results. Optional Python regeneration is not part of normal setup.
 Update affected docs and examples with API/behavior changes. Add an Unreleased
 changelog entry for user-facing changes. Keep `llms.txt` links current. The packed
 consumer check validates exports and declarations; extend it for new entry points.
-Do not hand-edit `dist/`, `demo-dist/` or `node_modules/`.
+Do not hand-edit `dist/`, `site-dist/` or `node_modules/`.
 
 When implementation is authorized, include a local Git commit. Review the final
 diff, run appropriate checks, commit only task changes, preserve unrelated work,

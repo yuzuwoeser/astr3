@@ -1,0 +1,103 @@
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, relative, resolve } from 'node:path';
+import { marked } from 'marked';
+import { examples } from '../examples/registry.mjs';
+
+export const escapeHtml = (value) =>
+  String(value).replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character],
+  );
+const repository = 'https://github.com/yuzuwoeser/astr3';
+const wordmark =
+  '<span class="wordmark-a">A</span><span class="wordmark-s">S</span><span class="wordmark-t">T</span><span class="wordmark-r">R</span><span class="wordmark-3">3</span>';
+export const detailPath = (example) =>
+  `${example.category === 'example' ? 'examples' : 'integrations'}/${example.id}/`;
+
+export function generatePages(base) {
+  const inputs = {};
+  function layout(title, description, body, active = '') {
+    return `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#111c20"><meta name="description" content="${escapeHtml(description)}"><title>${escapeHtml(title)} — ASTR3</title><link rel="preload" href="${base}fonts/Righteous-Regular.ttf" as="font" type="font/ttf" crossorigin></head><body class="project-site"><a class="skip-link" href="#main">Skip to content</a><header class="site-header"><a class="wordmark" href="${base}" aria-label="ASTR3 home">${wordmark}</a><nav aria-label="Main navigation">${[
+      ['playground/', 'Playground'],
+      ['examples/', 'Examples'],
+      ['integrations/', 'Integrations'],
+    ]
+      .map(
+        ([path, text]) =>
+          `<a href="${base}${path}"${active === text ? ' aria-current="page"' : ''}>${text}</a>`,
+      )
+      .join(
+        '',
+      )}<a href="${repository}/blob/main/docs/api.md">Docs ↗</a><a href="${repository}">GitHub ↗</a></nav></header><main id="main">${body}</main><footer class="site-footer"><a class="wordmark" href="${base}" aria-label="ASTR3 home">${wordmark}</a><p>The sky, connected. Open source, built for the browser.</p><a href="${base}THIRD_PARTY_LICENSES.txt">Third-party licenses</a><a href="${repository}/blob/main/LICENSE">MIT license</a></footer><script type="module" src="__SITE_MAIN__"></script></body></html>`;
+  }
+  function write(path, html) {
+    const filename = resolve('site/.generated', path, 'index.html');
+    mkdirSync(dirname(filename), { recursive: true });
+    const mainPath = relative(dirname(filename), resolve('site/main.ts')).split('\\').join('/');
+    writeFileSync(filename, html.replace('__SITE_MAIN__', mainPath));
+    inputs[path || 'home'] = filename;
+  }
+  function cards(entries) {
+    return `<div class="cards">${entries.map((example) => `<a class="card" href="${base}${detailPath(example)}"><span class="card-kicker">${example.category === 'framework' ? 'Frontend framework' : example.category === 'server' ? 'Server-rendered websites' : 'Browser example'}</span><h3>${escapeHtml(example.title)} <span aria-hidden="true">↗</span></h3><p>${escapeHtml(example.description)}</p></a>`).join('')}</div>`;
+  }
+  function preview(example) {
+    return `<section class="preview" aria-labelledby="preview-title"><div class="section-top"><h2 id="preview-title">${example.browserOnly ? 'Browser preview' : 'Live example'}</h2><a href="${base}${example.preview}" target="_blank" rel="noreferrer">Open separately ↗</a></div>${example.browserOnly ? '<p class="notice">This preview runs the browser integration. PHP, WordPress, and Rails servers do not run on GitHub Pages. See the setup instructions for runtime validation limits.</p>' : ''}<button class="button" type="button" data-preview="${base}${example.preview}" data-title="${escapeHtml(example.title)} live preview">Load live preview</button><div class="preview-frame"></div></section>`;
+  }
+  write(
+    '',
+    layout(
+      'An explorable sky',
+      'ASTR3 is an open source astrology chart library for JavaScript and TypeScript. Explore the playground and integrate it with your website.',
+      `<section class="hero"><div><p class="eyebrow">AN OPEN SOURCE SKY</p><h1>Charts that belong<br>in your application.</h1><p class="lead">Interactive astrology wheels for the web. Bring your own data, explore the connections, and make the experience yours.</p><div class="hero-actions"><a class="button primary" href="${base}playground/">Explore the playground ↗</a><a class="button" href="${base}integrations/">Use ASTR3 on your site</a></div><p class="hero-note">TypeScript · Three.js · MIT licensed</p></div><div class="orbit-panel" aria-hidden="true"><div class="orbit orbit-outer"></div><div class="orbit orbit-inner"></div><span class="orbit-sun">☉</span><span class="orbit-moon">☽</span><span class="orbit-jupiter">♃</span><div class="orbit-line line-one"></div><div class="orbit-line line-two"></div><div class="orbit-line line-three"></div><p>THE SKY, CONNECTED.</p></div></section><section class="section"><p class="eyebrow">ONE LIBRARY, MANY WAYS IN</p><h2>Start where you build.</h2><p class="section-copy">Use a frontend framework, add a chart to a server-rendered page, or start with a single HTML file.</p>${cards(examples.filter((example) => ['react', 'vue', 'svelte', 'angular'].includes(example.id)))}<a class="text-link" href="${base}integrations/">Browse all integrations, including PHP, WordPress, and Rails →</a></section><section class="feature-strip"><div><h2>Explore, then make it yours.</h2><p>Natal and transit wheels, accessible selection, local calculations, two layouts, and SVG/PNG downloads.</p></div><a class="button" href="${base}playground/">Open the playground →</a></section><section class="section"><p class="eyebrow">REAL CODE YOU CAN RUN</p><h2>From a first chart to a full explorer.</h2><p class="section-copy">Every preview is built from the source shown beside it. Start small, then explore the complete playground.</p>${cards(examples.filter((example) => ['html', 'javascript', 'typescript', 'playground'].includes(example.id)))}</section><section class="download-callout"><h2>Working without a build pipeline?</h2><p>Download self-hostable browser modules, an HTML example, and an optional calculation adapter. No CDN required.</p><a class="button primary" href="${base}downloads/astr3-browser.zip" download>Download browser bundle ↓</a><a class="text-link" href="${base}integrations/html/">Read the HTML guide →</a></section>`,
+    ),
+  );
+  write(
+    'examples',
+    layout(
+      'Examples',
+      'Runnable ASTR3 examples with live previews and their actual source.',
+      `<section class="page-intro"><p class="eyebrow">LEARN BY EXPLORING</p><h1>Examples</h1><p class="lead">Start with a small chart or explore everything the playground can do.</p></section>${cards(examples.filter((example) => ['example', 'browser'].includes(example.category)))}<section class="section"><h2>Using a framework or an existing website?</h2><p>Find lifecycle-aware examples for React, Vue.js, Svelte, Angular, PHP, WordPress, and Ruby on Rails.</p><a class="button" href="${base}integrations/">Browse integrations →</a></section>`,
+      'Examples',
+    ),
+  );
+  write(
+    'integrations',
+    layout(
+      'Integrations',
+      'Integrate ASTR3 with JavaScript, TypeScript, React, Vue.js, Svelte, Angular, PHP, WordPress, and Ruby on Rails.',
+      `<section class="page-intro"><p class="eyebrow">BUILD WITH ASTR3</p><h1>A chart for your stack.</h1><p class="lead">Mount after the page exists, update when data changes, and dispose when it leaves. Choose an example for your application.</p></section><section class="section"><h2>JavaScript, TypeScript &amp; HTML</h2>${cards(examples.filter((example) => example.category === 'browser'))}</section><section class="section"><h2>Frontend frameworks</h2>${cards(examples.filter((example) => example.category === 'framework'))}</section><section class="section"><h2>Server-rendered websites &amp; WordPress</h2><p class="section-copy">Your server supplies chart data as JSON. ASTR3 renders it in the visitor’s browser.</p>${cards(examples.filter((example) => example.category === 'server'))}</section>`,
+      'Integrations',
+    ),
+  );
+  for (const example of examples) {
+    const sources = example.files
+      .map(
+        (file, index) =>
+          `<section id="source-${index}" role="tabpanel" aria-labelledby="tab-${index}" tabindex="0"${index ? ' hidden' : ''}><div class="source-heading"><span>${escapeHtml(file)}</span><a href="${repository}/blob/main/examples/${file}">View on GitHub ↗</a></div><pre><code>${escapeHtml(readFileSync(resolve('examples', file), 'utf8'))}</code></pre></section>`,
+      )
+      .join('');
+    const readme = readFileSync(resolve('examples', example.id, 'README.md'), 'utf8');
+    write(
+      detailPath(example),
+      layout(
+        example.title,
+        example.description,
+        `<section class="page-intro"><a class="breadcrumb" href="${base}${example.category === 'example' ? 'examples' : 'integrations'}/">← ${example.category === 'example' ? 'Examples' : 'Integrations'}</a><p class="eyebrow">${example.category === 'framework' ? 'FRONTEND FRAMEWORK' : example.category === 'server' ? 'SERVER-RENDERED WEBSITE' : 'RUNNABLE EXAMPLE'}</p><h1>${escapeHtml(example.title)}</h1><p class="lead">${escapeHtml(example.description)}</p></section>${preview(example)}<section class="guide prose" aria-label="Setup instructions">${marked.parse(readme)}</section><section class="source-viewer" aria-labelledby="source-title"><h2 id="source-title">Source</h2><p>These are the files used by this example. Shared data and styles are included where used.</p><div class="source-tabs" role="tablist" aria-label="Source files">${example.files.map((file, index) => `<button role="tab" id="tab-${index}" aria-controls="source-${index}" aria-selected="${index === 0}" tabindex="${index ? '-1' : '0'}">${escapeHtml(file)}</button>`).join('')}</div>${sources}</section><section class="reference-links"><h2>Keep building</h2><a href="${repository}/blob/main/docs/api.md">API and data contracts ↗</a><a href="${repository}/blob/main/docs/transits.md">Transit charts ↗</a><a href="${repository}/blob/main/docs/calculations.md">Calculation conventions ↗</a></section>`,
+        example.category === 'example' ? 'Examples' : 'Integrations',
+      ),
+    );
+  }
+  let playground = readFileSync('examples/playground/index.html', 'utf8');
+  playground = playground
+    .replace('href="./" aria-label="ASTR3 home"', `href="${base}" aria-label="ASTR3 home"`)
+    .replace('href="./THIRD_PARTY_LICENSES.txt"', `href="${base}THIRD_PARTY_LICENSES.txt"`)
+    .replace('src="./main.ts"', 'src="../../../examples/playground/main.ts"');
+  playground = playground.replace(
+    '<main>',
+    `<nav class="playground-nav" aria-label="Main navigation"><a href="${base}">Home</a><a href="${base}examples/">Examples</a><a href="${base}integrations/">Integrations</a><a href="${repository}/blob/main/docs/api.md">Documentation ↗</a></nav><main>`,
+  );
+  write('playground', playground);
+  writeFileSync('site/.generated/library.ts', "export * from '../library.js';\n");
+  return inputs;
+}

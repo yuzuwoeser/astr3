@@ -19,7 +19,7 @@ node scripts/generate-export-fonts.mjs /path/to/font-directory
 ```
 
 The generator records input SHA-256 hashes, extracts glyph advance/ink bounds
-and SVG paths at 1,000 units, and updates the demo's font license notices.
+and SVG paths at 1,000 units, and updates the website's font license notices.
 OpenType.js is a development-only parser; no parser or font fetch is used by
 normal builds or chart exports. Outlines have their own OFL-1.1 license and
 are not covered by the repository's MIT license. Exported chart documents do

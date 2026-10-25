@@ -5,7 +5,7 @@ import { WHEEL, aspectPath, polar } from '../../src/layout.js';
 import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/playground/');
   await page.locator('#preset').selectOption('j2000');
   await expect(page.locator('#calculation-status')).toContainText('Calculated locally');
   await page.locator('#chart-view').selectOption('transit');

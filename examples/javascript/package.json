@@ -1,0 +1,13 @@
+{
+  "name": "@astr3-example/javascript",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix ../.. run dev -- --open /previews/javascript/",
+    "build": "npm --prefix ../.. run build:site"
+  },
+  "dependencies": {
+    "astr3": "file:../..",
+    "three": "^0.186.0"
+  }
+}

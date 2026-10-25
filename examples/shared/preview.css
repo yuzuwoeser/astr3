@@ -1,0 +1,59 @@
+:root {
+  font:
+    16px/1.55 system-ui,
+    sans-serif;
+  color: #263a3e;
+  background: #f4f3ed;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 16px;
+}
+main {
+  max-width: 640px;
+  margin: auto;
+}
+h1 {
+  font-size: 1.25rem;
+}
+button,
+a {
+  font: inherit;
+}
+button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #a3b4aa;
+  border-radius: 5px;
+  color: #263a3e;
+  background: white;
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #325b50;
+  outline-offset: 3px;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.chart-host {
+  width: 100%;
+  min-height: 40px;
+}
+output,
+[role='status'] {
+  display: block;
+}
+[role='status'] {
+  min-height: 1.6em;
+}
+a {
+  color: #325b50;
+}

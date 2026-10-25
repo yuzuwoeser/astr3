@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ruby on Rails + ASTR3 browser lifecycle</title>
+  </head>
+  <body>
+    <!-- Browser fixture generated from the same chart data used by all examples. -->
+    <main
+      data-controller="chart"
+      data-chart-data-value="__CHART_DATA__"
+      data-action="turbo:before-cache@document->chart#beforeCache"
+    >
+      <h1>Ruby on Rails + ASTR3</h1>
+      <div class="controls">
+        <button data-action="chart#rotate">Rotate positions</button>
+        <button data-action="chart#toggle">Unmount chart</button>
+        <a href="./away.html">Navigate away with Turbo</a>
+      </div>
+      <output data-chart-target="longitude"></output>
+      <div class="chart-host" data-chart-target="host"></div>
+      <p role="status" data-chart-target="status"></p>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

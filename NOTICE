@@ -7,12 +7,12 @@ export-fonts-OFL.txt alongside the installed JavaScript (dist/ in the tarball),
 and scripts/export-fonts/OFL.txt in source. Source revisions and SHA-256 hashes
 are recorded in scripts/export-fonts/sources.json. The derived outline data
 remains OFL-licensed. Generated chart documents do not inherit that license.
-The demo's THIRD_PARTY_LICENSES.txt also contains these notices.
+The website's THIRD_PARTY_LICENSES.txt also contains these notices.
 
-The demo bundles the unmodified Righteous Regular (400) font by Brian J.
+The website bundles the unmodified Righteous Regular (400) font by Brian J.
 Bonislawsky DBA Astigmatic (AOETI), under the SIL Open Font License 1.1.
-Its copyright notice and full license accompany the font in demo/public/fonts/OFL.txt
-and are included in the demo's THIRD_PARTY_LICENSES.txt. The font is a demo asset,
+Its copyright notice and full license accompany the font in site/public/fonts/OFL.txt
+and are included in the website's THIRD_PARTY_LICENSES.txt. The font is a website asset,
 not part of the library build, and remains under its original license.
 
 Three.js — https://github.com/mrdoob/three.js
@@ -27,3 +27,9 @@ license notices when distributing applications that bundle these dependencies.
 Independent fixtures record numerical results from a separately installed Swiss
 Ephemeris 2.10.03. No implementation source or runtime is included or required by
 the library or tests.
+
+The optional website previews also bundle React, Vue, Svelte, Angular, and
+Hotwire dependencies, with their licenses included in the generated website
+THIRD_PARTY_LICENSES.txt. Turbo 8.0.23 omits a standalone license in its npm
+archive; the website retains its upstream MIT-LICENSE from
+https://github.com/hotwired/turbo/blob/v8.0.23/MIT-LICENSE.

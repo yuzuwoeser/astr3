@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "noEmit": false,
+    "experimentalDecorators": true,
+    "rootDir": "..",
+    "outDir": "../../.site-cache/angular",
+    "paths": {
+      "astr3": ["../../.site-cache/package/dist/index.d.ts"]
+    }
+  },
+  "include": ["*.ts", "*.tsx", "*.vue", "*.svelte", "../shared/*.ts"],
+  "angularCompilerOptions": {
+    "strictTemplates": true
+  }
+}

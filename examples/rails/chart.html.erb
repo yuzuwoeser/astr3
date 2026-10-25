@@ -1,0 +1,15 @@
+<%# Rails escapes attribute values, including quotes in JSON. Do not use html_safe. %>
+<%= tag.main data: {
+  controller: "chart",
+  chart_data_value: @chart.to_json,
+  action: "turbo:before-cache@document->chart#beforeCache"
+} do %>
+  <h1>Ruby on Rails + ASTR3</h1>
+  <div class="controls">
+    <button data-action="chart#rotate">Rotate positions</button>
+    <button data-action="chart#toggle">Unmount chart</button>
+  </div>
+  <output data-chart-target="longitude"></output>
+  <div class="chart-host" data-chart-target="host"></div>
+  <p role="status" data-chart-target="status"></p>
+<% end %>

@@ -6,7 +6,7 @@ import { WHEEL, polar } from '../../src/layout.js';
 import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/playground/');
   await expect(page.locator('#chart .astr3-body')).toHaveCount(14);
   await expect(page.locator('[data-aspect-enabled]')).toHaveCount(11);
 }

@@ -73,7 +73,7 @@ with an isolated empty npm cache, so cached registry metadata is not required.
 its file list: only built ESM/types/maps, public docs, metadata, license and notices
 belong there. Tests, demo source, private configuration and local agent data do not.
 Extract the tarball into a temporary directory for scanning; do not rely on
-scanning the compressed file alone. Scan `demo-dist/` before hosting the demo.
+scanning the compressed file alone. Scan `site-dist/` before hosting the demo.
 
 ## Documentation and publication
 

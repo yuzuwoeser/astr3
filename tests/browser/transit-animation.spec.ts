@@ -5,7 +5,7 @@ import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.goto('/');
+  await page.goto('/playground/');
   await page.locator('#chart-view').selectOption('transit');
   await page.locator('#transit-utc').fill('2024-04-08T18:00');
   await page.locator('#transit-utc').dispatchEvent('change');

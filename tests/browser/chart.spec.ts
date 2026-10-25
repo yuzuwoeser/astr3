@@ -7,7 +7,7 @@ import type { Selection } from '../../src/index.js';
 import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/playground/');
   await expect(page.locator('.astr3-body')).toHaveCount(14);
   await expect.poll(() => page.evaluate(() => window.astr3.error)).toBeNull();
 }
@@ -616,7 +616,7 @@ test('retains an accessible chart if WebGL cannot be created', async ({ page }) 
       return original.call(this, name as '2d', ...(args as []));
     } as typeof original;
   });
-  await page.goto('/');
+  await page.goto('/playground/');
   await expect.poll(() => page.evaluate(() => window.astr3?.error?.code)).toBe('WEBGL_UNAVAILABLE');
   const sun = page.locator('.astr3-access button[data-selection="body:sun"]');
   await expect(sun).toBeVisible();

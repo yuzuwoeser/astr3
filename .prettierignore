@@ -1,7 +1,11 @@
 node_modules
 dist
-demo-dist
+site-dist
 test-results
 playwright-report
 package-lock.json
 tests/fixtures/*.json
+
+.site-cache
+site/.generated
+demo-dist

@@ -4,6 +4,13 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Expand GitHub Pages into the ASTR3 project website with a dedicated playground,
+  generated examples and integration guides for JavaScript, TypeScript, React,
+  Vue.js, Svelte, Angular, PHP, WordPress, and Ruby on Rails.
+- Add a self-hostable browser-module download with optional calculations and
+  SVG/PNG exports. Example code and instructions live in `examples/`; website
+  assets/build configuration move from `demo/` to `site/`.
+
 - Add a GitHub Pages demo build at `/astr3/`, production desktop/mobile smoke
   tests, and automatic deployment from `main` after checks and history scanning
   pass. Support manual redeployment while keeping local development at `/`.
