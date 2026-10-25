@@ -20,7 +20,7 @@ npm install @yuzuwoeser/astr3 three
 
 The npm package is `@yuzuwoeser/astr3`. Browser downloads keep the `astr3.js`
 filename. For unpublished local changes, run `npm ci && npm pack` in a checkout
-and install the generated `yuzuwoeser-astr3-0.1.0.tgz` tarball. Framework starter
+and install the generated `yuzuwoeser-astr3-0.1.1.tgz` tarball. Framework starter
 ZIPs include a local tarball and their own application files.
 
 Mount after the host element exists. For example, add this HTML to a page served

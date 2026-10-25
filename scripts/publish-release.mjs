@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from './process.mjs';
-import { sha256, validateCandidate, verifyExisting, verifyNpm } from './release-policy.ts';
+import {
+  sha256,
+  validateCandidate,
+  verifyExisting,
+  verifyNpm,
+  waitForNpmPublication,
+} from './release-policy.ts';
 
 const { version, name } = JSON.parse(readFileSync('package.json', 'utf8'));
 const manifest = JSON.parse(readFileSync('.release/manifest.json', 'utf8'));
@@ -91,12 +97,7 @@ try {
         '--access',
         'public',
       ]);
-    const check = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/${version}`);
-    if (!check.ok)
-      throw new Error(
-        'npm publication could not be confirmed; release remains a draft. Rerun to resume.',
-      );
-    verifyNpm(readFileSync(`.release/astr3-${version}.tgz`), await check.json());
+    await waitForNpmPublication(name, version, readFileSync(`.release/astr3-${version}.tgz`));
     run('gh', ['release', 'edit', tag, '--draft=false']);
   }
 } finally {

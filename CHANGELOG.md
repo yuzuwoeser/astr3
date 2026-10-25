@@ -4,6 +4,16 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+## 0.1.1
+
+- Wait for npm registry indexing after publication before completing the GitHub
+  Release. Retry transient registry/network failures for up to five minutes,
+  retaining strict package identity and tarball integrity checks.
+- Publish versioned browser, WordPress, and starter bundles through the automated
+  release workflow, alongside the scoped npm package.
+
+## 0.1.0
+
 - Publish the library as `@yuzuwoeser/astr3`, with matching scoped imports and
   workspace/consumer validation. Keep browser filenames and release asset URLs
   stable, and default scoped npm publication to public access.
@@ -80,9 +90,7 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 - Prepared the open source repository with public/synthetic fixtures, contributor
   guidance, agent integration examples and reproducible release privacy checks.
 
-## 0.1.0
-
-Initial implementation.
+Initial implementation:
 
 - Render Western natal wheels with Three.js and precomputed or locally calculated
   positions, actual house cusps, AC/MC axes, true lunar nodes and unknown-house support.

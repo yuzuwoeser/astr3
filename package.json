@@ -1,6 +1,6 @@
 {
   "name": "@yuzuwoeser/astr3",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ASTR3: explorable astrology wheels for the browser, built with Three.js.",
   "type": "module",
   "license": "MIT",

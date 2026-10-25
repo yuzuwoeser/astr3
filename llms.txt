@@ -2,7 +2,7 @@
 
 > MIT TypeScript library for explorable Western astrology wheels with Three.js.
 > Browser rendering, headless models, optional local ephemeris, natal and transit charts.
-> Version 0.1.0 is experimental. Prebuilt tarballs, browser ZIPs and an installable WordPress plugin are available through the website build; the npm package name is @yuzuwoeser/astr3.
+> Version 0.1.1 is experimental. Prebuilt tarballs, browser ZIPs and an installable WordPress plugin are available through the website build; the npm package name is @yuzuwoeser/astr3.
 
 ## Integration
 

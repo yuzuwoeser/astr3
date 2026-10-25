@@ -1,4 +1,8 @@
-# ASTR3 distributions
+# ASTR3 0.1.1
+
+This patch completes the automated distribution workflow and waits for npm
+registry indexing before confirming a release. Package integrity is checked
+against the exact tested tarball.
 
 Choose the npm tarball for a bundled application, the browser ZIP for a plain
 website, or the WordPress ZIP for an installable chart block. Stack-specific

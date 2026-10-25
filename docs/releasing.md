@@ -1,7 +1,7 @@
 # Preparing a release
 
 The [source repository](https://github.com/yuzuwoeser/astr3) is public. The package
-version is 0.1.0; its npm name is `@yuzuwoeser/astr3`. These steps validate a release
+version is 0.1.1; its npm name is `@yuzuwoeser/astr3`. These steps validate a release
 candidate locally. Pushing, enabling GitHub Pages, changing repository visibility,
 and publishing to npm require the owner's instruction.
 
@@ -145,8 +145,10 @@ reviewed commit. `.github/workflows/release.yml` rejects tags that do not match
 The prepare job runs checks and scans history/extracted distributions, then
 uploads the tested artifacts. The publish job downloads those exact bytes,
 checks the manifest and existing GitHub/npm artifacts, creates a draft release,
-uploads assets, publishes the tarball, verifies npm integrity, and makes the
-release public. No PR workflow publishes. Ordinary merges still deploy Pages.
+uploads assets, publishes the tarball, waits up to five minutes for npm indexing,
+verifies package identity and tarball integrity, and makes the release public.
+Transient registry/network failures are retried; authentication failures and
+mismatched artifacts stop immediately. No PR workflow publishes. Ordinary merges still deploy Pages.
 
 A partial failure leaves the draft and any already-published npm version intact.
 Rerun the failed publish job to resume using the original uploaded artifacts.
