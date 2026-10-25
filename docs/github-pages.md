@@ -28,8 +28,7 @@ The landing page is `/astr3/`; the complete chart explorer is
 The focused selection/transit demonstration lives at `/astr3/examples/selection/`
 and runs the same controller as the homepage hero. It uses invented positions
 and manual synthetic steps; it does not represent astronomical time progression.
-The [marketing kit](../marketing/README.md) documents screenshot/video capture
-and the [React guide](../examples/react/README.md) demonstrates an application panel.
+The [React guide](../examples/react/README.md) demonstrates an application panel.
 `tar` and `zip` are required for packed-library checks and the browser download.
 
 The build reads `examples/registry.mjs`, compiles real framework applications
@@ -38,6 +37,23 @@ README/source files. Missing sources/previews and duplicate IDs fail the build.
 The browser distribution is emitted to `downloads/browser/` and ZIPped as
 `downloads/astr3-browser.zip`; its dependencies and optional ephemeris are
 self-hostable. Framework dependencies remain development/example dependencies.
+
+## Capture demo media
+
+Use Node.js 24 LTS and installed Playwright Chromium. Build the website at the
+root base before capturing the focused selection demonstration:
+
+```sh
+npm run build:site
+npm run capture:marketing
+```
+
+The capture script serves the local build and performs actual selection and
+invented transit-step actions. It writes two PNG screenshots and a roughly
+25-second WebM to `site/public/marketing/`. These public assets are used by the
+README and can be shared with the demo. All positions are invented teaching data.
+Rebuild Pages with `npm run test:pages` after refreshing the captures so the
+deployed build includes the updated assets.
 
 ## Production smoke tests
 
