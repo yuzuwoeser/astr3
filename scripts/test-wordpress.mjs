@@ -110,13 +110,17 @@ echo json_encode(array('id' => $id, 'url' => get_permalink($id), 'plainUrl' => g
   await page.close();
 
   const editor = await browser.newPage();
+  // The welcome guide can appear after the blocks load, including during a click.
+  await editor.addLocatorHandler(
+    editor.getByRole('dialog', { name: /Welcome/ }),
+    async (dialog) => {
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    },
+  );
   await editor.goto(`${cli.serverUrl}/wp-admin/post.php?post=${post.id}&action=edit`);
   await editor.waitForFunction(
     () => window.wp?.data?.select('core/block-editor')?.getBlocks()?.length > 0,
   );
-  // Dismiss the core welcome modal if this WordPress version shows it.
-  const welcome = editor.getByRole('button', { name: 'Close', exact: true });
-  if (await welcome.count()) await welcome.first().click();
   const frame = (await editor.locator('iframe[name="editor-canvas"]').count())
     ? editor.frameLocator('iframe[name="editor-canvas"]')
     : editor;
