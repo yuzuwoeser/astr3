@@ -25,6 +25,11 @@ The landing page is `/astr3/`; the complete chart explorer is
 `/astr3/playground/`. Examples and integration guides have static routes beneath
 `/astr3/examples/` and `/astr3/integrations/`, including direct deep links.
 `build:site` builds at `/`; `build:demo` remains its compatibility alias.
+The focused selection/transit demonstration lives at `/astr3/examples/selection/`
+and runs the same controller as the homepage hero. It uses invented positions
+and manual synthetic steps; it does not represent astronomical time progression.
+The [marketing kit](../marketing/README.md) documents screenshot/video capture
+and the [React guide](../examples/react/README.md) demonstrates an application panel.
 `tar` and `zip` are required for packed-library checks and the browser download.
 
 The build reads `examples/registry.mjs`, compiles real framework applications

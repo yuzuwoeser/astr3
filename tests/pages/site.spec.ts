@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { test, expect } from './fixtures.js';
 import { examples } from '../../examples/registry.mjs';
+import { labelPoint } from '../browser/label-point.js';
 
 // Production routes are loaded directly, so a dev-server fallback cannot hide
 // missing HTML files or broken /astr3/ asset prefixes.
@@ -9,7 +10,9 @@ test('landing, gallery, and integration navigation work without loading framewor
   assetRequests,
 }) => {
   await page.goto('./');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Charts that belong');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    'Interactive astrology charts',
+  );
   await expect(page.locator('[data-template-preview] .astr3')).toHaveCount(2);
   await expect(page.locator('iframe')).toHaveCount(0);
   expect(assetRequests.some((path) => path.includes('/previews/'))).toBe(false);
@@ -31,6 +34,51 @@ test('landing, gallery, and integration navigation work without loading framewor
   }
   await expect(page.getByRole('heading', { name: 'Drupal', exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('selection demo updates the application panel, steps transits, and restores after navigation', async ({
+  page,
+}) => {
+  await page.goto('./examples/selection/');
+  const demo = page.locator('[data-selection-demo]');
+  await expect(demo.locator('canvas')).toHaveCount(1);
+  await expect(demo.locator('[data-selection-title]')).toHaveText('Natal Sun');
+  await expect(demo.locator('[data-selection-relationships]')).toContainText('Natal Moon');
+  await demo.getByRole('button', { name: 'Select Moon', exact: true }).click();
+  await expect(demo.locator('[data-selection-title]')).toHaveText('Natal Moon');
+  await demo.getByRole('button', { name: 'Next transit step' }).click();
+  await expect(demo.locator('[data-selection-step]')).toHaveText('Invented transit step 1');
+  await expect(demo.locator('[data-selection-title]')).toHaveText('Natal Moon');
+  const before = await demo.locator('.astr3-body[title^="Transiting Moon"]').getAttribute('title');
+  await demo.getByRole('button', { name: 'Next transit step' }).click();
+  await expect(demo.locator('.astr3-body[title^="Transiting Moon"]')).not.toHaveAttribute(
+    'title',
+    before!,
+  );
+  await page.getByRole('navigation').getByRole('link', { name: 'Examples', exact: true }).click();
+  await page.goBack();
+  await expect(demo.locator('canvas')).toHaveCount(1);
+  await demo.getByRole('button', { name: 'Select Moon', exact: true }).click();
+  await expect(demo.locator('[data-selection-title]')).toHaveText('Natal Moon');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('React tutorial selection panel survives updates and remounts', async ({ page }) => {
+  await page.goto('./previews/react/');
+  const panel = page.getByRole('region', { name: 'Selected chart object' });
+  const sun = await labelPoint(page, '.astr3-body[data-object="body:sun"]');
+  await page.mouse.click(sun.x, sun.y);
+  await expect(panel.getByRole('heading')).toHaveText('Sun');
+  await expect(panel).toContainText('Sun / Moon: trine');
+  await page.getByRole('button', { name: 'Rotate positions' }).click();
+  await expect(panel.getByRole('heading')).toHaveText('Sun');
+  await page.getByRole('button', { name: 'Unmount chart' }).click();
+  await expect(panel).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mount chart', exact: true }).click();
+  await expect(page.locator('canvas')).toHaveCount(1);
+  const moon = await labelPoint(page, '.astr3-body[data-object="body:moon"]');
+  await page.mouse.click(moon.x, moon.y);
+  await expect(panel.getByRole('heading')).toHaveText('Moon');
 });
 
 for (const example of examples) {

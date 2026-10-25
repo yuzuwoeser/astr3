@@ -11,6 +11,8 @@
 
 - [Getting started](README.md): prebuilt installation, a mounted chart example, capabilities and local website/playground.
 - [Framework and website integrations](docs/integrations.md): example registry, live guides, browser download, WordPress plugin, PHP and Rails recipes.
+- [Selection demonstration](https://yuzuwoeser.github.io/astr3/examples/selection/): invented natal/transit data, relationship highlighting and an application-owned panel.
+- [Clickable React chart](https://yuzuwoeser.github.io/astr3/integrations/react/): runnable starter and tutorial for selection events, updates and Strict Mode cleanup.
 - [Agent integration](docs/agent-integration.md): entry-point selection, headless example, browser lifecycle and common mistakes.
 - [API contracts](docs/api.md): entry points and exported types, normalized models, math/selection helpers, renderer options, events, SVG/PNG export, accessibility and calculation signatures.
 - [JSON templates](docs/api.md#json-templates): versioned natal/transit appearance presets, resolver types/errors, defaults, shallow overrides and the packaged schema.

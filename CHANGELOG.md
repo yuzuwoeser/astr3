@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Lead the website and README with a real interactive chart, selection-driven
+  application content, and first-chart links. Add a focused natal/transit demo,
+  reproducible screenshots/video, and a clickable-chart React tutorial/starter.
+
 ## 0.1.1
 
 - Wait for npm registry indexing after publication before completing the GitHub

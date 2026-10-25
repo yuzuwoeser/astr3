@@ -108,10 +108,10 @@ button {
 }
 .hero {
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 40px;
-  align-items: center;
-  padding: 65px 0 80px;
+  align-items: start;
+  padding: 40px 0 60px;
 }
 .eyebrow,
 .card-kicker {
@@ -179,77 +179,89 @@ h3 {
   font-size: 0.75rem;
   color: var(--muted);
 }
-.orbit-panel {
-  position: relative;
-  aspect-ratio: 1;
-  background: #111c20;
-  border-radius: 50% 50% 6px 6px;
+/* The hero runs the real renderer and keeps its accessible list in flow. */
+.selection-demo {
+  min-width: 0;
+  border: 1px solid #334843;
+  border-radius: 8px;
   overflow: hidden;
-  color: #76c7b2;
-}
-.orbit {
-  position: absolute;
-  border: 1px solid #3b625b;
-  border-radius: 50%;
-}
-.orbit-outer {
-  inset: 10%;
-}
-.orbit-inner {
-  inset: 20%;
-}
-.orbit-panel > span {
-  position: absolute;
-  z-index: 1;
-  font-size: clamp(24px, 4vw, 42px);
   background: #111c20;
-  line-height: 1.3;
+  color: #d2e5dc;
 }
-.orbit-sun {
-  left: 46%;
-  top: 17%;
-}
-.orbit-moon {
-  left: 21%;
-  top: 60%;
-  color: #80b9ee;
-}
-.orbit-jupiter {
-  right: 20%;
-  top: 60%;
-  color: #eacb92;
-}
-.orbit-line {
-  height: 1px;
-  background: #537b70;
-  position: absolute;
-  transform-origin: left center;
-}
-.line-one {
-  width: 47%;
-  top: 66%;
-  left: 26%;
-}
-.line-two {
-  width: 48%;
-  top: 24%;
-  left: 50%;
-  transform: rotate(120deg);
-}
-.line-three {
-  width: 48%;
-  top: 24%;
-  left: 50%;
-  transform: rotate(60deg);
-}
-.orbit-panel p {
-  position: absolute;
-  bottom: 0;
+.selection-wheel {
   width: 100%;
-  text-align: center;
-  letter-spacing: 0.18em;
-  font-size: 0.62rem;
-  color: #b4cec5;
+  aspect-ratio: 1;
+}
+.selection-demo .eyebrow,
+.selection-step {
+  color: #a2bfb3;
+}
+.selection-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 20px 0;
+}
+.selection-controls .button {
+  padding: 8px 12px;
+  color: #d2e5dc;
+  border-color: #59766d;
+  font-size: 0.78rem;
+}
+.selection-controls .button:hover {
+  background: #263e38;
+}
+.selection-demo :focus-visible {
+  outline-color: #80b9ee;
+}
+.selection-step {
+  margin: 10px 20px;
+  font-size: 0.75rem;
+}
+.selection-details {
+  margin: 16px 20px 20px;
+  padding-top: 16px;
+  border-top: 1px solid #334843;
+}
+.selection-details .eyebrow {
+  margin: 0 0 8px;
+}
+.selection-details h3 {
+  margin: 0 0 8px;
+}
+.selection-details p,
+.selection-details ul {
+  font-size: 0.85rem;
+  margin: 8px 0;
+}
+.selection-details ul {
+  padding-left: 20px;
+}
+.selection-status:empty {
+  display: none;
+}
+.selection-status {
+  padding: 0 20px;
+}
+.selection-feature .selection-demo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  max-width: 1100px;
+}
+.selection-feature .selection-wheel {
+  grid-column: 1;
+  grid-row: 1 / 5;
+}
+.selection-feature .selection-controls {
+  align-self: end;
+  padding-top: 28px;
+}
+.selection-feature .selection-details {
+  align-self: start;
+  min-height: 220px;
+}
+.selection-feature .selection-status {
+  grid-column: 1 / -1;
 }
 .section {
   padding: 42px 0;
@@ -540,10 +552,8 @@ h3 {
     grid-template-columns: 1fr;
     padding: 36px 0;
   }
-  .orbit-panel {
-    max-width: 380px;
-    width: 100%;
-    margin: 0 auto;
+  .selection-feature .selection-demo {
+    display: block;
   }
   .cards {
     grid-template-columns: 1fr;

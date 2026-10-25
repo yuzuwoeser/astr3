@@ -48,6 +48,7 @@
     "test:package": "node scripts/check-package.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "capture:marketing": "node scripts/capture-marketing.mjs",
     "check": "npm run typecheck && npm test && npm run build:site && npm run typecheck:examples && npm run test:recipes && npm run test:package",
     "prepack": "npm run build",
     "build:site": "npm run build && node scripts/build-site.mjs",

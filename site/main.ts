@@ -1,5 +1,8 @@
 import './style.css';
 
+if (document.querySelector('[data-selection-demo]'))
+  void import('./selection-demo.js').then(({ startSelectionDemos }) => startSelectionDemos());
+
 if (document.querySelector('[data-template-showcase]'))
   void import('./template-previews.js').then(({ startTemplatePreviews }) =>
     startTemplatePreviews(),

@@ -4,9 +4,18 @@
 
 <img src="https://raw.githubusercontent.com/yuzuwoeser/astr3/main/site/public/brand/astr3-logo-preview.svg" alt="ASTR3" width="320" />
 
-Explorable astrology wheels for the browser. A framework-neutral TypeScript library built with Three.js, released under MIT.
+Interactive astrology charts for your app. A framework-neutral TypeScript library built with Three.js, released under MIT.
 
 Select a planet, point, house, aspect, or supplied configuration. Highlight its relationships and connect the selection to your own explanations, tables, tooltips, or panels. Rendering works with precomputed data; the optional browser adapter calculates a natal chart without a backend.
+
+[![A real ASTR3 natal/transit wheel with Sun selected and its relationships shown in an application panel](site/public/marketing/selection-demo.png)](https://yuzuwoeser.github.io/astr3/examples/selection/)
+
+[Try the playground](https://yuzuwoeser.github.io/astr3/playground/) ·
+[Build your first chart](https://yuzuwoeser.github.io/astr3/integrations/typescript/) ·
+[Build a clickable chart in React](https://yuzuwoeser.github.io/astr3/integrations/react/)
+
+The preview uses invented teaching positions. [Try selection and transit steps](https://yuzuwoeser.github.io/astr3/examples/selection/)
+to see how chart events drive your own UI.
 
 ## Use the library
 
