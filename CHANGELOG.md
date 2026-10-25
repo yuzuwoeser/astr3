@@ -4,6 +4,9 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Fix GitHub Pages builds on Linux when dependencies ship lowercase license
+  filenames, preserving their actual casing when collecting notices.
+
 - Expand GitHub Pages into the ASTR3 project website with a dedicated playground,
   generated examples and integration guides for JavaScript, TypeScript, React,
   Vue.js, Svelte, Angular, PHP, WordPress, and Ruby on Rails.

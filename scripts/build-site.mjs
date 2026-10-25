@@ -6,6 +6,7 @@ import { build } from 'vite';
 import { examples } from '../examples/registry.mjs';
 import { chartData } from '../examples/shared/data.ts';
 import { escapeHtml, generatePages } from '../site/content.mjs';
+import { findDependencyLicense } from './dependency-license.ts';
 
 const argument = process.argv.indexOf('--base');
 const base = argument === -1 ? '/' : process.argv[argument + 1];
@@ -203,17 +204,10 @@ for (const name of [
   // package.json is not always exported; locate it by walking from the entry.
   let directory = resolve(resolver.resolve(name), '..');
   while (!existsSync(join(directory, 'package.json'))) directory = resolve(directory, '..');
-  const license = [
-    'LICENSE',
-    'LICENSE.txt',
-    'LICENSE.md',
-    'LICENSE-MIT',
-    'MIT-LICENSE',
-    'CopyrightNotice.txt',
-  ].find((file) => existsSync(join(directory, file)));
+  const license = findDependencyLicense(directory);
   if (!license && name !== '@hotwired/turbo')
     throw new Error(`Missing dependency license: ${name}`);
-  const licensePath = license ? join(directory, license) : 'site/licenses/turbo-MIT-LICENSE.txt';
+  const licensePath = license ?? 'site/licenses/turbo-MIT-LICENSE.txt';
   notices += `\n\n${name}\n${readFileSync(licensePath, 'utf8')}`;
 }
 writeFileSync(join(publicDir, 'THIRD_PARTY_LICENSES.txt'), notices);
