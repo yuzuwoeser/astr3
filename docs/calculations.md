@@ -1,6 +1,11 @@
 # Calculation conventions and validation
 
-`astr3/ephemeris` uses [Astronomy Engine](https://github.com/cosinekitty/astronomy) 2.1.19 (MIT) for planetary positions, lunar state vectors, apparent sidereal time, and true obliquity. Houses and lunar nodes use geometric calculations over those quantities. No Swiss Ephemeris implementation is incorporated. Neither Swiss Ephemeris nor Python is a package dependency.
+`astr3/ephemeris` uses [Astronomy Engine](https://github.com/cosinekitty/astronomy)
+(MIT, supported peer range `^2.1.19`) for planetary positions, lunar state vectors,
+apparent sidereal time, and true obliquity. Houses and lunar nodes use geometric
+calculations over those quantities. Neither Swiss Ephemeris nor Python is a
+package dependency. For method signatures, request fields, and errors, see the
+[calculation API](api.md#calculation-api); this guide explains conventions and limits.
 
 ## Inputs and outputs
 
@@ -33,18 +38,27 @@ RAMC is Greenwich apparent sidereal time plus longitude. Transform ecliptic long
 - **Whole Sign:** twelve signs starting at the ascending sign. AC/MC remain independent axes.
 - **Placidus:** solve `RA(λ) − RAMC = f × SDA(λ)`, where `SDA = acos(−tan(latitude) × tan(declination))` and `f` is ±1/3 or ±2/3. Bisection finds intermediate cusps about the upper meridian; opposites complete the wheel.
 
-Placidus returns `houseStatus: 'unavailable'` at/beyond the polar circle or failed convergence, retaining defined axes and a reason. No silent substitution occurs. At geographic poles the ascendant is undefined, so no axes/houses return. Choose Equal or Whole Sign explicitly.
+Placidus returns `houseStatus: 'unavailable'` at/beyond the polar circle or failed
+convergence, retaining defined axes and a warning. No silent substitution occurs.
+At geographic poles the ascendant is undefined, so no axes/houses return for any
+system. At other high latitudes, choose Equal or Whole Sign explicitly if needed.
+The standalone `calculateHouses` function returns the same geometry with `status`
+and optional `reason`; its [inputs](api.md#standalone-house-calculation) are angles,
+not a UTC calculation request.
 
 House occupancy uses longitude intervals starting at each actual cusp, including the cusp in its own house. No five-degree cusp rule or three-dimensional house positioning is applied.
 
 ## Independent checks and limits
 
-Committed fixtures record numeric results from separately installed Swiss Ephemeris 2.10.03 with Moshier planets. Tests import no reference implementation. Optional regeneration uses `tests/fixtures/generate-reference.py`, which needs a separately obtained `pyswisseph` installation under its applicable terms.
+Committed fixtures record numeric results from separately installed Swiss
+Ephemeris 2.10.03 with Moshier planets. Tests import no reference implementation.
+Optional [reference regeneration](https://github.com/yuzuwoeser/astr3/blob/main/tests/fixtures/generate-reference.py)
+needs a separately obtained `pyswisseph` installation under its applicable terms.
 
 - **52 charts:** endpoints and five-year samples across 1900–2100, both hemispheres, equatorial/high latitudes, and dates around Mercury's April 2024 stations.
 - **Planet tolerance: 2 arcminutes**, checked on fixtures rather than asserted universally. On 2100-12-31 the Moon differs by about 1.14 arcminutes because the engines predict different future ΔT (about 205 versus 94 seconds). Sampled modern-date errors are substantially smaller.
 - **House/angle tolerance: 0.005°** with independent time models. Fixed-RAMC fixtures isolate the house geometry and cover meridian wraparound and ±66.5° latitude.
-- **True-node position tolerance: 1 arcminute**, checked against 54 independent Moshier true-node fixtures across 1900–2100, including zodiac wrap and direct motion. Sampled speed differences stay below 0.01°/day; motion flags are compared outside that margin from a station. These are sampled tolerances, not a universal error bound. Optional regeneration uses `tests/fixtures/generate-node-reference.py` under the same separate-installation terms.
+- **True-node position tolerance: 1 arcminute**, checked against 54 independent Moshier true-node fixtures across 1900–2100, including zodiac wrap and direct motion. Sampled speed differences stay below 0.01°/day; motion flags are compared outside that margin from a station. These are sampled tolerances, not a universal error bound. Optional [node reference regeneration](https://github.com/yuzuwoeser/astr3/blob/main/tests/fixtures/generate-node-reference.py) uses the same separate-installation terms.
 - Other tests cover longitude/orb boundaries, supplied aspects, cusp membership, unknown data, polar failures, and cancellation.
 
 For exact agreement with a particular astrology service, supply that service's positions/cusps and conventions through another provider. Interpretation text belongs to applications.

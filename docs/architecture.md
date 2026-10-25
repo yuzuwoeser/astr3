@@ -1,5 +1,9 @@
 # Architecture and integration
 
+This guide explains how ASTR3 separates data, calculation, rendering, and
+application UI. For usage and supported options, see the [API reference](api.md)
+and [integration walkthrough](agent-integration.md).
+
 ```mermaid
 flowchart TD
     P[Replaceable ephemeris provider] --> M[Headless chart model]
@@ -13,54 +17,181 @@ flowchart TD
     S --> U[Application panels and tooltips]
 ```
 
-The model owns positions, actual cusps, signs/houses/aspects, IDs, and relationships. Rendering owns projection, glyph placement, picking, and display state. Moving a glyph never changes its longitude. Providers own calculation; selection and navigation never invoke them.
+The model owns positions, actual cusps, signs/houses/aspects, IDs, and
+relationships. Rendering owns projection, label placement, picking, and display
+state. Moving a glyph never changes its longitude. Providers own calculation;
+selection and navigation never invoke them.
 
 ## Boundaries
 
-- `astr3/model`: pure data/types/math, usable in Node/workers without Three.js.
-- `astr3`: renderer, model exports, and an optional transit animation controller. No document access at import; instantiate on the client.
-- `astr3/ephemeris`: optional Astronomy Engine peer. No DOM/Three.js, and no network needed after assets load.
-- Demo: birth form, request orchestration, interpretation text, details, tooltip, and examples are application code.
+- `astr3/model`: pure data, types, and math for Node, workers, or browsers without
+  Three.js or ephemeris imports.
+- `astr3`: renderer, model exports, and optional transit animation controller.
+  Import is SSR-safe; create charts after their browser hosts mount.
+- `astr3/ephemeris`: optional Astronomy Engine adapter. No DOM, Three.js, or remote
+  calculation service.
+- Demo: forms, request orchestration, interpretation text, details, tooltips, and
+  time controls belong to the application.
 
-The internal wheel drawing builder produces ordered shapes, positioned label
-specifications, cluster badges and hit targets without DOM or GPU access. Both
-backends use the existing geometry and bounded packing solver with injected text
-measurement: a cached DOM probe for interaction, outline metrics for export. The
-interactive painter consumes the description as Three.js triangles and HTML.
+## Shared drawing and export
+
+The wheel drawing builder produces ordered shapes, positioned labels, cluster
+badges, and hit targets without DOM or GPU access. Interactive and export
+backends share geometry and the bounded packing solver, with injected text
+measurement: a cached DOM probe for interaction, outline metrics for export.
+
+The orthographic renderer schedules frames on demand. Stroke geometry keeps
+widths/dashes in CSS pixels rather than relying on platform WebGL line widths.
+Triangles batch into one geometry with per-vertex RGBA and a reusable unlit
+material, retaining paint order without repeated shader compilation. Projected
+HTML labels and invisible targets use the same layout. Resize observation
+requests a frame; stage-size writes happen during drawing, outside observer
+delivery.
 
 Exports snapshot model/display state before asynchronously importing the SVG
 writer and font data. Full exports fit their own viewport; current-view exports
 preserve camera/aspect ratio and scale the resulting drawing. Visible text uses
-precomputed, licensed Noto outlines, with explicit failures for unsupported
-characters. The SVG is self-contained; PNG uses a temporary SVG object URL and 2D
-canvas, released on success or failure. Export never reads the WebGL framebuffer.
+licensed Noto outlines. SVG is self-contained; PNG uses a temporary SVG object
+URL and 2D canvas, released on success or failure. Export never reads the WebGL
+framebuffer. [Export contracts](api.md#svg-and-png-export) cover font support,
+colors, size limits, and failures.
 
-The orthographic renderer schedules frames on demand. Stroke geometry keeps widths/dashes in CSS pixels instead of relying on platform-dependent WebGL line widths. Wheel triangles batch into one geometry with per-vertex RGBA and a reusable unlit material, retaining paint order without repeated shader compilation. Projected HTML labels avoid CSS2DRenderer's browser-zoom assumptions. Labels and invisible targets use the same layout. Resize observation requests a frame; stage-size writes occur during drawing, outside observer delivery.
+## Layout geometry and visibility
 
-Chart-weight presets scale the shared stroke geometry and label typography together. Body-label measurements include glyph stroke and font weight, and the placement solver reserves the measured house-number bounds. Changing weight reruns this layout without changing astronomical positions or selection IDs. A hidden measurement probe caches typography/content dimensions; font loading invalidates those caches. Four text tiers choose all wheel font sizes before placement, and caption preflight removes secondary text before shrinking glyphs. Layout results are reused during appearance-only redraws and panning.
+The wheel-geometry resolver supplies the selected `default` or `alternative`
+preset to camera fitting, rulers, house sectors, label bands, anchors, and
+picking. Default natal houses sit inside the zodiac; transit labels pin outward
+from its outer edge without a separate rim. Alternative houses form an outer
+annulus, with zodiac second and both source symbol bands inside; the aspect
+circle is independent of houses. Alternative house picking uses an annular
+polygon rather than a sector extending to the center. Layout never enters the
+headless model or provider request.
 
-The circular packing solver uses bounded separation constraints and least-squares isotonic regression. It evaluates one/two-row arrangements, minimizes worst angular displacement before squared movement, and caps displacement at 30°. Conservative bounding discs ensure measured rectangles clear each other and the band boundaries; reserved captions become fixed angular obstacles. Infeasible local neighborhoods collapse into keyed HTML count buttons that reuse the overlap chooser. Original bodies, markers, selection IDs, and accessible entries remain intact.
+Each source's exact longitude markers and central aspect anchors remain fixed
+when labels move. Default transit labels prefer a band close to the zodiac,
+omitting captions before using the wider available band. Alternative sources
+use equal-width symbol bands and separate inner-facing rulers. Active bodies
+and aspect/group members gain faint dashed guides to their inner anchors;
+these guides add no picking targets.
 
-Picking compares shapes in CSS pixels. One semantic selection drives highlighting, keyboard state, announcements, and application events. Accessible buttons are built from the model and survive unavailable/lost graphics.
+Per-body visibility excludes hidden bodies from packing, exact markers,
+connected aspect/group graphics, and wheel picking. The model, original input,
+relationships, house occupancy, selection, and accessible entries remain intact.
+Transit visibility maps use original IDs separately for each source; only the
+shared renderer receives scoped IDs. Visibility does not affect calculation or
+animation sampling.
+
+## Label placement and typography
+
+The circular packing solver uses bounded separation constraints and least-squares
+isotonic regression. It evaluates one/two-row arrangements, minimizes worst
+angular displacement before squared movement, and caps displacement at 30°.
+Conservative bounding discs keep measured rectangles clear of each other and
+band boundaries; reserved captions act as fixed angular obstacles. Infeasible
+neighborhoods collapse into keyed HTML count buttons that reuse the overlap
+chooser. Original bodies, markers, selection IDs, and accessible entries remain.
+
+Default planet labels stay between the house circle and outer degree ticks;
+alternative labels stay within their source band. Both keep 4 CSS pixels of
+clearance. The solver preserves zodiac order within each row. Indicator lines
+terminate at label edges; exact longitude markers and aspect anchors never move.
+These rules also apply when houses are unknown or hidden.
+
+Wheel text uses four size tiers based on effective scale (CSS pixels per wheel unit, including viewport size and camera zoom):
+
+| Effective scale |                                  Body/zodiac glyphs | House numbers / axis captions | Scale numbers | Body degree/retrograde captions |
+| --------------- | --------------------------------------------------: | ----------------------------: | ------------: | ------------------------------: |
+| Below 0.65      | 14px × scale / 0.65, rounded to 0.5px; 10px minimum |                           8px |        Hidden |                          Hidden |
+| 0.65–0.89       |                                                18px |                           9px |        Hidden |                          Hidden |
+| 0.90–1.59       |                                                24px |                          10px |           9px |         10px when space permits |
+| 1.60+           |                                                32px |                          13px |          12px |         13px when space permits |
+
+AC/MC body glyphs retain their 0.72 optical scaling. Controls, detail panels, object-list text, marker sizes, and picking tolerances keep their normal screen sizes. Chart weight can affect available space through measured glyph dimensions.
+
+Each natal/transit band first checks whether its full captions fit at the selected glyph size. If they do not, it omits the captions before trying smaller glyph presets (24, 18, then 14px as applicable). This retains readable symbols instead of shrinking them to accommodate secondary text. Below the smallest tier, glyphs shrink proportionally with zoom to the 10px floor. Hidden positions and retrograde status remain available through selection/hover details and **Explore chart objects**.
+
+When symbols still cannot fit locally, count badges represent crowded neighborhoods. Each badge stays within 30° of all its members. Click/tap or press Enter/Space to open a chooser and select an original body; Escape closes the chooser and returns focus to the badge. A badge highlights when it contains an active body. Badges introduce no model object or selection type. Zooming/resizing expands them into individual symbols when space permits. If even a badge cannot fit, exact dots and accessible entries remain available.
+
+Text dimensions are cached by typography and content; cache misses are measured in an invisible probe outside the live labels. Font loading and typography changes invalidate measurements. Layout trials never toggle visible captions, and layout results are reused for panning and appearance-only selection/hover changes. Identical chart/scale inputs produce identical placement regardless of input order or zoom history.
+
+Chart-weight presets scale stroke geometry and label typography together:
+
+| Chart weight | Stroke multiplier | Text weight | Extra symbol stroke |
+| ------------ | ----------------: | ----------: | ------------------: |
+| Light        |                1× |         400 |                 0px |
+| Regular      |              1.5× |         500 |              0.15px |
+| Bold         |                2× |         650 |               0.3px |
+
+The multiplier also applies to `selectionEffects.lineWidth`, rings, cusps, ticks, leader lines, and markers. Symbols include built-in zodiac/planet glyphs and supplied custom glyph strings. Collision measurements include the selected font weight and symbol stroke. Planet labels avoid the measured house-number and degree-number bounds.
+
+## Conjunction geometry
+
+Conjunctions use deterministic inward bows whose depth decreases as the dots separate. In CSS pixels, let `d` be the distance between dot centers, `rA` and `rB` their normal visual radii, and `R` the aspect-anchor circle radius. No connector is drawn when `d ≤ d0 = rA + rB + 2`. Beyond that threshold, midpoint depth is `min(20, R / 4) × d0 / d`. A symmetric quadratic Bézier joins the exact anchors, with its control point twice that depth inward from the chord midpoint; 17 points sample the curve. An antipodal pair falls back to a straight connector.
+
+Curves fade in with smoothstep opacity over the first 4 CSS pixels beyond the overlap threshold and become pickable at 50% geometric opacity. Hidden curves have no hit targets. Their conjunctions remain available in the model, accessible list, and selection API; selecting one highlights the endpoints without restoring a curve. Normal marker radii include transit outlines and chart weight, but ignore selection enlargement, so hovering or selecting does not change the geometry. Zoom/resizing follow visual spacing; panning, endpoint order, and orb edits for an unchanged pair do not reshape a bow. Other aspect types use straight connectors.
+
+Picking compares shapes in CSS pixels. One semantic selection drives
+highlighting, keyboard state, announcements, and application events. Accessible
+buttons are built from the model and survive unavailable/lost graphics.
+
+## Transit composition and animation
+
+Transit bi-wheels use a composite model with source-qualified identities and
+independent natal, cross-chart, and transit aspect families. The transit adapter
+projects that model into the shared renderer using scoped IDs; the public API
+retains the caller's original IDs. Both modes share projection, DOM/GPU lifecycle,
+accessibility, picking, and interaction logic. Source bands and family visibility
+are presentation state. [Transit contracts](transits.md) describe public identity
+and natal-house semantics.
+
+`calculateTransits` reuses planetary-position calculation without houses or
+location inputs. `createTransitAnimation` accepts a chart and injected calculator,
+preflights a bounded interval, then applies directly calculated snapshots from a
+four-sample lookahead buffer. It owns animation frames, cancellation, page
+visibility, and reduced-motion subscriptions. Chart disposal also disposes the
+controller; ordinary renderer updates remain immediate.
+
+### Animation sampling
+
+Preflight compares midpoint positions against each segment's angular chord,
+targeting at most **0.05°** deviation. It refines uniform time spacing around
+curved paths and reversals before fixing playback speed. Intervals up to seven
+days protect every body with gaps of at most six simulated hours. Longer
+intervals protect Jupiter through Pluto (or configured `outerBodyIds`) with gaps
+of at most one simulated day. Stations trigger further refinement. These are
+animation-resolution targets tested against dense provider trajectories, not an
+ephemeris accuracy guarantee or exact station-finding API. Custom trajectories
+may exceed what midpoint checks can detect.
+
+Preferred active durations are 0.6 seconds for steps up to one hour, 1 second up
+to one day, 2 seconds up to seven days, 4 seconds up to 31 days, and 15 seconds
+for longer steps. Sampling limits may lengthen these before playback, targeting
+at most 30 displayed samples per second. Preflight uses constant sample storage.
+Slow calculation/rendering extends elapsed time rather than skipping samples.
+Preparation, buffering, and pauses are excluded from `durationMs`. More than
+8,192 required frames fails with a request for a shorter interval.
 
 ## Application lifecycle
 
-Per-body visibility is renderer state: hidden bodies are excluded from glyph packing, exact markers, connected aspect/group graphics, and wheel picking. The model, original inputs, relationships, selections, and accessible list stay intact. Transit visibility maps are keyed by original IDs separately for each source; the adapter scopes them only when passing options to the shared renderer. Visibility does not change ephemeris or animation sampling.
+Create after the host mounts. Subscribe to selection/hover for UI, call `update`
+for data and `setOptions` for display/aspect settings, then unsubscribe and dispose
+at unmount. Stable IDs preserve selection. Disposal removes only the chart's own
+root and releases its DOM/GPU resources.
 
-The internal wheel-geometry resolver supplies the selected `default` or `alternative` preset to camera fitting, rulers, house sectors, label bands, anchors and picking. The original constants remain unchanged. Alternative houses form the outer annulus, with zodiac second and both body bands inside; its aspect circle is independent of houses. The cache includes the complete band geometry and layout typography. Alternative house picking uses an annular polygon rather than a sector extending to the center. Layout is presentation state and never enters the headless model or provider request.
-
-Create after the host mounts. Subscribe to selection/hover for UI, use `update` for data and `setOptions` for display, aspect enablement, and orbs. Stable IDs preserve selection. Unsubscribe and dispose at unmount. Only the chart's own root is removed.
-
-For a remote/worker provider: cancel the prior request, increment a revision, request data, and apply only the current result. Display failures separately while retaining the previous valid chart. Provider, invalid-data, and graphics failures are distinct. The library has no accounts, service, or storage.
+For a remote or worker provider, cancel prior requests and apply only the newest
+revision. Display failures separately while retaining the last valid chart.
+Provider, invalid-data, export, and graphics failures are distinct. ASTR3 has no
+accounts, service, or storage. Framework-specific state and interpretation text
+remain in the application.
 
 ## Development and release
 
-`npm run check` verifies types, unit/reference behavior, and library/demo builds. `npm run test:browser` exercises actual Chromium WebGL and mobile touch emulation. Ignored `test-results/` contains review screenshots and failure traces. Run `npm run format:check` before committing. [Contributing](../CONTRIBUTING.md) describes setup, and the [release checklist](releasing.md) covers identity, full-history secret scans and distributable privacy checks.
+`npm run check` verifies types, unit/reference tests, both builds, and the packed
+consumer. Browser checks run separately in Chromium with desktop and mobile
+touch emulation; physical devices, Firefox, and Safari remain unverified.
+[Contributing](../CONTRIBUTING.md) describes setup and focused checks; the
+[release checklist](releasing.md) covers identity, history, and artifact review.
 
-`npm pack` includes ESM, declarations, JavaScript maps with inline sources, docs, license, and notices. Dependencies stay external to the library build. The demo lazy-loads the ephemeris. Physical devices, Firefox, and Safari need further verification before claiming equivalent support.
-
-Transit bi-wheels use a separate composite model with source-qualified identities and independent natal, cross-chart, and transit aspect families. The transit adapter projects that model into the shared renderer using internal scoped IDs; the public API retains callers' original IDs. Both modes share projection, DOM/GPU lifecycle, accessibility, picking, and interaction logic. In the default layout, transit labels pin outward from the zodiac without a separate rim, and all sources project to the same house-circle anchors. In the alternative, both symbol bands sit inside the zodiac and share a separate inner aspect circle. A presentation describes source bands and family visibility. The bounded label solver accepts a band geometry while retaining the original natal defaults.
-
-`calculateTransits` reuses the provider's planetary-position calculation without house calculations or location inputs. The demo owns transit UTC stepping and cancellation, and orb changes only rebuild the model. [Transit API](transits.md) documents identities, house semantics, and lifecycle. Synastry and cross-chart pattern groups remain future work.
-
-`createTransitAnimation` accepts a transit chart and an injected calculator. It preflights a bounded interval, refines uniform time spacing for trajectory detail, then applies directly calculated snapshots from a four-sample lookahead buffer. It owns animation frames, request cancellation, document visibility and reduced-motion subscriptions; chart disposal also disposes the controller. Renderer updates themselves remain immediate and never call the provider. The demo owns the animation toggle, calendar intervals, pause control, and time captions.
+The package contains ESM, declarations, source maps with inline sources, docs,
+license, and notices. Dependencies stay external to the library build. Demo code
+and assets are excluded from the package; the demo lazy-loads the ephemeris.

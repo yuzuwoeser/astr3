@@ -8,6 +8,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
   tests, and automatic deployment from `main` after checks and history scanning
   pass. Support manual redeployment while keeping local development at `/`.
 
+- Simplify getting started and complete public API coverage for models, helpers,
+  events, calculation, and transit animation. Separate rendering internals from
+  reference docs and update repository, reporting, and asset-link guidance.
+
 - Adjust demo downloads to 800 × 800 for standard SVG and 1600 × 1600 for large
   SVG and PNG. Library export defaults remain unchanged.
 

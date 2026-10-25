@@ -1,8 +1,9 @@
-# Preparing a public release
+# Preparing a release
 
-The public repository is `yuzuwoeser/astr3`. Pushing a branch, enabling GitHub
-Pages, changing repository visibility, or publishing to npm requires the owner's
-instruction. Version 0.1.0 has an implementation but is not yet published to npm.
+The [source repository](https://github.com/yuzuwoeser/astr3) is public. The package
+version is 0.1.0; npm publication is pending. These steps validate a release
+candidate locally. Pushing, enabling GitHub Pages, changing repository visibility,
+and publishing to npm require the owner's instruction.
 
 For demo deployment and production smoke tests, see [GitHub Pages](github-pages.md).
 
@@ -18,12 +19,10 @@ git remote -v
 git status --short
 ```
 
-This repository uses `yuzuwoeser` and
-`118196026+yuzuwoeser@users.noreply.github.com`. Do not change global Git settings
-or a GitHub profile to release this repository. Check author/committer fields as
-well as commit messages, tags and all refs that may be pushed. A clean latest
-checkout does not imply clean history. Do not import private backup refs or merge
-an unsanitized local repository into the publication repository.
+Confirm that the author and committer use the intended public identity. Do not
+change global Git settings or a GitHub profile as part of a release. Review commit
+messages, tags, and all refs that may be pushed. A clean checkout does not imply
+clean history; keep private backup refs and repositories out of public history.
 
 Use only synthetic positions or clearly documented public reference inputs in
 fixtures, screenshots and examples. Review metadata, source maps with inline
@@ -84,9 +83,10 @@ scanning the compressed file alone. Scan `demo-dist/` before hosting the demo.
   Keep npm publication instructions truthful until the package actually exists.
 - Review the final diff and create a local commit. Recheck identity, clean status,
   reachable refs, tarball contents and scans at the committed candidate.
-- When GitHub publication is authorized, push only the intended sanitized branch.
-  Enable **private vulnerability reporting** before advertising that reporting
-  channel; [SECURITY.md](../SECURITY.md) explains the fallback while unavailable.
+- When pushing is authorized, push only the reviewed branch. Verify **private
+  vulnerability reporting** and update [SECURITY.md](../SECURITY.md) if its
+  availability changes; the policy currently directs reporters to request a
+  private channel without disclosing details publicly.
 - When npm publication is authorized, verify ownership/availability of the package
   name, publish the reviewed artifact and record the release in the changelog.
 

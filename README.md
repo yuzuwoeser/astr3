@@ -2,71 +2,45 @@
 
 [Browser demo on GitHub Pages](https://yuzuwoeser.github.io/astr3/) · [Deployment and preview](docs/github-pages.md)
 
-<img src="demo/public/brand/astr3-logo-preview.svg" alt="ASTR3 — Righteous in five colors" width="320" />
+<img src="https://raw.githubusercontent.com/yuzuwoeser/astr3/main/demo/public/brand/astr3-logo-preview.svg" alt="ASTR3" width="320" />
 
 Explorable astrology wheels for the browser. A framework-neutral TypeScript library built with Three.js, released under MIT.
 
 Select a planet, point, house, aspect, or supplied configuration. Highlight its relationships and connect the selection to your own explanations, tables, tooltips, or panels. Rendering works with precomputed data; the optional browser adapter calculates a natal chart without a backend.
 
-## Name and wordmark
+## Use the library
 
-The display name is **ASTR3**. The demo renders its wordmark as live text in
-Righteous Regular (400), served locally. Each character uses the supplied logo
-palette: **A** mint `#76C7B2`, **S** sky blue `#80B9EE`, **T** lavender `#B5A0E8`,
-**R** coral `#EF9399`, and **3** gold `#EACB92`, on a dark `#111C20` background.
-The live text preserves the font's native spacing and stays readable if the font
-cannot load.
-
-Reusable [transparent](demo/public/brand/astr3-logo.svg) and
-[dark-background](demo/public/brand/astr3-logo-preview.svg) SVGs and the
-[palette](demo/public/brand/palette.json) are included for other uses. The SVGs
-contain the original glyph outlines and need no installed font. Repository prose
-uses the uppercase name; the npm package, imports, URLs and code identifiers
-continue to use `astr3`.
-
-ASTR3's source code is MIT licensed. The demo bundles the original, unmodified
-Righteous font under the [SIL Open Font License 1.1](https://openfontlicense.org/).
-Its copyright notice and full license ship alongside the font and in the demo's
-third-party notices. The font's license permits personal and commercial use and
-bundling with software; it does not change ASTR3's code license.
-
-## Run the demo
-
-Use Node.js 24 LTS (minimum 22.12.0) and npm. From the repository root:
+Use Node.js 24 LTS (minimum 22.12.0) and npm. The package is not yet published to npm;
+build a tarball from a checkout:
 
 ```sh
 npm ci
-npm run dev
-```
-
-Open the local URL printed by Vite. The initial wheel uses synthetic teaching data with a supplied grand trine. Choose a calculated preset or enter a UTC date/time and coordinates to use Astronomy Engine. House systems: Placidus, Whole Sign, Equal. Birth information is never sent to a service. **Aspects** provides individual switches, editable orbs, and Major only / All / None presets. Choose **Natal + transits** for an outer transit band, UTC time stepping, and independent aspect settings for natal, transit-to-natal, and transit-to-transit contacts. **Chart weight** offers Light, Regular (demo default), and Bold.
-
-## Use the library
-
-In transit view, enable **Animate time changes** to follow calculated motion between Previous/Next steps, from hours through years. Pause/Resume stops at the displayed time; turning animation off finishes the step immediately. The reusable [`createTransitAnimation` controller](docs/transits.md#animated-time-steps) preserves retrograde paths with adaptive sampling and honors reduced motion.
-
-Expand **Celestial bodies** to show or hide individual planets and points, with separate natal/transit switches and All/None controls. Integrations can use `chart.setOptions({ bodyVisibility: { moon: false } })`, or `transitChart.setOptions({ bodyVisibility: { transit: { moon: false } } })`. Hidden bodies and their connectors leave the wheel while their data remains inspectable.
-
-This repository produces an npm-ready package; npm publication is pending. Install the local package tarball in an application:
-
-```sh
 npm pack
 # In your application:
-npm install /path/to/astr3/astr3-0.1.0.tgz three
+npm install /path/to/astr3-0.1.0.tgz three
+```
+
+Mount after the host element exists. For example, add this HTML to a page served
+by your application's bundler:
+
+```html
+<div id="wheel" style="width: min(100%, 640px)"></div>
+<pre id="details"></pre>
 ```
 
 ```ts
 import { createChart } from 'astr3';
 
-const chart = createChart(document.querySelector<HTMLElement>('#wheel')!, {
-  chartWeight: 'regular', // Omit to preserve the library's original Light styling.
-  layout: 'alternative', // Omit for the original 'default' arrangement.
-  enabledAspects: { semisextile: true, quincunx: true },
+const host = document.querySelector<HTMLElement>('#wheel');
+const panel = document.querySelector<HTMLElement>('#details');
+if (!host || !panel) throw new Error('Mount #wheel and #details first.');
+
+const chart = createChart(host, {
   data: {
     bodies: [
-      { id: 'sun', name: 'Sun', longitude: 78.4 },
-      { id: 'moon', name: 'Moon', longitude: 198.9 },
-      { id: 'jupiter', name: 'Jupiter', longitude: 318.1 },
+      { id: 'sun', name: 'Sun', longitude: 0 },
+      { id: 'moon', name: 'Moon', longitude: 120 },
+      { id: 'jupiter', name: 'Jupiter', longitude: 240 },
     ],
     // Omit aspects to calculate enabled types with configurable orbs.
     // Supply [] to deliberately display none.
@@ -74,17 +48,21 @@ const chart = createChart(document.querySelector<HTMLElement>('#wheel')!, {
 });
 
 const unsubscribe = chart.on('selection', ({ details }) => {
-  // Render application-owned HTML here. Data includes signs, houses, and orbs.
-  console.log(details?.object, details?.aspects);
+  panel.textContent = details ? JSON.stringify(details, null, 2) : 'Select an object';
 });
 
 chart.select({ kind: 'body', id: 'sun' });
-// Later, when your view unmounts:
-unsubscribe();
-chart.dispose();
+// Call from your application's unmount handler.
+function unmount() {
+  unsubscribe();
+  chart.dispose();
+}
 ```
 
-Give the container a nonzero width. The wheel resizes as a square; the accessible object list stays below it in document flow. Instantiate after the container mounts, and dispose before removing it. Importing `astr3` is SSR-safe; creating a chart needs a browser and WebGL 2. If WebGL is unavailable, the interactive HTML object list remains usable and `chart.error` explains the failure.
+The wheel resizes as a square; the accessible object list stays below it in document
+flow. Importing `astr3` is SSR-safe; interactive graphics need a browser and WebGL 2.
+If WebGL is unavailable, the HTML object list remains usable and `chart.error`
+explains the failure. For data-only use in Node or workers, import `astr3/model`.
 
 ## Optional browser calculation
 
@@ -95,71 +73,57 @@ npm install astronomy-engine
 ```ts
 import { createAstronomyProvider } from 'astr3/ephemeris';
 
-const controller = new AbortController();
 const provider = createAstronomyProvider();
-const data = await provider.calculate(
-  {
-    utc: '2000-01-01T12:00:00Z',
-    latitude: 51.5074,
-    longitude: -0.1278, // east positive
-    houseSystem: 'placidus',
-  },
-  { signal: controller.signal },
-);
+const data = await provider.calculate({
+  utc: '2000-01-01T12:00:00Z',
+  latitude: 51.5074,
+  longitude: -0.1278, // east positive
+  houseSystem: 'placidus',
+});
 
+// Reuse the mounted chart from the previous example.
 chart.update(data);
 ```
 
 `astr3/model` is a headless entry with no DOM, Three.js, or ephemeris imports. `astr3/ephemeris` imports Astronomy Engine but not Three.js. Renderers and selections never request new calculation data automatically. Any provider implementing `EphemerisProvider` can replace the example adapter.
 
-## Included in v0.1
+## Capabilities
 
-- Two layouts: `default` keeps the original wheel; `alternative` puts houses outermost, zodiac second, and natal/transit symbols inside the zodiac, with a separate inner aspect circle. Choose **Chart layout** in the demo or call `chart.setOptions({ layout: 'alternative' })`.
-- Western natal wheels, arbitrary supplied points/cusps, independent AC/MC axes, degree labels, retrograde indicators, and unknown-house support.
-- Selectable Ascendant, Midheaven, North Node, and South Node with the same dots, aspects, house occupancy, and detail events as planets. The browser provider includes true lunar nodes in natal/transit calculations and AC/MC in natal calculations when defined.
-- Collision-separated glyphs and leader lines with fixed longitude markers. Planet labels stay outside the original inner house circle and clear of the outer degree scale; collective one/two-row placement stays within 30° of true positions. Crowded views hide captions first, then shrink symbols or show selectable cluster badges. Wheel text uses zoom-aware size presets.
-- Selectable planet dots on the house circle at exact longitudes, joined by aspect lines and pattern outlines. Every planet has a dot, including those without aspects.
-- Eleven aspect types with independent enablement and orbs: five major aspects enabled by default, plus semi-sextile, semi-square, quintile, sesquiquadrate, biquintile, and quincunx. Disabled types leave the model, explorer, and relationship details. Supplied groups have selectable interiors and accessible entries.
-- Pointer/touch selection, overlap chooser, relationship highlights, application HTML tooltip events, and programmatic selection.
-- Zoom/pan/reset, keyboard controls, an accessible HTML object list, and reduced-motion behavior.
-- Browser SVG/PNG export for natal and transit charts, with portable outlined text and full/current-view options. See [export options](docs/api.md#svg-and-png-export).
-- Dark/light themes, Light/Regular/Bold chart weight, custom glyph strings, aspect line widths/dashes, layers, dimming, and selection styles.
-- Validated data updates, resource disposal, and recovery after WebGL context restoration.
+- Natal and transit wheels with arbitrary supplied planets/points, unequal house
+  cusps, independent AC/MC axes, and unknown-house support.
+- Eleven aspect types with independent enablement and orbs; supplied aspects and
+  configuration groups remain under the caller's control.
+- Exact longitude markers, bounded label placement, overlap choosers, touch/keyboard
+  selection, and an accessible HTML object list.
+- Two layouts, themes, chart weights, custom glyphs, layers, and per-body visibility.
+- Browser [SVG/PNG export](docs/api.md#svg-and-png-export) and opt-in
+  [transit animation](docs/transits.md#animated-time-steps) with reduced-motion support.
 
 The initial API is versioned 0.x and may change before 1.0. Automatic patterns, synastry, standalone transit houses, multi-selection, continuous time playback, 3D presentation, and framework wrappers are deferred.
 
 ## Natal + transit bi-wheels
 
-```ts
-import { createTransitChart } from 'astr3';
-import { createAstronomyProvider } from 'astr3/ephemeris';
+Use `createTransitChart` with `{ data: { natal, transit } }`. Both sides accept
+`ChartInput`; IDs remain local to their chart. Selections include `chart: 'natal'`
+or `'transit'`, and cross-aspect selections use `'cross'`. Houses and axes come
+from the natal chart. See the [working example and transit API](docs/transits.md).
 
-const provider = createAstronomyProvider();
-const natal = await provider.calculate({
-  utc: '2000-01-01T12:00:00Z',
-  latitude: 51.5074,
-  longitude: -0.1278,
-});
-const transit = await provider.calculateTransits({ utc: '2026-10-21T12:00:00Z' });
-const wheel = createTransitChart(document.querySelector<HTMLElement>('#wheel')!, {
-  data: { natal, transit },
-  orbs: { cross: { conjunction: 5 } },
-  enabledAspects: { cross: { quincunx: true, semisextile: true } },
-  layers: { crossAspects: true, natalAspects: false, transitAspects: false },
-});
-wheel.select({ kind: 'body', chart: 'transit', id: 'mars' });
-wheel.on('selection', ({ details }) => console.log(details));
-// Updating time leaves natal data, camera and configuration fixed.
-wheel.updateTransit(await provider.calculateTransits({ utc: '2026-10-22T12:00:00Z' }));
-// Unmount: wheel.dispose();
-```
+## Run the demo
 
-Both sides also accept precomputed `ChartInput`. Planet IDs remain local to their chart: natal Mars and transiting Mars can both use `mars`. The inner wheel uses natal houses/axes; transit bodies expose their `natalHouse`. Distinct central anchor dots keep aspect lines out of the zodiac and label bands. See [the transit API](docs/transits.md) for configuration, selection, and calculation contracts.
+From a checkout, run `npm ci` and `npm run dev`, then open the Vite URL. The initial
+wheel uses synthetic teaching data with a supplied grand trine. Choose a preset or
+enter UTC time and coordinates to calculate locally with Astronomy Engine.
+
+Choose **Natal + transits** for time stepping and optional animation. **Aspects**
+sets enablement and orbs; **Celestial bodies** controls individual visibility.
+Layout, theme, and chart weight affect presentation. Birth information is never
+sent to a calculation service. See [demo time controls](docs/transits.md#demo-controls)
+for transit-specific behavior.
 
 ## Documentation and validation
 
 - [Agent integration: headless data and browser lifecycle](docs/agent-integration.md)
-- [API and data contracts](docs/api.md)
+- [API, exported helpers, events, and data contracts](docs/api.md)
 - [Transit bi-wheel API](docs/transits.md)
 - [Calculation conventions and tested accuracy](docs/calculations.md)
 - [Architecture and integration](docs/architecture.md)
@@ -169,15 +133,13 @@ Both sides also accept precomputed `ChartInput`. Planet IDs remain local to thei
 - [Release and privacy checklist](docs/releasing.md)
 - [Security reporting](SECURITY.md) and [changelog](CHANGELOG.md)
 
-```sh
-npm run check             # types, unit/reference tests, builds, packed consumer
-npm exec playwright -- install chromium
-npm run test:browser      # real WebGL: Chromium desktop + mobile touch emulation
-npm run format:check
-```
+Run `npm run check` and `npm run format:check` for local validation. Browser tests
+run separately with `npm run test:browser`; setup and coverage limits are in
+[Contributing](CONTRIBUTING.md).
 
-Stop any unrelated server on port 4173 before browser tests; local runs may reuse it. On Linux, install Chromium with `--with-deps`. See [Contributing](CONTRIBUTING.md) for focused test commands.
+## License and assets
 
-Browser tests exercise direct selection, overlaps, keyboard access, updates, touch/pinch, resizing, themes/layers, unavailable WebGL, context restoration, and repeated disposal. Independent numerical fixtures cover 1900–2100 and both hemispheres. See the calculation documentation for tolerances and limitations. Tests do not imply the same accuracy at every date, coordinate, or numerical boundary.
-
-MIT. Three.js and Astronomy Engine retain their respective MIT licenses. See [NOTICE](NOTICE).
+ASTR3 source is MIT licensed. Dependency and bundled font attribution is in
+[NOTICE](NOTICE). The Righteous wordmark font and Noto export outlines retain
+their SIL OFL licenses. Reusable logos and palette specifications are in the
+[brand asset notes](https://github.com/yuzuwoeser/astr3/blob/main/demo/public/brand/README.txt).

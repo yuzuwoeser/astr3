@@ -6,12 +6,12 @@
 
 ## Integration
 
-- [Getting started](README.md): local demo, tarball installation, natal and transit examples.
+- [Getting started](README.md): tarball installation, a mounted chart example, capabilities and local demo.
 - [Agent integration](docs/agent-integration.md): entry-point selection, headless example, browser lifecycle and common mistakes.
-- [API contracts](docs/api.md): input, aspects, default/alternative layouts, per-body visibility, options, SVG/PNG export, events, picking and accessibility.
-- [Transit API](docs/transits.md): composite models, source-qualified selections, transit updates and accurate time-step animation.
+- [API contracts](docs/api.md): entry points and exported types, normalized models, math/selection helpers, renderer options, events, SVG/PNG export, accessibility and calculation signatures.
+- [Transit API](docs/transits.md): a working wheel example, composite models and helpers, source-qualified selections, renderer/animation events and demo controls.
 - [Calculation conventions](docs/calculations.md): coordinate conventions, houses, nodes and measured accuracy limits.
-- [Architecture](docs/architecture.md): model, provider, renderer and application boundaries.
+- [Architecture](docs/architecture.md): model/provider/application boundaries, shared drawing/export, packing, typography, conjunction geometry and animation sampling.
 
 ## Contributing
 

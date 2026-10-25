@@ -9,8 +9,6 @@ Do not include private birth information in reports, screenshots or fixtures.
 Use **Node.js 24 LTS**, matching CI. Node 22.12.0 or newer is supported by the
 package. npm and Git are required; Python and an ephemeris service are not.
 
-Once the repository is public:
-
 ```sh
 git clone https://github.com/yuzuwoeser/astr3.git
 cd astr3
@@ -74,6 +72,21 @@ Use descriptive commits. Implementation work should include a local commit after
 checks and diff review. A push or publication still needs the repository owner's
 authorization. GitHub workflows run formatting, types, tests, builds, consumer
 validation and a full-history secret scan.
+
+## Documentation and assets
+
+Keep examples runnable with invented positions or documented public reference
+dates/locations. Describe public behavior in the [API reference](docs/api.md)
+and implementation detail in [architecture](docs/architecture.md). Update
+`llms.txt` when navigation changes. Check relative links in the packed docs as
+well as the checkout: demo assets and development scripts are not packaged.
+
+The [brand notes](https://github.com/yuzuwoeser/astr3/blob/main/demo/public/brand/README.txt)
+record wordmark colors, SVG assets, and font attribution. The
+[export font guide](https://github.com/yuzuwoeser/astr3/blob/main/scripts/export-fonts/README.md)
+describes optional outline regeneration and provenance. Keep copyright/license
+notices with redistributed fonts and outlines; do not regenerate them for a
+prose-only change.
 
 Report vulnerabilities using [SECURITY.md](SECURITY.md), not a public issue with
 an exploit or secret. See [the release checklist](docs/releasing.md) for artifact

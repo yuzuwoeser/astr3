@@ -6,15 +6,13 @@ change.
 
 ## Report privately
 
-Use the repository's **Security → Report a vulnerability** feature when available:
-[private reporting](https://github.com/yuzuwoeser/astr3/security/advisories/new).
-This requires maintainers to enable private vulnerability reporting after the
-GitHub repository is created; this file does not enable it.
-
-If that feature is unavailable, open a public issue asking for a private reporting
-channel **without disclosing the vulnerability, exploit, credentials or personal
-chart data**. Wait for a private channel before sharing sensitive details. Public
-issues are suitable for ordinary bugs reproduced with synthetic data.
+Private vulnerability reporting is not currently enabled for this repository.
+Open an [issue](https://github.com/yuzuwoeser/astr3/issues) asking for a private
+reporting channel **without disclosing the vulnerability, exploit, credentials,
+or personal chart data**. Wait for a private channel before sharing sensitive
+details. If maintainers enable **Security → Report a vulnerability**, use that
+private channel instead. Public issues are suitable for ordinary bugs reproduced
+with synthetic data.
 
 Include the affected version, runtime/browser, impact and a minimal reproduction.
 Use invented chart data. Share secrets only to identify a leak through the agreed

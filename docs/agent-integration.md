@@ -13,7 +13,7 @@ LLM tool endpoint, interpretation service or framework wrapper.
 | Mount an interactive natal/transit wheel              | `astr3`           | Import is SSR-safe; mount after the browser host exists, with WebGL 2  |
 | Calculate positions, houses and true nodes locally    | `astr3/ephemeris` | Node, worker or browser; requires the optional `astronomy-engine` peer |
 
-Until the package is published, build with `npm ci && npm pack` in the repository
+Build with `npm ci && npm pack` in a checkout
 and install the resulting tarball plus `three` in the consuming application.
 Install `astronomy-engine` only if using the adapter. See
 [getting started](../README.md#use-the-library). No secret or remote service is required.
@@ -72,8 +72,8 @@ after it exists:
 ```js
 import { createChart } from 'astr3';
 
-const host = document.querySelector('#wheel');
-const panel = document.querySelector('#details');
+const host = document.getElementById('wheel');
+const panel = document.getElementById('details');
 if (!host || !panel) throw new Error('Mount #wheel and #details first.');
 
 const chart = createChart(host, { data, chartWeight: 'regular' });
@@ -145,6 +145,9 @@ with a backend or worker adapter returning `ChartInput`, or supply precomputed
 data directly. The bundled `AstronomyProvider` additionally has
 `calculateTransits({ utc }, options?)`, which omits location-dependent houses/axes.
 
+See the [calculation API](api.md#calculation-api) for complete request/result
+signatures, `CalculationError`, and standalone house calculation.
+
 When requests overlap, cancel the previous request and apply only the newest
 revision. Cancellation does not interrupt the adapter's synchronous engine work
 mid-calculation. Put high-volume calculations in an application-owned worker.
@@ -158,18 +161,18 @@ With `provider` and `natal` from the previous example:
 import { createTransitModel, getTransitSelectionDetails } from 'astr3/model';
 
 const transit = await provider.calculateTransits({ utc: '2026-01-01T12:00:00Z' });
-const model = createTransitModel(
+const transitModel = createTransitModel(
   { natal, transit },
   {
     enabledAspects: { cross: { quincunx: true } },
   },
 );
-const details = getTransitSelectionDetails(model, {
+const transitDetails = getTransitSelectionDetails(transitModel, {
   chart: 'transit',
   kind: 'body',
   id: 'mars',
 });
-console.log(details);
+console.log(transitDetails);
 ```
 
 For graphics, pass `{ data: { natal, transit } }` to `createTransitChart(host, options)`

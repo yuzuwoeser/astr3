@@ -1,6 +1,21 @@
 # API and data contracts
 
-For natal + transit bi-wheels, see [Transit bi-wheel API](transits.md). The natal contracts below remain unchanged.
+Reference for public imports, chart data, renderer options, events, and exports.
+Start with the [README example](../README.md#use-the-library) or the
+[integration walkthrough](agent-integration.md) for a complete setup. Transit
+models, source-qualified selections, and animation are covered in the
+[transit reference](transits.md).
+
+## Entry points
+
+| Import            | Exports and runtime                                                                                                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `astr3/model`     | [Models and relationships](#model), [math and identity helpers](#model-helpers), constants, and data types. No DOM, Three.js, or ephemeris dependency.                                                |
+| `astr3`           | Everything from `astr3/model`, plus `createChart`, `createTransitChart`, `createTransitAnimation`, `DARK_THEME`, `LIGHT_THEME`, and renderer/animation types. Import is SSR-safe; mount in a browser. |
+| `astr3/ephemeris` | [Calculation API](#calculation-api): `createAstronomyProvider`, `calculateHouses`, `CalculationError`, and provider/house types. Requires the optional `astronomy-engine` peer; no DOM or Three.js.   |
+
+Only these three entry points are public. Use them instead of importing internal
+files. [Exported types](#exported-types) are indexed at the end of this page.
 
 ## Model
 
@@ -9,15 +24,42 @@ Import types and pure functions from `astr3/model`. `createModel(input, { orbs?,
 | ChartInput field                | Meaning                                                                                                                                                                                                  |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bodies`                        | Required array of `{ id, name, longitude, latitude?, speed?, retrograde?, glyph?, metadata? }`. Angles are degrees; speed is longitude degrees/day. Negative speed implies retrograde unless overridden. |
-| `houses`                        | Omit or use an empty array when unknown. Otherwise supply twelve `{ id, number, longitude }` cusps, numbered 1–12 and advancing once around the zodiac. Unequal cusps are preserved.                     |
+| `houses`                        | Omit or use an empty array when unknown. Otherwise supply twelve `{ id, number, longitude, metadata? }` cusps, numbered 1–12 and advancing once around the zodiac. Unequal cusps are preserved.          |
 | `angles`                        | Optional independent `ascendant` and `midheaven` longitudes. Opposite axes are drawn automatically. MC need not equal cusp 10.                                                                           |
 | `aspects`                       | Omitted: calculate. Supplied array: authoritative, even when empty. Each entry is `{ id, type, bodyIds: [id, id], metadata? }`. Separation and absolute orb are derived from positions.                  |
 | `groups`                        | Supplied configurations: `{ id, name, bodyIds: [], aspectIds: [], metadata? }`. Referenced aspect endpoints join the highlighted group.                                                                  |
 | `houseStatus`                   | `available`, `unknown`, or `unavailable`; defaults from the presence of cusps. Available requires twelve houses.                                                                                         |
 | `timeUncertain`                 | Labels a reference snapshot; the caller should omit uncertain houses/angles. The browser provider does so automatically.                                                                                 |
-| `title`, `warnings`, `metadata` | Optional descriptive context and application data.                                                                                                                                                       |
+| `title`, `warnings`, `metadata` | Optional title string, array of warning strings, and opaque `Readonly<Record<string, unknown>>` metadata. Object-level metadata uses the same shape.                                                     |
 
-IDs must be nonempty and unique across all object kinds. References must exist. Longitudes normalize into `[0, 360)`. Nonfinite positions, duplicate IDs, incomplete/out-of-order cusps, and dangling relationships throw `ChartDataError` (`code: INVALID_CHART_DATA`). Body/group names must be nonempty. Invalid updates leave the previous model intact.
+IDs must be nonempty and unique across all object kinds. References must exist.
+Longitudes normalize into `[0, 360)`; latitude must be finite and within ±90°.
+Houses are sorted by number, then checked for one complete turn around the zodiac.
+Nonfinite positions/speeds, duplicate IDs, invalid cusps, and dangling relationships
+throw `ChartDataError` (`code: 'INVALID_CHART_DATA'`). Body/group names must be
+nonempty. An aspect needs two distinct body IDs. A group needs at least one body
+or aspect reference. Invalid updates leave the previous model intact.
+
+### Normalized results
+
+`createModel(input, options?): ChartModel` returns these fields:
+
+| Field/type                              | Result                                                                                                                                                               |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                                 | Supplied title, or `'Natal chart'`.                                                                                                                                  |
+| `bodies: readonly Body[]`               | Copied input fields, normalized longitude, derived zodiac position, boolean `retrograde`, and optional `house` number (1–12). Without cusps, `house` is `undefined`. |
+| `houses: readonly House[]`              | Cusps in house-number order, with normalized longitude and occupant `bodyIds`; `[]` when omitted.                                                                    |
+| `aspects: readonly Aspect[]`            | Input fields plus `angle` (exact angle), `separation` (shortest longitude distance), and absolute `orb`, all in degrees. Applying/separating is not calculated.      |
+| `groups: readonly GroupInput[]`         | Supplied groups with duplicate member references removed. No automatic pattern detection.                                                                            |
+| `angles: ChartAngles`                   | Normalized supplied axes, or `{}`.                                                                                                                                   |
+| `houseStatus: HouseStatus`              | Supplied status, or `'available'` with cusps and `'unknown'` without them.                                                                                           |
+| `timeUncertain`, `warnings`, `metadata` | Default to `false`, `[]`, and `undefined`. Metadata on charts and objects remains by reference.                                                                      |
+
+`ZodiacPosition` is `{ sign, signIndex, degree }`: English sign name, zero-based
+Aries-to-Pisces index, and degrees within the sign in `[0, 30)`. Bodies retain
+their exact longitude independently of where the renderer places their labels.
+
+### Planets and points
 
 `bodies` is the common collection for planets **and points**. The browser provider includes `ascendant`, `midheaven`, `north-node`, and `south-node` alongside the ten planets. They support the same selection, house occupancy, groups, aspects, glyph overrides, and house-circle anchors. Built-in glyphs are AC, MC, ☊, and ☋. Angles remain available separately in `angles` to draw the axes.
 
@@ -38,7 +80,9 @@ chart.update(data);
 chart.select({ kind: 'body', id: 'ascendant' });
 ```
 
-Supplied nodes can use any convention; include it in metadata for application details. The example provider uses true nodes; see [calculation conventions](calculations.md). Automatic aspects include every supplied point pair, including the nodes' mutual opposition. Supply an explicit aspect list to apply different point-specific rules.
+Supplied nodes can use any convention; include it in metadata for application details. The bundled provider uses true nodes; see [calculation conventions](calculations.md). Automatic aspects include every supplied point pair, including the nodes' mutual opposition. Supply an explicit aspect list to apply different point-specific rules.
+
+### Aspects and enablement
 
 | Aspect type    | Exact angle | Default maximum orb | Enabled by default |
 | -------------- | ----------: | ------------------: | ------------------ |
@@ -54,11 +98,19 @@ Supplied nodes can use any convention; include it in metadata for application de
 | biquintile     |        144° |                  2° | No                 |
 | quincunx       |        150° |                  3° | No                 |
 
-Override limits with `orbs: { trine: 5 }`. Boundaries are inclusive. Overlapping calculated limits choose the closest exact **enabled** angle; exact ties keep definition order, with the original major types first. Supplied aspects are not filtered by orb limits. Calculated IDs survive body reordering. Aspects use longitude, not three-dimensional separation or declination parallels.
+Override limits with `orbs: { trine: 5 }`. Values must be finite and within
+`[0, 180]`; unknown type keys and nonboolean enablement values throw
+`ChartDataError`. Boundaries are inclusive. Overlapping calculated limits choose
+the closest exact **enabled** angle; exact ties keep definition order, with the
+major types first. Supplied aspects are not filtered by orb limits. Calculated
+IDs survive body reordering. Aspects use longitude, not three-dimensional
+separation or declination parallels.
 
 `enabledAspects` is an `AspectEnabledConfig`: a partial aspect-to-boolean map. For example, `{ square: false, quincunx: true }` disables squares and enables quincunxes. Changing an orb does not enable its type. Disabled aspects are excluded from the model, connectors, picking, accessible list, selection events, and relationship details, including when supplied explicitly. Supplied data is validated before filtering. Groups referencing excluded aspects are temporarily omitted; body-only groups remain available. Keep the original input to restore excluded aspects/groups with a later settings change. Invalid references still throw.
 
-`ASPECT_DEFINITIONS` exposes each type's display name, exact angle, default `orb`, and `major` flag. `ASPECT_ANGLES`, `DEFAULT_ORBS`, and `DEFAULT_ENABLED_ASPECTS` expose frozen maps. `calculateAspects(bodies, orbs?, enabledAspects?)` uses the same defaults and filtering as `createModel`; its existing two-argument form remains valid. `angularDistance`, `signedDistance`, `normalize`, `zodiacPosition`, and `formatPosition` support shared application logic.
+`ASPECT_DEFINITIONS` exposes each type's display name, exact angle, default `orb`,
+and `major` flag. `ASPECT_ANGLES`, `DEFAULT_ORBS`, and `DEFAULT_ENABLED_ASPECTS`
+expose frozen maps. See [model helpers](#model-helpers) for standalone calculations.
 
 ```ts
 chart.setOptions({ enabledAspects: { semisextile: true, quincunx: true } });
@@ -66,44 +118,71 @@ chart.setOptions({ enabledAspects: { square: false }, orbs: { quincunx: 2 } });
 // Earlier enablement and orb choices remain in effect.
 ```
 
+## Model helpers
+
+Import these from `astr3/model` or `astr3`. Helpers that accept a model expect one
+created by `createModel`; math helpers expect finite degrees.
+
+| Function                                                          | Parameters and result                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `calculateAspects(bodies, orbs?, enabledAspects?): Aspect[]`      | `readonly BodyInput[]` plus optional `OrbConfig` and `AspectEnabledConfig`, defaulting to `{}`. Returns calculated contacts using the defaults above. Validates settings; use `createModel` for full chart validation/normalization and frozen output. |
+| `getSelectionDetails(model, selection): SelectionDetails \| null` | Looks up a `Selection` in a `ChartModel` and returns its immediate relationships; unknown references return `null`. See [details](#events-and-details).                                                                                                |
+| `hasSelection(model, selection): boolean`                         | Whether the referenced kind/ID exists in the model.                                                                                                                                                                                                    |
+| `selectionKey(selection): string`                                 | Stable kind-and-ID key for application maps; does not check existence.                                                                                                                                                                                 |
+| `normalize(degrees): number`                                      | Wrap into `[0, 360)`.                                                                                                                                                                                                                                  |
+| `signedDistance(from, to): number`                                | Shortest signed change in `[-180, 180)`; an exact half-turn is `-180`.                                                                                                                                                                                 |
+| `angularDistance(a, b): number`                                   | Shortest unsigned separation in `[0, 180]`.                                                                                                                                                                                                            |
+| `zodiacPosition(longitude): ZodiacPosition`                       | Sign name, zero-based index, and degree within sign.                                                                                                                                                                                                   |
+| `formatPosition(longitude): string`                               | Position rounded to the nearest arcminute, carrying into the next sign when needed; for example, `formatPosition(120)` is `0°00′ Leo`.                                                                                                                 |
+
+`SIGNS` and `SIGN_GLYPHS` are frozen Aries-to-Pisces arrays. `BODY_GLYPHS` is a
+frozen body-ID-to-symbol map for the ten planets, nodes, AC/MC, and Chiron.
+Glyph availability does not imply the provider calculates that body.
+Transit helpers and types are listed in [the transit reference](transits.md#headless-helpers).
+
 ## Renderer
 
-`createChart(container, { data, ...options })` returns:
+`createChart(container: HTMLElement, options: ChartOptions): Chart` mounts its own
+root inside the container. Give the container a nonzero width. It resizes as a
+square with an accessible object list below the wheel. Creation needs a browser
+document; graphics use WebGL 2. A WebGL failure retains the HTML list and is
+reported through `error`. The returned chart exposes:
 
-| Member                                   | Behavior                                                                                                                                       |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `model`, `selection`, `element`, `error` | Current normalized model, selected reference, mounted root, and graphics error.                                                                |
-| `update(data)`                           | Replace data; preserve a still-existing selected ID, or clear it with source `update`.                                                         |
-| `setOptions(options)`                    | Patch display, orb, and enablement options. Recalculate omitted aspects; filter supplied aspects by enablement. Clear removed selections.      |
-| `select(reference)`                      | Select `{ kind: 'body' \| 'house' \| 'aspect' \| 'group', id }`. Unknown references throw `RangeError`.                                        |
-| `clearSelection()`                       | Deselect.                                                                                                                                      |
-| `zoomBy(factor)`, `resetView()`          | Multiply zoom (clamped to 0.6–5) or restore zoom/pan. Invalid factors throw.                                                                   |
-| `on(event, listener)`                    | Subscribe; returns an unsubscribe function.                                                                                                    |
-| `dispose()`                              | Remove owned DOM, observers/listeners, queued frames, geometry/materials, renderer, and WebGL context. Safe twice; subsequent mutations throw. |
+| Member                                       | Behavior                                                                                                                                       |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`, `selection`, `element`, `error`     | Current normalized model, selected reference, mounted root, and graphics error.                                                                |
+| `update(data)`                               | Replace data; preserve a still-existing selected ID, or clear it with source `update`.                                                         |
+| `setOptions(options)`                        | Patch display, orb, and enablement options. Recalculate omitted aspects; filter supplied aspects by enablement. Clear removed selections.      |
+| `select(reference)`                          | Select `{ kind: 'body' \| 'house' \| 'aspect' \| 'group', id }`, or pass `null` to clear. Unknown references throw `RangeError`.               |
+| `clearSelection()`                           | Deselect.                                                                                                                                      |
+| `zoomBy(factor)`, `resetView()`              | Multiply zoom (clamped to 0.6–5) or restore zoom/pan. Invalid factors throw.                                                                   |
+| `on(event, listener)`                        | Subscribe; returns an unsubscribe function.                                                                                                    |
+| `exportSvg(options?)`, `exportPng(options?)` | Return `Promise<string>` or `Promise<Blob>`; see [export options](#svg-and-png-export).                                                        |
+| `dispose()`                                  | Remove owned DOM, observers/listeners, queued frames, geometry/materials, renderer, and WebGL context. Safe twice; subsequent mutations throw. |
 
-Options:
+`update`, `setOptions`, selection, and view methods return `void`. Data updates
+preserve the camera and still-existing selections. Subscribe through `on` rather
+than DOM custom events. Read [events and details](#events-and-details) for payloads.
+
+### Options
 
 - `layout`: `'default'` (library and demo default) or `'alternative'`, typed as `ChartLayout`. Both constructors and `setOptions` accept it. Invalid values throw `RangeError` before changing live state. See [Layout presets](#layout-presets).
 - `chartWeight`: `light` (library default), `regular`, or `bold`. Changes chart strokes, label weight, and symbol strokes. Crowded labels may choose a smaller font to fit the measured weight. The demo starts at Regular and provides a Chart weight selector. Invalid values throw `RangeError`; invalid option updates leave the previous settings intact.
-- `theme`: patch background, foreground, muted, ring, accent, group, the four element colors, and per-type aspect colors. Exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
+- `theme`: patch background, foreground, muted, ring, accent, group, the four element colors (fire, earth, air, water), and per-type aspect colors. Defaults to `DARK_THEME`; exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
 - `glyphs`: body-ID-to-text overrides, falling back to the body's glyph, built-in symbol, or two name characters. Strings are text, never injected HTML. Use short glyphs.
 - `layers`: patch `zodiac`, `bodies`, `houses`, `axes`, `aspects`, `groups`, `degrees`; all default true. Hidden layers remain available in the model and accessible list.
 - `bodyVisibility`: a `BodyVisibility` record mapping original body IDs to booleans, for example `{ moon: false, 'north-node': false }`. Omitted IDs are visible. Constructor options are copied; `setOptions` merges patches by ID, and `true` restores a hidden body. Unknown IDs retain their setting for future data updates. Invalid records/values throw before changing the chart. Hiding a body removes its glyph, markers, leaders, and wheel pick targets, plus aspects and group outlines involving it. Model data, relationships, house occupancy, selection, and accessible entries remain available; hidden body entries say “hidden on wheel.” AC/MC axis guides remain controlled by `layers.axes`, but their captions no longer select a hidden point. Visibility changes never request new ephemeris calculations.
 - `enabledAspects`: patch aspect-to-boolean settings as described above. This excludes aspect data; the `layers.aspects` switch only hides graphics.
 - `lineStyles`: per aspect type `{ width?, dash?: [onPixels, offPixels] }`, in CSS pixels. Width is the baseline before the chart-weight multiplier; dash lengths stay constant. Major types default to solid lines, minor types to `[4, 3]` dashes. Use `[1, 0]` to make a minor aspect solid.
 - `selectionEffects`: `{ color?, dimOpacity?, lineWidth? }`, defaulting to theme accent, `0.22`, and `2.5` pixels. Use opacity in `[0, 1]` and positive widths.
-- `dimUnrelated: false`: keep unrelated objects at normal opacity.
+- `dimUnrelated`: defaults to `true`; set `false` to keep unrelated objects at normal opacity.
 - `ariaLabel`: accessible chart name; defaults to title.
 
 Nested option records patch by key. A per-aspect line-style object replaces that aspect's previous style. Primary selection takes precedence over transient hover highlighting. Theme overrides remain partial; applications implementing a complete `ChartTheme` must include colors for all eleven aspect types.
 
-| Chart weight | Stroke multiplier | Text weight | Extra symbol stroke |
-| ------------ | ----------------: | ----------: | ------------------: |
-| Light        |                1× |         400 |                 0px |
-| Regular      |              1.5× |         500 |              0.15px |
-| Bold         |                2× |         650 |               0.3px |
-
-The multiplier also applies to `selectionEffects.lineWidth`, rings, cusps, ticks, leader lines, and markers. Symbols include built-in zodiac/planet glyphs and supplied custom glyph strings. Collision measurements include the selected font weight and symbol stroke. Planet labels avoid the measured house-number and degree-number bounds.
+Chart weight applies to strokes and symbols as well as text, including selection
+line width. See the [weight profiles](architecture.md#label-placement-and-typography)
+for exact multipliers.
 
 ```ts
 import type { ChartWeight } from 'astr3';
@@ -170,13 +249,9 @@ encoding failures also reject. Export supports literal hex/named/rgb()/hsl()
 colors; unresolved CSS variables, context-dependent colors and paint URLs reject.
 
 Methods return content without downloading it. Applications own filenames and
-saving; the demo's **Download SVG** uses an 800 × 800 full-chart layout and
-**Download PNG** rasterizes that layout at 2× for a 1600 × 1600 image.
-**Download large SVG** uses a 1600 × 1600 full-chart layout, giving
-symbols and degree/retrograde captions more room before compacting. Its filename
-ends in `-large.svg`. Existing layer and body visibility settings still apply;
-extremely dense charts may still compact labels. For example, create a Blob from the SVG string with MIME type
-`image/svg+xml`, create an object URL, and revoke that URL after download.
+saving. For SVG, create a Blob with MIME type `image/svg+xml`, create an object
+URL, and revoke it after download. The demo's [download controls](transits.md#demo-controls)
+use their own output sizes; they do not change library defaults.
 
 ## Events and details
 
@@ -185,19 +260,40 @@ extremely dense charts may still compact labels. For example, create a Blob from
 | `selection` | `{ selection, details, source }`, source is `pointer`, `keyboard`, `programmatic`, or `update`. Selection/details can be null. |
 | `hover`     | `{ selection, details, x, y }`, client coordinates for application HTML tooltips. Null on leaving the wheel.                   |
 | `update`    | `{ model }` after data/options change.                                                                                         |
-| `view`      | `{ zoom, pan: { x, y } }`; pan is in world units.                                                                              |
+| `view`      | `{ zoom, pan: { x, y } }`; zoom is relative to the fitted view, pan is in world units.                                         |
 | `error`     | `{ code, message, cause? }`; code is `WEBGL_UNAVAILABLE` or `CONTEXT_LOST`. Check `chart.error` for current state.             |
 | `dispose`   | `undefined`, emitted once when disposal starts, so companion controllers can release their resources.                          |
 
-`SelectionDetails` includes the selected object/reference and related bodies, houses, aspects, and groups. Bodies include sign, degree within sign, and optional house. Aspects include exact angle, actual separation, and absolute orb; applying/separating is not calculated. Groups include supplied bodies plus aspect endpoints. Houses return occupants; bodies return immediate aspects and endpoints without recursive graph expansion.
+`on<K extends keyof ChartEvents>(event: K, listener: (payload: ChartEvents[K]) => void)`
+returns an unsubscribe function. Listeners run synchronously, except the initial
+graphics-failure notification is queued so immediate subscribers receive it.
+`hover` coordinates are viewport/client CSS pixels; cleared hover events use
+`selection: null`, `details: null`, and zero coordinates. Ignore coordinates when
+there is no hovered selection.
+
+`Selection` is `{ kind: 'body' | 'house' | 'aspect' | 'group', id: string }`.
+`SelectionDetails` has this shape:
+
+| Field                           | Meaning                                                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `selection: Selection`          | Selected kind and original ID.                                                                                                                      |
+| `object: ChartObject`           | Selected `Body`, `House`, `Aspect`, or `GroupInput`.                                                                                                |
+| `bodies: readonly Body[]`       | Selected/member bodies plus endpoints of included aspects.                                                                                          |
+| `houses: readonly House[]`      | The selected house and houses occupied by included bodies.                                                                                          |
+| `aspects: readonly Aspect[]`    | A body's immediate aspects, the selected aspect, or a group's supplied aspect references. House selection alone does not expand occupants' aspects. |
+| `groups: readonly GroupInput[]` | The selected group and groups directly referencing included bodies/aspects.                                                                         |
+
+Relationship expansion is immediate, not recursive. For no selection, event
+`selection` and `details` are both `null`. Headless `getSelectionDetails` also
+returns `null` for an unknown reference; renderer `select` throws instead.
 
 Selection events include programmatic changes and selected-data refreshes. Render panels idempotently; avoid unconditionally calling `select` from a selection listener.
 
 ## Layout presets
 
-`layout: 'default'` retains the original natal and transit arrangement. `layout: 'alternative'` puts the actual house band outermost and zodiac signs immediately inside it. The natal ruler and symbols follow inside the zodiac; in a bi-wheel, the transit ruler/symbols come first, then the natal ruler/symbols. Both sources project onto one separate central aspect circle. The outer source ruler shares the zodiac's inner boundary, and both rulers use the same zodiac degrees rather than house-relative degrees.
+`layout: 'default'` places natal houses inside the zodiac and transit labels outside it. `layout: 'alternative'` puts the actual house band outermost and zodiac signs immediately inside it. The natal ruler and symbols follow inside the zodiac; in a bi-wheel, the transit ruler/symbols come first, then the natal ruler/symbols. Both sources project onto one separate central aspect circle. The outer source ruler shares the zodiac's inner boundary, and both rulers use the same zodiac degrees rather than house-relative degrees.
 
-Alternative house dividers, highlights and picking stay within the outer annulus. Unknown or hidden houses leave that space reserved without invented annotations. House numbers that cannot fit their actual sector are omitted; the band and accessible house entries remain selectable. The two source symbol bands have equal widths; a natal-only chart uses an expanded single band. All symbols keep the same bounded packing, caption and overflow behavior. Compact alternative labels use slightly less padding.
+Alternative house dividers, highlights and picking stay within the outer annulus. Unknown or hidden houses leave that space reserved without invented annotations. House numbers that cannot fit their actual sector are omitted; the band and accessible house entries remain selectable. A natal-only chart uses an expanded single symbol band; both modes keep bounded packing, captions, and overflow behavior.
 
 Alternative ruler dots stay on their source boundary and short leaders connect displaced symbols. A faint dashed radial guide connects an active body to its inner anchor; active aspects/groups guide their members. Guides add no picking targets. Natal/transit colors and inner circle/diamond markers retain their existing meaning. The inner aspect circle remains independent of house visibility.
 
@@ -209,7 +305,7 @@ chart.setOptions({ layout });
 chart.setOptions({ layout: 'default' });
 ```
 
-Changing layout preserves data, stable selection IDs, zoom/pan, themes and aspect settings. Normal option-update events still apply; no ephemeris calculation is requested. Each preset fits its own outer bounds, including axis captions. Switching back restores default placement for the same data/view. The demo's **Default / Alternative** selector is shared across chart modes and retained through calculation/time changes. Layout is not part of `ChartInput` or the headless model; arbitrary ring reordering and radius controls are not exposed.
+Changing layout preserves data, stable selection IDs, zoom/pan, themes and aspect settings. Normal option-update events still apply; no ephemeris calculation is requested. Each preset fits its own outer bounds, including axis captions. Switching back restores default placement for the same data/view. Layout is not part of `ChartInput` or the headless model; arbitrary ring reordering and radius controls are not exposed.
 
 ## Input and accessibility
 
@@ -219,33 +315,84 @@ In the default layout, the house circle uses the original inner placement, with 
 
 Every planet or supplied point has a filled inner anchor dot at its exact longitude, including bodies without aspects. Aspect lines and supplied group outlines meet those anchors. In the default layout, zodiac position dots sit directly on the zodiac's inner boundary for natal bodies and its outer boundary for transits. Moving a label never moves either marker.
 
-Conjunctions use deterministic inward bows whose depth decreases as the dots separate. In CSS pixels, let `d` be the distance between dot centers, `rA` and `rB` their normal visual radii, and `R` the aspect-anchor circle radius. No connector is drawn when `d ≤ d0 = rA + rB + 2`. Beyond that threshold, midpoint depth is `min(20, R / 4) × d0 / d`. A symmetric quadratic Bézier joins the exact anchors, with its control point twice that depth inward from the chord midpoint; 17 points sample the curve. An antipodal pair falls back to a straight connector.
-
-Curves fade in with smoothstep opacity over the first 4 CSS pixels beyond the overlap threshold and become pickable at 50% geometric opacity. Hidden curves have no hit targets. Their conjunctions remain available in the model, accessible list, and selection API; selecting one highlights the endpoints without restoring a curve. Normal marker radii include transit outlines and chart weight, but ignore selection enlargement, so hovering or selecting does not change the geometry. Zoom/resizing follow visual spacing; panning, endpoint order, and orb edits for an unchanged pair do not reshape a bow. Other aspect types use straight connectors. There are no new configuration options.
+Conjunctions use inward bows; when anchor dots overlap, the connector is hidden.
+The aspect remains selectable through the object list/API. Other aspect types
+use straight connectors. See [conjunction geometry](architecture.md#conjunction-geometry)
+for the rendering algorithm.
 
 Anchor dots select the same body and expose the same hover/selection details as its symbol. They share relationship highlighting, dimming, theme colors, and chart weight, with a 6 CSS pixel picking radius for mouse and 12 for touch. Overlapping dots open the object chooser. The `bodies` layer controls the dots alongside symbols and outer markers; dots remain at the same radius when houses are hidden or unknown and when aspects are hidden.
 
-In the default layout, the complete planet label stays between the house circle and outer degree ticks; alternative labels stay within their own source band. Both keep 4 CSS pixels of clearance. A deterministic circular constraint solver fits labels together in one or two radial rows without adding circles. It preserves zodiac order within each row, balances angular displacement, and never moves a label more than 30° from its true longitude. Indicator lines terminate at label edges; exact longitude markers and inner aspect anchors never move. These rules also apply when houses are unknown or hidden.
-
-Wheel text uses four size tiers based on effective scale (CSS pixels per wheel unit, including viewport size and camera zoom):
-
-| Effective scale |                                  Body/zodiac glyphs | House numbers / axis captions | Scale numbers | Body degree/retrograde captions |
-| --------------- | --------------------------------------------------: | ----------------------------: | ------------: | ------------------------------: |
-| Below 0.65      | 14px × scale / 0.65, rounded to 0.5px; 10px minimum |                           8px |        Hidden |                          Hidden |
-| 0.65–0.89       |                                                18px |                           9px |        Hidden |                          Hidden |
-| 0.90–1.59       |                                                24px |                          10px |           9px |         10px when space permits |
-| 1.60+           |                                                32px |                          13px |          12px |         13px when space permits |
-
-AC/MC body glyphs retain their 0.72 optical scaling. Controls, detail panels, object-list text, marker sizes, and picking tolerances keep their normal screen sizes. Chart weight can affect available space through measured glyph dimensions.
-
-Each natal/transit band first checks whether its full captions fit at the selected glyph size. If they do not, it omits the captions before trying smaller glyph presets (24, 18, then 14px as applicable). This retains readable symbols instead of shrinking them to accommodate secondary text. Below the smallest tier, glyphs shrink proportionally with zoom to the 10px floor. Hidden positions and retrograde status remain available through selection/hover details and **Explore chart objects**.
-
-When symbols still cannot fit locally, count badges represent crowded neighborhoods. Each badge stays within 30° of all its members. Click/tap or press Enter/Space to open a chooser and select an original body; Escape closes the chooser and returns focus to the badge. A badge highlights when it contains an active body. Badges introduce no model object or selection type. Zooming/resizing expands them into individual symbols when space permits. If even a badge cannot fit, exact dots and accessible entries remain available.
-
-Text dimensions are cached by typography and content; cache misses are measured in an invisible probe outside the live labels. Font loading and typography changes invalidate measurements. Layout trials never toggle visible captions, and layout results are reused for panning and appearance-only selection/hover changes. Identical chart/scale inputs produce identical placement regardless of input order or zoom history.
+Labels stay within their source band and within 30° of their true longitude.
+Crowded views omit secondary captions, reduce glyph size, then use count badges
+that open a chooser of original bodies. Enter/Space opens a focused badge;
+Escape closes the chooser and returns focus. Zooming or resizing can expand
+badges into individual symbols. Exact dots and accessible entries remain
+selectable even when no label fits. Hidden position and retrograde captions
+remain available in selection/hover details and **Explore chart objects**.
+See [label placement and typography](architecture.md#label-placement-and-typography)
+for solver details and size thresholds.
 
 Screen-space priority: body labels/markers → aspects → group interiors → houses. Aspect tolerance is 8 CSS pixels with mouse and 14 with touch. Ties at the highest matching priority produce a chooser. Three or more noncollinear group members define a convex interior; degenerate groups remain selectable in the list/API.
 
 Expand **Explore chart objects** for native buttons carrying position/orb text and `aria-pressed`. Tab moves normally; arrows/Home/End move within the list; Enter/Space selects. A live region announces selection. With wheel focus, `+`, `-`, and `0` zoom/reset. Camera movement is immediate, and label transitions respect reduced motion.
 
 The list survives graphics loss. Initial WebGL failure emits asynchronously for immediate subscribers. Recovery clears `chart.error` and redraws; browsers cannot guarantee every context can recover.
+
+## Calculation API
+
+Import from `astr3/ephemeris`. `createAstronomyProvider(): AstronomyProvider`
+creates a stateless local adapter implementing `EphemerisProvider` plus UTC-only
+transit calculation. No chart is mounted or updated automatically.
+
+| Method                                                                                                         | Result                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `calculate(request: CalculationRequest, options?: { signal?: AbortSignal }): Promise<ChartInput>`              | Ten planets, two true lunar nodes, and natal AC/MC bodies, axes, and houses when defined. Default house system is `'placidus'`. |
+| `calculateTransits(request: { utc: Date \| string }, options?: { signal?: AbortSignal }): Promise<ChartInput>` | The same planets and nodes, without location-dependent axes or houses.                                                          |
+
+`CalculationRequest` requires `utc`, `latitude` in `[-90, 90]` (north positive),
+and `longitude` in `[-180, 180]` (east positive). Optional `houseSystem` is
+`'placidus' | 'whole-sign' | 'equal'` (`HouseSystem`); optional `timeUncertain`
+defaults to `false`. When true, the adapter uses the reference instant but omits
+houses/axes/AC/MC and adds a warning.
+
+Both methods accept a valid `Date` or timestamp with `Z`/explicit offset, within
+1900–2100 UTC. Bad dates, coordinates, or house systems reject with
+`CalculationError` (`code: 'CALCULATION_ERROR'`, `message`). Aborting rejects with
+the signal's reason. Cancellation is checked around synchronous calculation; it
+does not interrupt engine work mid-body. Unsupported polar houses return a
+status and warning rather than silently switching systems. See
+[conventions and measured limits](calculations.md) before relying on precision.
+
+### Standalone house calculation
+
+`calculateHouses(siderealDegrees, latitude, obliquity, system): HouseCalculation`
+accepts **local apparent sidereal angle**, geographic latitude, and true obliquity
+in degrees, plus a required `HouseSystem`. It does not accept UTC or geographic
+longitude: callers must calculate local sidereal angle themselves.
+
+`HouseCalculation` contains `status: 'available' | 'unavailable'`, `angles`,
+optional `houses`, and optional `reason`. Available results have twelve cusps;
+unavailable results omit houses but retain any defined axes. Invalid/nonfinite
+coordinates, latitude outside ±90°, obliquity outside `(0, 90)`, or an unsupported
+system throw `RangeError`. The sidereal angle is normalized into `[0, 360)`.
+House geometry and polar limits are explained in [calculations](calculations.md#house-geometry).
+
+## Exported types
+
+Type-only imports are supported from the same entry point as their associated
+functions. This index groups related types; the sections above describe fields
+and behavior rather than duplicating declarations.
+
+| Entry point                  | Types                                                                                                                             | Reference                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `astr3/model` (also `astr3`) | `ChartInput`, `BodyInput`, `HouseInput`, `AspectInput`, `GroupInput`, `ChartAngles`, `HouseStatus`, `AspectType`                  | [Input](#model)                                  |
+| `astr3/model` (also `astr3`) | `ChartModel`, `Body`, `House`, `Aspect`, `ZodiacPosition`                                                                         | [Normalized results](#normalized-results)        |
+| `astr3/model` (also `astr3`) | `ModelOptions`, `OrbConfig`, `AspectEnabledConfig`                                                                                | [Aspects](#aspects-and-enablement)               |
+| `astr3/model` (also `astr3`) | `Selection`, `ChartObject`, `SelectionDetails`                                                                                    | [Selection details](#events-and-details)         |
+| `astr3/model` (also `astr3`) | `CalculationRequest`, `EphemerisProvider`, `HouseSystem`                                                                          | [Calculation API](#calculation-api)              |
+| `astr3/model` (also `astr3`) | Transit data, reference, selection, and option types                                                                              | [Transit type index](transits.md#exported-types) |
+| `astr3`                      | `Chart`, `ChartOptions`, `ChartLayers`, `BodyVisibility`, `ChartLayout`, `ChartWeight`, `ChartTheme`, `ThemeOptions`, `LineStyle` | [Renderer](#renderer)                            |
+| `astr3`                      | `ChartEvents`, `ChartError`                                                                                                       | [Events](#events-and-details)                    |
+| `astr3`                      | `ChartExportOptions`, `ChartPngExportOptions`                                                                                     | [Export](#svg-and-png-export)                    |
+| `astr3`                      | Transit renderer and animation types                                                                                              | [Transit type index](transits.md#exported-types) |
+| `astr3/ephemeris`            | `AstronomyProvider`, `HouseCalculation`, `EphemerisProvider`, `CalculationRequest`, `HouseSystem`                                 | [Calculation API](#calculation-api)              |
