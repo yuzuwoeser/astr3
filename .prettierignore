@@ -7,5 +7,7 @@ package-lock.json
 tests/fixtures/*.json
 
 .site-cache
+.release
+.wordpress-cache
 site/.generated
 demo-dist

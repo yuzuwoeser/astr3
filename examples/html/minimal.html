@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My ASTR3 chart</title>
+  </head>
+  <body>
+    <div id="wheel" style="width: min(100%, 640px)"></div>
+    <script type="module">
+      import { createChart } from './astr3.js';
+      const chart = createChart(document.getElementById('wheel'), {
+        ariaLabel: 'Synthetic chart',
+        data: {
+          bodies: [
+            { id: 'sun', name: 'Sun', longitude: 0 },
+            { id: 'moon', name: 'Moon', longitude: 120 },
+            { id: 'jupiter', name: 'Jupiter', longitude: 240 },
+          ],
+        },
+      });
+      // For later changes: chart.update(nextData).
+      // Before removing #wheel: chart.dispose().
+    </script>
+  </body>
+</html>

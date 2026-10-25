@@ -6,38 +6,27 @@ built as a static browser application; GitHub Pages does not run a Rails server.
 Ruby syntax is checked where available. Full Rails rendering/database integration
 is not covered by this suite.
 
-### Run the browser example
+### Install
 
-From the repository root:
+Download this page’s **starter ZIP** to run the Stimulus/Turbo browser demo, or
+install the prebuilt tarball into an existing Rails app with jsbundling-rails:
 
 ```sh
-npm ci
-npm run dev
+npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three @hotwired/stimulus @hotwired/turbo
 ```
 
-Open `/previews/rails/`. Rotate positions, unmount/remount, then navigate away and
-return with Turbo or the browser Back button.
+npm registry publication is pending. For importmap-rails, self-host the browser
+bundle and pin `astr3` to its `astr3.js` URL, retaining the emitted relative chunks.
 
-### Add to a Rails application
+### Minimal integration
 
-1. Build ASTR3 with `npm pack` in this checkout. In a Rails application using
-   jsbundling-rails, install that local tarball, `three`, `@hotwired/stimulus`, and
-   `@hotwired/turbo` with the application's package manager. ASTR3 is not yet
-   published to npm.
-2. Copy `chart_controller.js` into `app/javascript/controllers/`. Keep the
-   application's existing Stimulus startup and register the controller as `chart`
-   if automatic controller loading is not configured. Do not start a second
-   Stimulus application; `main.js` is only the standalone browser preview entry.
-3. Use `charts_controller.rb` and the ERB partial as a starting point. Add a
-   `resource :chart, only: :show` route, and copy the browser download's public
-   `chart-data.json` into `config/` for this synthetic example.
-4. Include the shared styles or give the chart host your own nonzero width.
+Copy `chart_controller.js` into `app/javascript/controllers/`. Keep existing
+Stimulus startup and register it as `chart` if automatic loading is absent.
+Use the ERB partial and Rails controller below with `resource :chart, only: :show`.
+The starter includes invented `config/chart-data.json`. Give the host a nonzero width.
+`main.js`, `index.html`, and `away.html` are browser-demo scaffolding, not Rails files.
 
-For importmap-rails instead, self-host the downloaded browser modules and pin
-`astr3` to the URL of `astr3.js`. Keep its lazy chunks at their emitted relative
-paths. The Stimulus controller can retain its existing `astr3` import.
-
-### Data and lifecycle
+### Update and cleanup
 
 Pass `ChartInput` as a Stimulus object value. Rails' `tag` helper escapes the JSON
 attribute; do not mark JSON as `html_safe`. The controller updates the existing
@@ -46,3 +35,9 @@ Turbo caches the page so snapshots contain no stale canvas or generated labels.
 
 See [Stimulus lifecycle callbacks](https://stimulus.hotwired.dev/reference/lifecycle-callbacks)
 and [Turbo caching](https://turbo.hotwired.dev/handbook/building#understanding-caching).
+
+### Develop this repository
+
+Use Node.js 24 LTS. Run `npm ci` then `npm run dev`; open `/previews/rails/`.
+The preview tests the actual Stimulus controller and Turbo navigation. The
+standalone starter also runs with `npm install` and `npm run dev`.

@@ -5,37 +5,46 @@ runnable examples and integration guides. Their source and setup instructions
 live in [examples/](https://github.com/yuzuwoeser/astr3/tree/main/examples), not in
 duplicated website snippets. The core package remains framework-independent.
 
-| Integration              | Approach                                                          |
-| ------------------------ | ----------------------------------------------------------------- |
-| JavaScript / TypeScript  | Mount, update data, and dispose through the public browser API    |
-| HTML without build tools | Download self-hostable ES modules with bundled dependencies       |
-| React 19                 | Effects and cleanup, including Strict Mode                        |
-| Vue.js 3                 | Composition API, watched props, mount/unmount hooks               |
-| Svelte 5                 | Runes, data effects, and mount cleanup                            |
-| Angular 22               | AOT-compiled standalone component, input updates, and destruction |
-| PHP 8                    | Safely encoded JSON in server-rendered HTML                       |
-| WordPress 6.5+           | Child-theme template and script-module enqueue recipe             |
-| Rails 8                  | Stimulus 3 controller and Turbo 8 cache/navigation lifecycle      |
+| Integration              | Approach                                                             |
+| ------------------------ | -------------------------------------------------------------------- |
+| JavaScript / TypeScript  | Mount, update data, and dispose through the public browser API       |
+| HTML without build tools | Download self-hostable ES modules with bundled dependencies          |
+| React 19                 | Effects and cleanup, including Strict Mode                           |
+| Vue.js 3                 | Composition API, watched props, mount/unmount hooks                  |
+| Svelte 5                 | Runes, data effects, and mount cleanup                               |
+| Angular 22               | AOT-compiled standalone component, input updates, and destruction    |
+| PHP 8                    | Safely encoded JSON in server-rendered HTML                          |
+| WordPress 6.5+           | Installable block/shortcode plugin, plus optional child-theme recipe |
+| Rails 8                  | Stimulus 3 controller and Turbo 8 cache/navigation lifecycle         |
 
 The versions above identify the examples' targets, not a blanket compatibility
 promise. Framework packages are pinned in the example manifests and root
 lockfile. Backend recipes describe their runtime-validation limits explicitly.
-Drupal and installable CMS plugins are not included.
+An installable WordPress ZIP is also provided; Drupal and Joomla packages are
+planned in the [coverage roadmap](integration-roadmap.md).
+
+## Choose your installation
+
+Start with the [installation chooser](https://yuzuwoeser.github.io/astr3/integrations/):
+prebuilt npm tarball for applications, browser ZIP for plain websites, or
+WordPress plugin ZIP. Each integration page includes an independent starter or
+plugin download and puts minimal usage before the optional full demo.
 
 ## Browser distribution
 
 [Download the browser bundle](https://yuzuwoeser.github.io/astr3/downloads/astr3-browser.zip),
-extract it, and serve the directory over HTTP/HTTPS. The included HTML page
-works without npm, a CDN, or a build pipeline. `astr3.js` includes the rendering
+extract it, and serve the directory over HTTP/HTTPS. The included `minimal.html` starter and full `index.html` demo
+work without npm, a CDN, or a build pipeline. `astr3.js` includes the rendering
 dependencies, while `ephemeris.js` is a separate optional calculation module.
 Keep emitted lazy modules and license notices with the download. Serve modules
 with a JavaScript MIME type. Opening through `file://` is unsupported.
 
-This is an application distribution built for the website, not a new npm export.
+Shared browser modules power the website downloads and CMS bundles.
 Normal npm consumers use `astr3`, `astr3/model`, and `astr3/ephemeris`, with their
 existing peer dependencies, plus the `astr3/chart-template.schema.json` asset
 when validating JSON presets in an editor or another tool. Until npm publication,
-install from a local tarball as described in [getting started](../README.md#use-the-library).
+install the prebuilt tarball or a complete starter from the
+[installation guide](installation.md). No ASTR3 source checkout is required.
 
 ## Data and lifecycle
 

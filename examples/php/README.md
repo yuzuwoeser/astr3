@@ -5,20 +5,24 @@ the shared HTML browser example; GitHub Pages does not execute PHP. PHP syntax i
 checked when PHP is installed. A complete PHP server deployment is not covered
 by the browser suite.
 
-### Setup
+### Install
 
-1. Download the website's browser bundle and extract its contents into an `astr3/`
-   directory next to `chart.php`.
-2. Copy `php.js` into that `astr3/` directory alongside `embed.js` and `astr3.js`.
-3. Serve `chart.php` through your PHP application. Replace the synthetic fixture
-   with your own validated chart input.
+Download this page’s **starter ZIP** and extract it into your PHP application.
+It includes `chart.php` and an `astr3/` directory with browser modules and `php.js`.
+Serve `chart.php` through PHP 8.x; no npm or repository checkout is needed.
+
+### Minimal integration
+
+The template and browser entry shown below are the required files. Replace the
+invented `astr3/chart-data.json` with validated chart data. The demo stylesheet
+is optional; keep a nonzero host width.
 
 The template outputs a container and a non-executable JSON script block. It uses
 `JSON_HEX_TAG`, `JSON_HEX_AMP`, `JSON_HEX_APOS`, and `JSON_HEX_QUOT` to encode data
 safely in HTML. Keep these flags when substituting server data. Do not concatenate
 user data into executable JavaScript or use `innerHTML` for labels.
 
-### Lifecycle
+### Update and cleanup
 
 A normal full-page navigation tears down the document. If your site replaces
 content without navigating, retain the chart returned by `mountChart` and call

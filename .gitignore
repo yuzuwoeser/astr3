@@ -34,6 +34,8 @@ private/
 .context/
 
 .site-cache/
+.release/
+.wordpress-cache/
 site/.generated/
 
 # Ignore artifacts left by pre-migration checkouts.

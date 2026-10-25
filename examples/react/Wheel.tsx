@@ -22,7 +22,7 @@ export function Wheel({ data }: { data: ChartInput }) {
   }, [data]);
   return (
     <>
-      <div ref={host} className="chart-host" />
+      <div ref={host} className="chart-host" style={{ width: 'min(100%, 640px)' }} />
       <p role="status">{status}</p>
     </>
   );

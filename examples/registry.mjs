@@ -77,6 +77,7 @@ export const examples = [
     description: 'Download browser modules and add a chart to an existing website.',
     preview: 'previews/html/',
     files: [
+      'html/minimal.html',
       'html/index.html',
       'html/main.js',
       'html/embed.js',
@@ -168,7 +169,7 @@ export const examples = [
     id: 'wordpress',
     title: 'WordPress',
     category: 'server',
-    description: 'Load a chart through a child theme and the script-module API.',
+    description: 'Install a chart block and shortcode with bundled browser assets.',
     preview: 'previews/html/',
     browserOnly: true,
     files: [

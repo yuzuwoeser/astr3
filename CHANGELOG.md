@@ -4,6 +4,14 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add shared release packaging for npm tarballs, versioned browser and WordPress
+  ZIPs, complete framework/server starters, checksums and a source manifest.
+  Add tag-triggered GitHub/npm publishing with exact-artifact rerun guards.
+- Add an installable WordPress chart block and same-post shortcode with natal/
+  transit JSON, local presets, validation feedback and accessible fallback.
+- Lead integration pages with prebuilt installation, minimal usage and cleanup;
+  add a three-route installation chooser and a phased stack coverage roadmap.
+
 - Add syntax highlighting to website source tabs, setup snippets, and JSON
   previews, with colors for light and dark code panels and locally bundled grammars.
 

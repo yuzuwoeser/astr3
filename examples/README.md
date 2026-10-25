@@ -33,11 +33,11 @@ TypeScript 7.
 
 ## Use code in another application
 
-ASTR3 has not yet been published to npm. Run `npm pack` at the repository root,
-then install the generated tarball and `three` in your application. The
-`file:../..` dependency in example workspace manifests is for this checkout;
-replace it with your tarball path when copying an example. Install
-`astronomy-engine` only if you use `astr3/ephemeris`.
+Download a complete starter from the integration page or install the prebuilt
+tarball and `three` from [installation](../docs/installation.md). The starter
+includes a local tarball and needs no ASTR3 source checkout. npm publication is
+pending. The `file:../..` dependency in workspace manifests is only for this
+checkout; generated starters replace it with their included tarball.
 
 The HTML download already bundles dependencies and can be self-hosted without
 npm. Serve modules over HTTP/HTTPS; browsers do not support this example through
@@ -58,5 +58,6 @@ to the other downloaded files.
    page, source tabs, and setup instructions are generated from the registry and
    source files; do not copy snippets into `site/`.
 
-Current backend guides are developer recipes, not installable CMS packages.
+PHP/Rails backend guides remain developer recipes. The separate WordPress plugin
+in `integrations/wordpress/` is packaged from the shared browser distribution.
 Their preview labels state where full backend runtime testing is absent.

@@ -52,7 +52,11 @@
     "prepack": "npm run build",
     "build:site": "npm run build && node scripts/build-site.mjs",
     "typecheck:examples": "npm run typecheck --workspaces --if-present",
-    "test:recipes": "node scripts/check-recipes.mjs"
+    "test:recipes": "node scripts/check-recipes.mjs",
+    "build:release": "npm run build && node scripts/build-release.mjs",
+    "test:release": "playwright test --config playwright.release.config.ts",
+    "test:wordpress": "node scripts/test-wordpress.mjs",
+    "test:starters": "node scripts/check-starters.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -70,6 +74,7 @@
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "@types/three": "^0.186.0",
+    "@wp-playground/cli": "3.1.60",
     "ajv": "^8.20.0",
     "astronomy-engine": "^2.1.19",
     "highlight.js": "11.12.0",

@@ -1,0 +1,10 @@
+astr3-embed {
+  display: block;
+}
+.astr3-chart-host {
+  width: min(100%, 640px);
+  margin-inline: auto;
+}
+astr3-embed > [role='status']:empty {
+  display: none;
+}

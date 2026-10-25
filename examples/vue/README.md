@@ -1,44 +1,61 @@
 ## Vue.js integration
 
-Vue 3.5, using the Composition API and single-file components. This preview is compiled from the source files shown below, against
-a locally packed ASTR3 package. Framework/compiler dependencies live in this
-example's workspace; they are not dependencies of the ASTR3 library.
+This example targets Vue 3.5; pinned dependencies are included in the starter.
 
-### Run from this checkout
+### Install
 
-Use Node.js 24 LTS. From the repository root:
+Download this page’s **starter ZIP** for a standalone application, or install the
+[prebuilt npm tarball](https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz)
+in your existing application:
 
 ```sh
-npm ci
-npm run dev
+npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three
 ```
 
-Open `/previews/vue/` or use the live preview above. After changing an example,
-restart `dev` to rebuild its preview.
+npm registry publication is pending. After publication the equivalent command is
+`npm install astr3 three`. The starter includes a local tarball and needs no
+ASTR3 repository checkout. Install `astronomy-engine` only for optional calculations.
 
-### Use in your application
+### Minimal integration
 
-ASTR3 has not yet been published to npm. Run `npm pack` in this repository, then
-install the resulting tarball and `three` in your application. The example
-manifest's `file:../..` dependency is for this checkout; replace it with the path
-to your tarball when copying the example.
+Copy **Wheel.vue** from the source below into your application. It imports only ASTR3
+and your framework, includes host sizing, and accepts a `data` prop/input. Use it:
 
-Copy `Wheel.vue` and its imports. `shared/data.ts` contains invented teaching
-positions and can be replaced with your own `ChartInput`; `shared/preview.css`
-is application styling, not a required library stylesheet. Install
-`astronomy-engine` separately only when using `astr3/ephemeris`.
+```vue
+<script setup lang="ts">
+import Wheel from './Wheel.vue';
+const data = {
+  bodies: [
+    { id: 'sun', name: 'Sun', longitude: 0 },
+    { id: 'moon', name: 'Moon', longitude: 120 },
+    { id: 'jupiter', name: 'Jupiter', longitude: 240 },
+  ],
+};
+</script>
+<template><Wheel :data="data" /></template>
+```
 
-### Mount, update, dispose
+The positions above are invented. Replace them with your `ChartInput`.
 
-Create the chart after its host exists in the browser. Give the host a nonzero
-width. Update the existing instance when chart data changes, and dispose it
-before its host is removed. Keep creation out of server-side rendering.
+### Update
 
-The controls rotate the synthetic data and unmount/remount the chart. Browser
-tests verify that updates reach the rendered labels and remounting leaves one
-chart instance. The renderer retains an accessible object list if WebGL fails.
+Pass new data to the existing component. It calls `chart.update(data)` rather
+than creating a new renderer. Use `setOptions` for settings in an extended wrapper.
 
-The Composition API example mounts with `onMounted`, watches the data prop, and
-disposes with `onBeforeUnmount`. It targets Vue 3; Vue 2 is not covered.
+### Cleanup
 
-See [Vue lifecycle hooks](https://vuejs.org/api/composition-api-lifecycle).
+Removing the component disposes its chart. The component uses onMounted, a watched data prop, and onBeforeUnmount. Supply a new data object to trigger updates.
+Importing ASTR3 is SSR-safe; creating a chart belongs after browser mounting.
+An accessible object list remains available when WebGL cannot start.
+
+### Full example and validation
+
+The live preview adds optional rotate and unmount/remount controls. `App`/`main`,
+`shared/data.ts`, and `shared/preview.css` support that demo; they are not required
+when copying the component. Browser tests cover updates and remount cleanup.
+The standalone starter flattens its data/styles and includes compiler configuration.
+
+### Develop this repository
+
+Use Node.js 24 LTS. Run `npm ci` and `npm run dev` at the repository root; open
+`/previews/vue/`. Restart dev after editing an example to rebuild its preview.

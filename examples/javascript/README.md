@@ -1,39 +1,57 @@
 ## JavaScript integration
 
-Plain JavaScript with Vite. This preview is compiled from the source files shown below, against
-a locally packed ASTR3 package. Framework/compiler dependencies live in this
-example's workspace; they are not dependencies of the ASTR3 library.
+### Install
 
-### Run from this checkout
-
-Use Node.js 24 LTS. From the repository root:
+Download this page’s **starter ZIP** for a standalone application, or install the
+[prebuilt npm tarball](https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz)
+in your existing application:
 
 ```sh
-npm ci
-npm run dev
+npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three
 ```
 
-Open `/previews/javascript/` or use the live preview above. After changing an example,
-restart `dev` to rebuild its preview.
+npm registry publication is pending. After publication the equivalent command is
+`npm install astr3 three`. The starter includes a local tarball and needs no
+ASTR3 repository checkout. Install `astronomy-engine` only for optional calculations.
 
-### Use in your application
+### Minimal integration
 
-ASTR3 has not yet been published to npm. Run `npm pack` in this repository, then
-install the resulting tarball and `three` in your application. The example
-manifest's `file:../..` dependency is for this checkout; replace it with the path
-to your tarball when copying the example.
+Add `<div id="wheel" style="width: min(100%, 640px)"></div>` to your page.
+Run this module after the element exists:
 
-Copy `main.js` and its imports. `shared/data.ts` contains invented teaching
-positions and can be replaced with your own `ChartInput`; `shared/preview.css`
-is application styling, not a required library stylesheet. Install
-`astronomy-engine` separately only when using `astr3/ephemeris`.
+```js
+import { createChart } from 'astr3';
 
-### Mount, update, dispose
+const data = {
+  bodies: [
+    { id: 'sun', name: 'Sun', longitude: 0 },
+    { id: 'moon', name: 'Moon', longitude: 120 },
+    { id: 'jupiter', name: 'Jupiter', longitude: 240 },
+  ],
+};
+const chart = createChart(document.getElementById('wheel'), { data });
+```
 
-Create the chart after its host exists in the browser. Give the host a nonzero
-width. Update the existing instance when chart data changes, and dispose it
-before its host is removed. Keep creation out of server-side rendering.
+These positions are invented. No library stylesheet is required.
 
-The controls rotate the synthetic data and unmount/remount the chart. Browser
-tests verify that updates reach the rendered labels and remounting leaves one
-chart instance. The renderer retains an accessible object list if WebGL fails.
+### Update
+
+Call `chart.update(nextData)` for positions and `chart.setOptions(options)` for
+settings. Keep the instance instead of creating another chart on every change.
+
+### Cleanup
+
+Call `chart.dispose()` before removing the host. Mount only in the browser;
+ASTR3 imports are SSR-safe. WebGL failure retains an accessible object list.
+
+### Full example and validation
+
+The preview source adds optional rotation and remount controls. Shared fixtures,
+styles and Vite configuration support the demo, not the minimal integration.
+Browser tests verify rendered updates and cleanup. The starter ZIP is complete
+and independent of this checkout.
+
+### Develop this repository
+
+Use Node.js 24 LTS. Run `npm ci` then `npm run dev` at the repository root and
+open `/previews/javascript/`. Restart dev to rebuild changed examples.

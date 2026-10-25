@@ -2,12 +2,15 @@
 
 > MIT TypeScript library for explorable Western astrology wheels with Three.js.
 > Browser rendering, headless models, optional local ephemeris, natal and transit charts.
-> Version 0.1.0 is experimental. The repository builds an installable tarball; npm publication is pending.
+> Version 0.1.0 is experimental. Prebuilt tarballs, browser ZIPs and an installable WordPress plugin are available through the website build; npm publication is pending.
 
 ## Integration
 
-- [Getting started](README.md): tarball installation, a mounted chart example, capabilities and local website/playground.
-- [Framework and website integrations](docs/integrations.md): example registry, live guides, browser download, WordPress/PHP and Rails recipes.
+- [Installation](docs/installation.md): prebuilt npm/browser/WordPress downloads, release checksums and complete starters.
+- [Coverage roadmap](docs/integration-roadmap.md): phased framework, backend and CMS expansion; future stacks are not yet supported.
+
+- [Getting started](README.md): prebuilt installation, a mounted chart example, capabilities and local website/playground.
+- [Framework and website integrations](docs/integrations.md): example registry, live guides, browser download, WordPress plugin, PHP and Rails recipes.
 - [Agent integration](docs/agent-integration.md): entry-point selection, headless example, browser lifecycle and common mistakes.
 - [API contracts](docs/api.md): entry points and exported types, normalized models, math/selection helpers, renderer options, events, SVG/PNG export, accessibility and calculation signatures.
 - [JSON templates](docs/api.md#json-templates): versioned natal/transit appearance presets, resolver types/errors, defaults, shallow overrides and the packaged schema.

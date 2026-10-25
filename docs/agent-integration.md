@@ -13,8 +13,9 @@ LLM tool endpoint, interpretation service or framework wrapper.
 | Mount an interactive natal/transit wheel              | `astr3`           | Import is SSR-safe; mount after the browser host exists, with WebGL 2  |
 | Calculate positions, houses and true nodes locally    | `astr3/ephemeris` | Node, worker or browser; requires the optional `astronomy-engine` peer |
 
-Build with `npm ci && npm pack` in a checkout
-and install the resulting tarball plus `three` in the consuming application.
+Install a prebuilt tarball or starter from [installation](installation.md), plus
+`three` in the consuming application. For unpublished local changes, build with
+`npm ci && npm pack` in a checkout.
 Install `astronomy-engine` only if using the adapter. See
 [getting started](../README.md#use-the-library). No secret or remote service is required.
 

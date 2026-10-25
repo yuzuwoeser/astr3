@@ -8,12 +8,13 @@ The download contains `astr3.js`, its lazy export modules, `embed.js`,
 `chart-data.json`, example HTML/JavaScript/styles, licenses, and the optional
 `ephemeris.js` calculation adapter. Keep the emitted files together.
 
-### Integrate with an existing page
+### Minimal integration
 
-Copy the chart container from `index.html` and the mount logic from `main.js`.
-Import `mountChart` from `embed.js` using a URL relative to your application.
-Replace `chart-data.json` with your validated chart input. That file is generated
-from the shared synthetic fixture shown in the source tabs.
+Start with **minimal.html** from the download: it contains a host, inline invented
+data, and a direct `createChart` call. Copy those into your page and adjust the
+module URL. The full demo in `index.html` adds optional controls and external data.
+
+### Update and cleanup
 
 The host needs a nonzero width. Call `chart.update(nextData)` when data changes
 and `chart.dispose()` before replacing/removing its container. Chart labels are

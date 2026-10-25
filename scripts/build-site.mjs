@@ -7,6 +7,7 @@ import { examples } from '../examples/registry.mjs';
 import { chartData } from '../examples/shared/data.ts';
 import { escapeHtml, generatePages } from '../site/content.mjs';
 import { findDependencyLicense } from './dependency-license.ts';
+import { buildBrowser, buildWordpress, buildStarters, zip } from './distributions.mjs';
 
 const argument = process.argv.indexOf('--base');
 const base = argument === -1 ? '/' : process.argv[argument + 1];
@@ -60,37 +61,22 @@ const alias = [
   { find: /^astr3$/, replacement: join(cache, 'package/dist/index.js') },
 ];
 const browser = join(publicDir, 'downloads/browser');
-for (const [name, entry] of [
-  ['astr3', 'index.js'],
-  ['ephemeris', 'ephemeris/index.js'],
-]) {
-  await build({
-    configFile: false,
-    publicDir: false,
-    logLevel: 'warn',
-    build: {
-      outDir: browser,
-      emptyOutDir: name === 'astr3',
-      lib: {
-        entry: join(cache, 'package/dist', entry),
-        formats: ['es'],
-        fileName: () => `${name}.js`,
-      },
-    },
-  });
-}
-for (const file of ['index.html', 'main.js', 'embed.js'])
-  cpSync(`examples/html/${file}`, join(browser, file));
-cpSync('examples/shared/preview.css', join(browser, 'preview.css'));
-writeFileSync(join(browser, 'chart-data.json'), JSON.stringify(chartData(), null, 2) + '\n');
-for (const file of ['LICENSE', 'NOTICE']) cpSync(file, join(browser, file));
-cpSync('site/public/THIRD_PARTY_LICENSES.txt', join(browser, 'THIRD_PARTY_LICENSES.txt'));
-cpSync('scripts/export-fonts/OFL.txt', join(browser, 'export-fonts-OFL.txt'));
-writeFileSync(
-  join(browser, 'README.txt'),
-  'ASTR3 browser distribution\n\nServe this directory over HTTP and open index.html. No npm or build tools are required.\nImport createChart from ./astr3.js. Optional calculations: import createAstronomyProvider\nfrom ./ephemeris.js. Keep all emitted modules together, including lazy export chunks.\n\nThe chart fixture contains invented teaching positions, not birth data.\nSource: https://github.com/yuzuwoeser/astr3/tree/main/examples/html\nSee LICENSE, NOTICE, THIRD_PARTY_LICENSES.txt, and export-fonts-OFL.txt.\n',
+const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+await buildBrowser(browser, join(cache, 'package'));
+zip(browser, join(publicDir, 'downloads/astr3-browser.zip'));
+cpSync(
+  join(publicDir, 'downloads/astr3-browser.zip'),
+  join(publicDir, `downloads/astr3-browser-${version}.zip`),
 );
-run('zip', ['-qr', '../astr3-browser.zip', '.'], { cwd: browser });
+const wordpress = join(cache, 'wordpress');
+buildWordpress(wordpress, browser, version);
+zip(wordpress, join(publicDir, `downloads/astr3-wordpress-${version}.zip`));
+cpSync(join(cache, pack.filename), join(publicDir, 'downloads', pack.filename));
+buildStarters(join(cache, 'starters'), join(cache, pack.filename), version, browser);
+for (const example of examples) {
+  const archive = join(cache, 'starters', `astr3-${example.id}-${version}.zip`);
+  if (existsSync(archive)) cpSync(archive, join(publicDir, 'downloads', basename(archive)));
+}
 cpSync(browser, join(publicDir, 'previews/html'), { recursive: true });
 
 for (const example of examples.filter((example) => example.build)) {

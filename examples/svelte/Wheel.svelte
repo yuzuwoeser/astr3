@@ -19,5 +19,5 @@
   });
 </script>
 
-<div bind:this={host} class="chart-host"></div>
+<div bind:this={host} class="chart-host" style="width: min(100%, 640px)"></div>
 <p role="status">{status}</p>

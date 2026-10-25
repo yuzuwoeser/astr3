@@ -1,44 +1,62 @@
 ## Svelte integration
 
-Svelte 5.57, using runes and onMount cleanup. This preview is compiled from the source files shown below, against
-a locally packed ASTR3 package. Framework/compiler dependencies live in this
-example's workspace; they are not dependencies of the ASTR3 library.
+This example targets Svelte 5.57; pinned dependencies are included in the starter.
 
-### Run from this checkout
+### Install
 
-Use Node.js 24 LTS. From the repository root:
+Download this page’s **starter ZIP** for a standalone application, or install the
+[prebuilt npm tarball](https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz)
+in your existing application:
 
 ```sh
-npm ci
-npm run dev
+npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three
 ```
 
-Open `/previews/svelte/` or use the live preview above. After changing an example,
-restart `dev` to rebuild its preview.
+npm registry publication is pending. After publication the equivalent command is
+`npm install astr3 three`. The starter includes a local tarball and needs no
+ASTR3 repository checkout. Install `astronomy-engine` only for optional calculations.
 
-### Use in your application
+### Minimal integration
 
-ASTR3 has not yet been published to npm. Run `npm pack` in this repository, then
-install the resulting tarball and `three` in your application. The example
-manifest's `file:../..` dependency is for this checkout; replace it with the path
-to your tarball when copying the example.
+Copy **Wheel.svelte** from the source below into your application. It imports only ASTR3
+and your framework, includes host sizing, and accepts a `data` prop/input. Use it:
 
-Copy `Wheel.svelte` and its imports. `shared/data.ts` contains invented teaching
-positions and can be replaced with your own `ChartInput`; `shared/preview.css`
-is application styling, not a required library stylesheet. Install
-`astronomy-engine` separately only when using `astr3/ephemeris`.
+```svelte
+<script lang="ts">
+  import Wheel from './Wheel.svelte';
+  const data = {
+    bodies: [
+      { id: 'sun', name: 'Sun', longitude: 0 },
+      { id: 'moon', name: 'Moon', longitude: 120 },
+      { id: 'jupiter', name: 'Jupiter', longitude: 240 },
+    ],
+  };
+</script>
 
-### Mount, update, dispose
+<Wheel {data} />
+```
 
-Create the chart after its host exists in the browser. Give the host a nonzero
-width. Update the existing instance when chart data changes, and dispose it
-before its host is removed. Keep creation out of server-side rendering.
+The positions above are invented. Replace them with your `ChartInput`.
 
-The controls rotate the synthetic data and unmount/remount the chart. Browser
-tests verify that updates reach the rendered labels and remounting leaves one
-chart instance. The renderer retains an accessible object list if WebGL fails.
+### Update
 
-A Svelte effect tracks data updates; `onMount` creates the chart and returns its
-cleanup. The parent toggles the component with an `{#if}` block.
+Pass new data to the existing component. It calls `chart.update(data)` rather
+than creating a new renderer. Use `setOptions` for settings in an extended wrapper.
 
-See [Svelte lifecycle hooks](https://svelte.dev/docs/svelte/lifecycle-hooks).
+### Cleanup
+
+Removing the component disposes its chart. The component uses onMount cleanup and an effect for data updates. Replace the data prop when positions change.
+Importing ASTR3 is SSR-safe; creating a chart belongs after browser mounting.
+An accessible object list remains available when WebGL cannot start.
+
+### Full example and validation
+
+The live preview adds optional rotate and unmount/remount controls. `App`/`main`,
+`shared/data.ts`, and `shared/preview.css` support that demo; they are not required
+when copying the component. Browser tests cover updates and remount cleanup.
+The standalone starter flattens its data/styles and includes compiler configuration.
+
+### Develop this repository
+
+Use Node.js 24 LTS. Run `npm ci` and `npm run dev` at the repository root; open
+`/previews/svelte/`. Restart dev after editing an example to rebuild its preview.

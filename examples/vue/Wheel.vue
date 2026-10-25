@@ -18,6 +18,6 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <div ref="host" class="chart-host"></div>
+  <div ref="host" class="chart-host" style="width: min(100%, 640px)"></div>
   <p role="status">{{ status }}</p>
 </template>

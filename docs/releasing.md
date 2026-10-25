@@ -92,3 +92,66 @@ scanning the compressed file alone. Scan `site-dist/` before hosting the demo.
 
 Record commands, versions and results in the release notes or review evidence.
 Never commit raw scanner reports that might reproduce a secret or personal input.
+
+## Automated distributions
+
+`npm run build:release` builds the library, packs it without running prepack a
+second time, and creates `.release/`. It uses the same browser builder as Pages.
+The output includes the npm tarball, browser ZIP, WordPress ZIP, independent
+starter ZIPs, source-commit manifest and SHA-256 checksums. Generated archives
+normalize file order and timestamps so the same candidate has stable ZIP bytes.
+
+```sh
+npm run build:release
+npm run test:starters
+npm run test:release
+npm run test:wordpress
+```
+
+Starter validation installs each extracted archive in isolation and builds its
+application. It needs npm network access for framework/tooling dependencies.
+Release browser tests serve port 4175. WordPress Playground downloads WordPress
+and PHP runtimes, installs the actual ZIP and serves port 4176; native PHP/Docker
+are not required. Defaults cover WordPress 6.5 / PHP 8.0. Also run against the
+current WordPress version with `ASTR3_WP_VERSION=latest ASTR3_PHP_VERSION=8.3`.
+Playground is a test-only dev dependency and is excluded from all distributions.
+
+### One-time npm setup
+
+The package name is `astr3`. Confirm account ownership/name availability before
+publishing. If the name is unavailable, stop and resolve ownership; do not rename
+exports or silently switch to another scope. Initial package registration or
+publication may require the owner's authenticated npm session. Complete that
+setup before using CI; there is no token stored in this repository.
+
+Configure an [npm trusted publisher](https://docs.npmjs.com/trusted-publishers/)
+for GitHub repository `yuzuwoeser/astr3`, workflow `release.yml`, allowing direct
+publication. GitHub-hosted Node 24 runners provide OIDC through `id-token: write`.
+Use npm 11.5.1 or newer. Review npm's current setup requirements when bootstrapping
+a new package. Publication generates provenance for this public repository.
+
+### Tag-triggered publication
+
+Prepare the version and changelog on `main`, validate and commit them, and only
+when pushing/publication is authorized push an annotated `vX.Y.Z` tag for that
+reviewed commit. `.github/workflows/release.yml` rejects tags that do not match
+`package.json` or whose commit is outside `origin/main`.
+
+The prepare job runs checks and scans history/extracted distributions, then
+uploads the tested artifacts. The publish job downloads those exact bytes,
+checks the manifest and existing GitHub/npm artifacts, creates a draft release,
+uploads assets, publishes the tarball, verifies npm integrity, and makes the
+release public. No PR workflow publishes. Ordinary merges still deploy Pages.
+
+A partial failure leaves the draft and any already-published npm version intact.
+Rerun the failed publish job to resume using the original uploaded artifacts.
+Identical existing assets/npm integrity are accepted; differences and unexpected
+release assets fail without overwriting them. Never move a release tag to repair
+an artifact mismatch: prepare a new version. Do not delete a published npm version
+as a retry strategy. Local `node scripts/publish-release.mjs --dry-run` performs
+read-only preflight with the release environment and GitHub authentication set.
+
+The website installation chooser exposes downloads from the current main build;
+its versioned filenames are convenience links and can change before release.
+GitHub Release assets are the immutable installation path for published versions.
+Keep npm instructions marked pending until the first actual registry publication.

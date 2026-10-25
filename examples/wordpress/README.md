@@ -1,30 +1,41 @@
-## WordPress child-theme recipe
+## WordPress integration
 
-Requires WordPress 6.5+ for `wp_enqueue_script_module()` and a modern browser.
-This is a developer recipe, not an installable plugin or editor block. The live
-preview runs the shared HTML browser example; no WordPress instance is running
-on GitHub Pages. PHP syntax is checked where available, but full WordPress theme
-runtime validation is not part of the browser suite.
+### Install
 
-### Setup
+Download this page’s **plugin ZIP**. In WordPress, open **Plugins → Add New →
+Upload Plugin**, choose the ZIP, install it, and activate **ASTR3**. Requires
+WordPress 6.5+ and PHP 8+. No child-theme changes or npm installation are needed.
+Use the replacement flow with a newer ZIP to update; automatic updates and a
+WordPress.org directory listing are not included.
 
-1. Download the browser bundle into your child theme's `astr3/` directory.
-2. Copy `wordpress.js` into that directory, beside `embed.js` and `astr3.js`.
-3. Add the asset-registration code from `functions.php` to your child theme.
-4. Add `page-chart.php` to that theme and assign its **ASTR3 chart** template to a
-   page in WordPress.
+### Minimal integration
 
-The assets load only on pages using the chart template. Replace the public
-synthetic JSON fixture with validated data from your application. Version asset
-URLs when updating the bundle. Keep the JSON encoding flags in the template;
-do not insert unescaped values into scripts.
+1. Insert an **ASTR3 Chart** block in a page or post.
+2. Paste `ChartInput` JSON, or choose **Load invented sample**.
+3. Choose natal or natal + transit, an appearance preset, and an accessible label.
+4. Click **Preview chart**, then save/publish.
 
-### Scope and lifecycle
+Transit mode expects `{ "natal": ChartInput, "transit": ChartInput }`. Invalid
+JSON or model data shows a validation message. Data is stored in the block’s
+post content and is included in the published page.
 
-This example covers standard WordPress page navigation. Themes with AJAX page
-replacement need their own cleanup hook: retain each chart instance and dispose
-it before removing the host. Editor previews, shortcodes, blocks, configuration
-storage, and WordPress.com plan-specific restrictions are outside this recipe.
+The shortcode `[astr3_chart id="my-chart"]` renders a chart block with that
+**Chart ID** in the same post. Use unique IDs. The original block also renders.
+Cross-post references and lookup inside synced/reusable blocks are excluded.
 
-Follow the official [WordPress asset-loading guidance](https://developer.wordpress.org/plugins/javascript/enqueuing/)
-and [script module API](https://developer.wordpress.org/reference/functions/wp_enqueue_script_module/).
+### Update and cleanup
+
+Edit the block’s JSON/settings, preview, and save. Frontend charts use bundled
+assets and presets, load only where needed, and dispose when their element is
+removed. An accessible object list remains usable if WebGL is unavailable.
+
+### Full example and validation
+
+The source tabs below preserve the developer child-theme recipe as an optional
+alternative. Those files are not required by the plugin. The live preview runs
+only the browser integration; GitHub Pages cannot execute WordPress.
+Plugin source lives in [integrations/wordpress](https://github.com/yuzuwoeser/astr3/tree/main/integrations/wordpress).
+`npm run test:wordpress` installs the generated ZIP into real WordPress through
+WordPress Playground and tests editor/save/reload and frontend behavior.
+Birth-detail forms, location lookup, external JSON URLs, and a chart library are
+outside this first plugin.

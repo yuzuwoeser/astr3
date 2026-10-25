@@ -10,15 +10,18 @@ Select a planet, point, house, aspect, or supplied configuration. Highlight its 
 
 ## Use the library
 
-Use Node.js 24 LTS (minimum 22.12.0) and npm. The package is not yet published to npm;
-build a tarball from a checkout:
+Choose an installation route in the [installation guide](docs/installation.md):
+prebuilt npm tarball, a browser ZIP without build tools, or an installable WordPress
+plugin. Use Node.js 24 LTS (minimum 22.12.0) for bundled applications:
 
 ```sh
-npm ci
-npm pack
-# In your application:
-npm install /path/to/astr3-0.1.0.tgz three
+npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three
 ```
+
+npm registry publication is pending; after publication use `npm install astr3 three`.
+No source checkout is required for the prebuilt downloads. For unpublished local
+changes, run `npm ci && npm pack` in a checkout and install the generated tarball.
+Framework starter ZIPs include that tarball and their own application files.
 
 Mount after the host element exists. For example, add this HTML to a page served
 by your application's bundler:
@@ -137,7 +140,9 @@ See the [template API](docs/api.md#json-templates) for validation and overrides.
 
 ## Documentation and validation
 
+- [Installation and release downloads](docs/installation.md)
 - [Framework, CMS, and server-rendered integrations](docs/integrations.md)
+- [Integration coverage roadmap](docs/integration-roadmap.md)
 - [Agent integration: headless data and browser lifecycle](docs/agent-integration.md)
 - [API, exported helpers, events, and data contracts](docs/api.md)
 - [Transit bi-wheel API](docs/transits.md)

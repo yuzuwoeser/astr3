@@ -20,7 +20,15 @@ test('landing, gallery, and integration navigation work without loading framewor
     .getByRole('link', { name: 'Integrations', exact: true })
     .click();
   for (const name of ['React', 'Vue.js', 'Svelte', 'Angular', 'PHP', 'WordPress', 'Ruby on Rails'])
-    await expect(page.getByRole('heading', { name, level: 3, exact: false })).toBeVisible();
+    await expect(
+      page.locator('a.card').getByRole('heading', { name, level: 3, exact: false }),
+    ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose how to install' })).toBeVisible();
+  for (const name of ['npm package', 'browser', 'WordPress']) {
+    const download = page.getByRole('link', { name: new RegExp(`^Download ${name} `) });
+    const response = await page.request.get((await download.getAttribute('href'))!);
+    expect(response.ok()).toBe(true);
+  }
   await expect(page.getByRole('heading', { name: 'Drupal', exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
