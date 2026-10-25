@@ -1,5 +1,7 @@
 # ASTR3
 
+[Browser demo on GitHub Pages](https://yuzuwoeser.github.io/astr3/) · [Deployment and preview](docs/github-pages.md)
+
 <img src="demo/public/brand/astr3-logo-preview.svg" alt="ASTR3 — Righteous in five colors" width="320" />
 
 Explorable astrology wheels for the browser. A framework-neutral TypeScript library built with Three.js, released under MIT.

@@ -1,9 +1,10 @@
 # Preparing a public release
 
-These steps are local validation. Creating a GitHub repository, pushing a branch,
-changing its visibility or publishing to npm requires the owner's instruction.
-The intended repository is `yuzuwoeser/astr3`; links may be unavailable before it
-is created. Version 0.1.0 has an implementation but is not yet published to npm.
+The public repository is `yuzuwoeser/astr3`. Pushing a branch, enabling GitHub
+Pages, changing repository visibility, or publishing to npm requires the owner's
+instruction. Version 0.1.0 has an implementation but is not yet published to npm.
+
+For demo deployment and production smoke tests, see [GitHub Pages](github-pages.md).
 
 ## Identity and privacy
 
@@ -55,6 +56,7 @@ npm exec playwright -- install chromium
 npm run format:check
 npm run check
 npm run test:browser
+npm run test:pages
 npm pack --dry-run
 npm pack
 ```

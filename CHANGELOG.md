@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add a GitHub Pages demo build at `/astr3/`, production desktop/mobile smoke
+  tests, and automatic deployment from `main` after checks and history scanning
+  pass. Support manual redeployment while keeping local development at `/`.
+
 - Adjust demo downloads to 800 × 800 for standard SVG and 1600 × 1600 for large
   SVG and PNG. Library export defaults remain unchanged.
 

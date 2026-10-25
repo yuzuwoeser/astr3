@@ -20,8 +20,9 @@ npm exec playwright -- install chromium
 npm run dev
 ```
 
-The demo URL is printed by Vite. Browser tests use port 4173; stop any unrelated
-server on that port before running them. In Linux CI, install Chromium with
+The demo URL is printed by Vite. Development-browser tests use port 4173; Pages
+production smoke tests use port 4174. Stop unrelated servers on those ports before
+running the corresponding suite. In Linux CI, install Chromium with
 `npm exec playwright -- install --with-deps chromium`.
 
 ```sh
@@ -29,6 +30,7 @@ npm run typecheck      # TypeScript, including demo and tests
 npm test              # Unit tests and independent numerical reference fixtures
 npm run check         # Types, unit/reference tests, both builds, packed consumer
 npm run test:browser  # Chromium desktop and mobile touch emulation
+npm run test:pages    # Build and smoke-test the production demo beneath /astr3/
 npm run format:check
 ```
 

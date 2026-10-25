@@ -15,6 +15,7 @@
 
 ## Contributing
 
+- [GitHub Pages demo](docs/github-pages.md): production build/preview, smoke tests, automatic deployment and recovery.
 - [Repository agent instructions](AGENTS.md): source map, invariants, checks and local commits.
 - [Contributing](CONTRIBUTING.md): reproducible setup and review workflow.
 - [Release checklist](docs/releasing.md): history, privacy, builds and packed artifacts.
