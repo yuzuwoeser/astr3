@@ -4,6 +4,9 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add syntax highlighting to website source tabs, setup snippets, and JSON
+  previews, with colors for light and dark code panels and locally bundled grammars.
+
 - Add versioned JSON appearance templates for natal and transit charts, synchronous
   SSR-safe resolvers with field-path errors and independent option copies, and the
   packaged `astr3/chart-template.schema.json` schema. Add homepage comparisons,

@@ -1,0 +1,66 @@
+/* Scoped to code blocks decorated by our highlighter, including JSON previews. */
+pre.syntax-highlighted {
+  --syntax-text: #d2e5dc;
+  --syntax-comment: #a2bfb3;
+  --syntax-keyword: #d6b4fc;
+  --syntax-string: #a9d2b8;
+  --syntax-number: #eacb92;
+  --syntax-attribute: #80b9ee;
+  --syntax-title: #76c7b2;
+  color: var(--syntax-text);
+}
+.prose pre.syntax-highlighted {
+  --syntax-text: #263a3e;
+  --syntax-comment: #58675f;
+  --syntax-keyword: #703699;
+  --syntax-string: #276044;
+  --syntax-number: #8c4c1b;
+  --syntax-attribute: #205c8a;
+  --syntax-title: #265e65;
+}
+pre.syntax-highlighted code.hljs {
+  color: inherit;
+  background: transparent;
+}
+pre.syntax-highlighted .hljs-comment,
+pre.syntax-highlighted .hljs-quote {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+pre.syntax-highlighted .hljs-keyword,
+pre.syntax-highlighted .hljs-literal,
+pre.syntax-highlighted .hljs-selector-tag,
+pre.syntax-highlighted .hljs-doctag {
+  color: var(--syntax-keyword);
+}
+pre.syntax-highlighted .hljs-string,
+pre.syntax-highlighted .hljs-regexp,
+pre.syntax-highlighted .hljs-addition {
+  color: var(--syntax-string);
+}
+pre.syntax-highlighted .hljs-number,
+pre.syntax-highlighted .hljs-symbol,
+pre.syntax-highlighted .hljs-bullet,
+pre.syntax-highlighted .hljs-meta {
+  color: var(--syntax-number);
+}
+pre.syntax-highlighted .hljs-attr,
+pre.syntax-highlighted .hljs-attribute,
+pre.syntax-highlighted .hljs-variable,
+pre.syntax-highlighted .hljs-type,
+pre.syntax-highlighted .hljs-selector-id {
+  color: var(--syntax-attribute);
+}
+pre.syntax-highlighted .hljs-title,
+pre.syntax-highlighted .hljs-name,
+pre.syntax-highlighted .hljs-section,
+pre.syntax-highlighted .hljs-selector-class,
+pre.syntax-highlighted .hljs-built_in {
+  color: var(--syntax-title);
+}
+pre.syntax-highlighted .hljs-emphasis {
+  font-style: italic;
+}
+pre.syntax-highlighted .hljs-strong {
+  font-weight: bold;
+}

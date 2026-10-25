@@ -44,3 +44,7 @@ for (const list of document.querySelectorAll<HTMLElement>('[role=tablist]')) {
     });
   }
 }
+
+// Source stays readable without JavaScript; load tokenizers only on code pages.
+if (document.querySelector('pre > code'))
+  void import('./syntax-highlighting.js').then(({ highlightCodeBlocks }) => highlightCodeBlocks());

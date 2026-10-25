@@ -212,6 +212,7 @@ for (const name of [
   const licensePath = license ?? 'site/licenses/turbo-MIT-LICENSE.txt';
   notices += `\n\n${name}\n${readFileSync(licensePath, 'utf8')}`;
 }
+notices += `\n\nHighlight.js\n${readFileSync(new URL('../node_modules/highlight.js/LICENSE', import.meta.url), 'utf8')}`;
 writeFileSync(join(publicDir, 'THIRD_PARTY_LICENSES.txt'), notices);
 const input = generatePages(base);
 await build({

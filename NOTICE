@@ -33,3 +33,6 @@ Hotwire dependencies, with their licenses included in the generated website
 THIRD_PARTY_LICENSES.txt. Turbo 8.0.23 omits a standalone license in its npm
 archive; the website retains its upstream MIT-LICENSE from
 https://github.com/hotwired/turbo/blob/v8.0.23/MIT-LICENSE.
+
+The website's syntax highlighting bundles Highlight.js under BSD-3-Clause.
+Its full license is included in the generated THIRD_PARTY_LICENSES.txt.
