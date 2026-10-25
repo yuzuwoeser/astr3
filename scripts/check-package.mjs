@@ -20,6 +20,8 @@ try {
       root,
     ),
   );
+  if (pack.name !== '@yuzuwoeser/astr3')
+    throw new Error('Packed npm identity must be @yuzuwoeser/astr3.');
   if (
     pack.files.some((file) =>
       ['tests/', 'demo/', 'site/', 'site-dist/', 'examples/', '.site-cache/'].some((prefix) =>
@@ -71,7 +73,7 @@ try {
       private: true,
       type: 'module',
       dependencies: {
-        astr3: `file:${join(directory, pack.filename)}`,
+        '@yuzuwoeser/astr3': `file:${join(directory, pack.filename)}`,
         three: localDependency('three'),
         'astronomy-engine': localDependency('astronomy-engine'),
       },
@@ -89,11 +91,11 @@ try {
   writeFileSync(
     join(directory, 'consumer.ts'),
     `
-import { createChart, createTransitChart, createTransitAnimation, type ChartExportOptions, type ChartPngExportOptions, type BodyVisibility, type TransitBodyVisibility, type TransitAnimation, type TransitAnimationState, type TransitAnimationOptions, type TransitCalculator, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
-import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
-import { createAstronomyProvider } from 'astr3/ephemeris';
-import { resolveChartTemplate, resolveTransitChartTemplate, ChartTemplateError, type ChartTemplate, type TransitChartTemplate, type ChartTemplateOptions, type TransitChartTemplateOptions } from 'astr3';
-import schema from 'astr3/chart-template.schema.json' with { type: 'json' };
+import { createChart, createTransitChart, createTransitAnimation, type ChartExportOptions, type ChartPngExportOptions, type BodyVisibility, type TransitBodyVisibility, type TransitAnimation, type TransitAnimationState, type TransitAnimationOptions, type TransitCalculator, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from '@yuzuwoeser/astr3';
+import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from '@yuzuwoeser/astr3/model';
+import { createAstronomyProvider } from '@yuzuwoeser/astr3/ephemeris';
+import { resolveChartTemplate, resolveTransitChartTemplate, ChartTemplateError, type ChartTemplate, type TransitChartTemplate, type ChartTemplateOptions, type TransitChartTemplateOptions } from '@yuzuwoeser/astr3';
+import schema from '@yuzuwoeser/astr3/chart-template.schema.json' with { type: 'json' };
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
 const selection: Selection = { kind: 'body', id: 'sun' };
 const enabledAspects: AspectEnabledConfig = { quincunx: true, square: false };
@@ -163,11 +165,11 @@ void exportCharts;
     join(directory, 'runtime.mjs'),
     `
 import assert from 'node:assert/strict';
-import schema from 'astr3/chart-template.schema.json' with { type: 'json' };
-import { resolveChartTemplate, resolveTransitChartTemplate, ChartTemplateError } from 'astr3';
-import { createChart, createTransitChart, createTransitAnimation } from 'astr3';
-import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
-import { createAstronomyProvider } from 'astr3/ephemeris';
+import schema from '@yuzuwoeser/astr3/chart-template.schema.json' with { type: 'json' };
+import { resolveChartTemplate, resolveTransitChartTemplate, ChartTemplateError } from '@yuzuwoeser/astr3';
+import { createChart, createTransitChart, createTransitAnimation } from '@yuzuwoeser/astr3';
+import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from '@yuzuwoeser/astr3/model';
+import { createAstronomyProvider } from '@yuzuwoeser/astr3/ephemeris';
 assert.equal(typeof globalThis.document, 'undefined');
 assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
 assert.equal(schema.oneOf.length, 2);
@@ -200,7 +202,7 @@ assert.equal(transits.houses, undefined);
   );
   run(process.execPath, ['runtime.mjs']);
   const guide = readFileSync(
-    join(directory, 'node_modules/astr3/docs/agent-integration.md'),
+    join(directory, 'node_modules/@yuzuwoeser/astr3/docs/agent-integration.md'),
     'utf8',
   );
   const example = guide.match(/```js\n([\s\S]*?)\n```/)?.[1];

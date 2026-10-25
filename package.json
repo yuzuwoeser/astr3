@@ -1,5 +1,5 @@
 {
-  "name": "astr3",
+  "name": "@yuzuwoeser/astr3",
   "version": "0.1.0",
   "description": "ASTR3: explorable astrology wheels for the browser, built with Three.js.",
   "type": "module",
@@ -113,5 +113,8 @@
     "examples/svelte",
     "examples/angular",
     "examples/rails"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

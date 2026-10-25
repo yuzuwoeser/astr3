@@ -18,9 +18,8 @@ to the application, not the library API.
 ### Reuse it
 
 This is a complete application example. For a small integration, start with the
-JavaScript, TypeScript, or framework guides. It uses the public `astr3`,
-`astr3/model`, and optional `astr3/ephemeris` entry points. ASTR3 is currently
-installed from a locally packed tarball; it is not yet published to npm.
+JavaScript, TypeScript, or framework guides. It uses the public `@yuzuwoeser/astr3`,
+`@yuzuwoeser/astr3/model`, and optional `@yuzuwoeser/astr3/ephemeris` entry points. Install it with `npm install @yuzuwoeser/astr3 three` in your own application.
 
 All built-in chart fixtures use invented teaching positions or documented public
 reference dates/locations. Chart input stays in the browser.

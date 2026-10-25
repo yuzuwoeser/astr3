@@ -6,4 +6,4 @@ export {
   resolveChartTemplate,
   resolveTransitChartTemplate,
   ChartTemplateError,
-} from 'astr3';
+} from '@yuzuwoeser/astr3';

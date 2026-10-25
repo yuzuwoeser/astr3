@@ -24,11 +24,11 @@ selection and navigation never invoke them.
 
 ## Boundaries
 
-- `astr3/model`: pure data, types, and math for Node, workers, or browsers without
+- `@yuzuwoeser/astr3/model`: pure data, types, and math for Node, workers, or browsers without
   Three.js or ephemeris imports.
-- `astr3`: renderer, model exports, and optional transit animation controller.
+- `@yuzuwoeser/astr3`: renderer, model exports, and optional transit animation controller.
   Import is SSR-safe; create charts after their browser hosts mount.
-- `astr3/ephemeris`: optional Astronomy Engine adapter. No DOM, Three.js, or remote
+- `@yuzuwoeser/astr3/ephemeris`: optional Astronomy Engine adapter. No DOM, Three.js, or remote
   calculation service.
 - Demo: forms, request orchestration, interpretation text, details, tooltips, and
   time controls belong to the application.

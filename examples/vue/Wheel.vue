@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
-import { createChart, type Chart, type ChartInput } from 'astr3';
+import { createChart, type Chart, type ChartInput } from '@yuzuwoeser/astr3';
 const props = defineProps<{ data: ChartInput }>();
 const host = ref<HTMLDivElement>();
 const status = ref('');

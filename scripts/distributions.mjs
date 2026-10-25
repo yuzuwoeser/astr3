@@ -132,7 +132,7 @@ export function buildStarters(directory, tarball, version, browserDirectory) {
       cpSync(join(root, 'php.js'), join(root, 'astr3/php.js'));
     } else {
       const manifest = JSON.parse(readFileSync(`examples/${example.id}/package.json`, 'utf8'));
-      manifest.dependencies.astr3 = `file:./astr3-${version}.tgz`;
+      manifest.dependencies['@yuzuwoeser/astr3'] = `file:./astr3-${version}.tgz`;
       manifest.devDependencies = { ...manifest.devDependencies, vite: '^8.3.4' };
       manifest.scripts = { dev: 'vite --host 127.0.0.1', build: 'vite build' };
       writeJson(join(root, 'tsconfig.json'), {

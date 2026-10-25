@@ -1,5 +1,5 @@
-import { ASPECT_DEFINITIONS, calculateAspects } from 'astr3/model';
-import type { ChartInput } from 'astr3/model';
+import { ASPECT_DEFINITIONS, calculateAspects } from '@yuzuwoeser/astr3/model';
+import type { ChartInput } from '@yuzuwoeser/astr3/model';
 
 const bodies = [
   { id: 'sun', name: 'Sun', longitude: 78.4 },

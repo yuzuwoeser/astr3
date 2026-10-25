@@ -1,6 +1,6 @@
 # Calculation conventions and validation
 
-`astr3/ephemeris` uses [Astronomy Engine](https://github.com/cosinekitty/astronomy)
+`@yuzuwoeser/astr3/ephemeris` uses [Astronomy Engine](https://github.com/cosinekitty/astronomy)
 (MIT, supported peer range `^2.1.19`) for planetary positions, lunar state vectors,
 apparent sidereal time, and true obliquity. Houses and lunar nodes use geometric
 calculations over those quantities. Neither Swiss Ephemeris nor Python is a

@@ -26,7 +26,7 @@ planned in the [coverage roadmap](integration-roadmap.md).
 ## Choose your installation
 
 Start with the [installation chooser](https://yuzuwoeser.github.io/astr3/integrations/):
-prebuilt npm tarball for applications, browser ZIP for plain websites, or
+npm package for applications, browser ZIP for plain websites, or
 WordPress plugin ZIP. Each integration page includes an independent starter or
 plugin download and puts minimal usage before the optional full demo.
 
@@ -40,10 +40,10 @@ Keep emitted lazy modules and license notices with the download. Serve modules
 with a JavaScript MIME type. Opening through `file://` is unsupported.
 
 Shared browser modules power the website downloads and CMS bundles.
-Normal npm consumers use `astr3`, `astr3/model`, and `astr3/ephemeris`, with their
-existing peer dependencies, plus the `astr3/chart-template.schema.json` asset
-when validating JSON presets in an editor or another tool. Until npm publication,
-install the prebuilt tarball or a complete starter from the
+Normal npm consumers use `@yuzuwoeser/astr3`, `@yuzuwoeser/astr3/model`, and `@yuzuwoeser/astr3/ephemeris`, with their
+existing peer dependencies, plus the `@yuzuwoeser/astr3/chart-template.schema.json` asset
+when validating JSON presets in an editor or another tool. Install with
+`npm install @yuzuwoeser/astr3 three`, or use a prebuilt tarball or starter from the
 [installation guide](installation.md). No ASTR3 source checkout is required.
 
 ## Data and lifecycle
@@ -72,7 +72,7 @@ fetch it before chart creation (use `./astr3.js` from the browser download in
 place of the package import):
 
 ```js
-import { createChart, resolveChartTemplate } from 'astr3';
+import { createChart, resolveChartTemplate } from '@yuzuwoeser/astr3';
 
 const response = await fetch('./midnight.json');
 if (!response.ok) throw new Error(`Template load failed: ${response.status}`);

@@ -17,7 +17,7 @@ tarball and `three` as described in the main README.
 
 ```ts
 import template from './midnight.json';
-import { createChart, resolveChartTemplate } from 'astr3';
+import { createChart, resolveChartTemplate } from '@yuzuwoeser/astr3';
 
 const chart = createChart(container, {
   ...resolveChartTemplate(template),
@@ -30,7 +30,7 @@ const chart = createChart(container, {
 
 ```ts
 import template from './transit.json';
-import { createTransitChart, resolveTransitChartTemplate } from 'astr3';
+import { createTransitChart, resolveTransitChartTemplate } from '@yuzuwoeser/astr3';
 
 const chart = createTransitChart(container, {
   ...resolveTransitChartTemplate(template),
@@ -51,5 +51,5 @@ Templates do not include chart data, calculation settings, or accessible names.
 
 The [API reference](https://github.com/yuzuwoeser/astr3/blob/main/docs/api.md#json-templates)
 documents every allowed field, `ChartTemplateError.path`, and the strict schema
-exported as `astr3/chart-template.schema.json`. Loading JSON belongs to your
+exported as `@yuzuwoeser/astr3/chart-template.schema.json`. Loading JSON belongs to your
 application; the resolvers are synchronous and safe to import during SSR.

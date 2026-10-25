@@ -8,9 +8,9 @@
     "typecheck": "node check.cjs -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "astr3": "file:../..",
     "vue": "3.5.44",
-    "three": "^0.186.0"
+    "three": "^0.186.0",
+    "@yuzuwoeser/astr3": "file:../.."
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.10",

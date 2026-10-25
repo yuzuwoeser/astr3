@@ -7,11 +7,11 @@ LLM tool endpoint, interpretation service or framework wrapper.
 
 ## Choose an entry point
 
-| Need                                                  | Import            | Runtime                                                                |
-| ----------------------------------------------------- | ----------------- | ---------------------------------------------------------------------- |
-| Validate data, compute aspects, inspect relationships | `astr3/model`     | Node, worker or browser; no DOM, Three.js or ephemeris imports         |
-| Mount an interactive natal/transit wheel              | `astr3`           | Import is SSR-safe; mount after the browser host exists, with WebGL 2  |
-| Calculate positions, houses and true nodes locally    | `astr3/ephemeris` | Node, worker or browser; requires the optional `astronomy-engine` peer |
+| Need                                                  | Import                        | Runtime                                                                |
+| ----------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------- |
+| Validate data, compute aspects, inspect relationships | `@yuzuwoeser/astr3/model`     | Node, worker or browser; no DOM, Three.js or ephemeris imports         |
+| Mount an interactive natal/transit wheel              | `@yuzuwoeser/astr3`           | Import is SSR-safe; mount after the browser host exists, with WebGL 2  |
+| Calculate positions, houses and true nodes locally    | `@yuzuwoeser/astr3/ephemeris` | Node, worker or browser; requires the optional `astronomy-engine` peer |
 
 Install a prebuilt tarball or starter from [installation](installation.md), plus
 `three` in the consuming application. For unpublished local changes, build with
@@ -25,7 +25,7 @@ This complete example uses invented positions. It can run in Node as an `.mjs`
 file after installing the package:
 
 ```js
-import { createModel, getSelectionDetails } from 'astr3/model';
+import { createModel, getSelectionDetails } from '@yuzuwoeser/astr3/model';
 
 const data = {
   title: 'Synthetic trine study',
@@ -71,7 +71,7 @@ Reuse `data` from the example above. Give the host a nonzero width and mount onl
 after it exists:
 
 ```js
-import { createChart } from 'astr3';
+import { createChart } from '@yuzuwoeser/astr3';
 
 const host = document.getElementById('wheel');
 const panel = document.getElementById('details');
@@ -123,7 +123,7 @@ Appearance can live in a versioned JSON file. In a bundler application:
 
 ```ts
 import template from './my-chart.json';
-import { createChart, resolveChartTemplate } from 'astr3';
+import { createChart, resolveChartTemplate } from '@yuzuwoeser/astr3';
 
 const chart = createChart(host, {
   ...resolveChartTemplate(template),
@@ -148,7 +148,7 @@ chart. See [the API contract](api.md#json-templates) and
 ## Connect a calculation provider
 
 ```js
-import { createAstronomyProvider } from 'astr3/ephemeris';
+import { createAstronomyProvider } from '@yuzuwoeser/astr3/ephemeris';
 
 const provider = createAstronomyProvider();
 const controller = new AbortController();
@@ -187,7 +187,7 @@ Selection, zoom, orb and visibility changes never call the provider automaticall
 With `provider` and `natal` from the previous example:
 
 ```js
-import { createTransitModel, getTransitSelectionDetails } from 'astr3/model';
+import { createTransitModel, getTransitSelectionDetails } from '@yuzuwoeser/astr3/model';
 
 const transit = await provider.calculateTransits({ utc: '2026-01-01T12:00:00Z' });
 const transitModel = createTransitModel(
@@ -205,7 +205,7 @@ console.log(transitDetails);
 ```
 
 For graphics, pass `{ data: { natal, transit } }` to `createTransitChart(host, options)`
-from `astr3`. Advance time using `wheel.updateTransit(nextTransitData)` to preserve
+from `@yuzuwoeser/astr3`. Advance time using `wheel.updateTransit(nextTransitData)` to preserve
 the natal model and view. Natal and transit IDs may be the same; selections must
 include their source. Use `chart: 'cross'` only for a cross-aspect selection.
 Transit bodies expose `natalHouse`; there are no transit-time houses in this mode.

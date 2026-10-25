@@ -3,13 +3,13 @@
 Choose the distribution that fits your application. All distributions use the
 same ASTR3 version and browser renderer.
 
-| Your application                                | Installation                                              | Start here                                                            |
-| ----------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------- |
-| JavaScript, TypeScript, or a frontend framework | Prebuilt npm tarball; npm registry publication is pending | [Integration guides](integrations.md)                                 |
-| An HTML website without a build pipeline        | Extract the browser ZIP and serve it over HTTP/HTTPS      | `minimal.html` inside the download                                    |
-| WordPress 6.5+ / PHP 8+                         | Upload and activate the WordPress plugin ZIP              | Insert an **ASTR3 Chart** block                                       |
-| PHP or another server-rendered site             | Browser modules plus safely encoded chart JSON            | [PHP starter](https://yuzuwoeser.github.io/astr3/integrations/php/)   |
-| Rails with Stimulus/Turbo                       | npm tarball or self-hosted browser modules                | [Rails guide](https://yuzuwoeser.github.io/astr3/integrations/rails/) |
+| Your application                                | Installation                                                | Start here                                                            |
+| ----------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| JavaScript, TypeScript, or a frontend framework | `npm install @yuzuwoeser/astr3 three` or a prebuilt tarball | [Integration guides](integrations.md)                                 |
+| An HTML website without a build pipeline        | Extract the browser ZIP and serve it over HTTP/HTTPS        | `minimal.html` inside the download                                    |
+| WordPress 6.5+ / PHP 8+                         | Upload and activate the WordPress plugin ZIP                | Insert an **ASTR3 Chart** block                                       |
+| PHP or another server-rendered site             | Browser modules plus safely encoded chart JSON              | [PHP starter](https://yuzuwoeser.github.io/astr3/integrations/php/)   |
+| Rails with Stimulus/Turbo                       | npm tarball or self-hosted browser modules                  | [Rails guide](https://yuzuwoeser.github.io/astr3/integrations/rails/) |
 
 ## Prebuilt downloads
 
@@ -18,12 +18,13 @@ provides npm, browser, WordPress, and complete per-stack starter downloads from
 the current website build. No ASTR3 source checkout is required.
 
 ```sh
-npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three
+npm install @yuzuwoeser/astr3 three
 ```
 
-Install `astronomy-engine` separately only if using `astr3/ephemeris`. After npm
-publication, use `npm install astr3 three` instead. Until then, registry commands
-are not the installation path.
+Install `astronomy-engine` separately only if using `@yuzuwoeser/astr3/ephemeris`.
+The prebuilt `astr3-X.Y.Z.tgz` release assets contain the same scoped package.
+`npm pack` in a checkout uses npm’s default `yuzuwoeser-astr3-X.Y.Z.tgz` filename;
+release downloads deliberately retain their existing `astr3-X.Y.Z.tgz` filenames.
 
 [GitHub Releases](https://github.com/yuzuwoeser/astr3/releases) will hold immutable
 versioned distributions when a release tag is published. Each release includes

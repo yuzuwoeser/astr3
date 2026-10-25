@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { createChart, type Chart, type ChartInput } from 'astr3';
+  import { createChart, type Chart, type ChartInput } from '@yuzuwoeser/astr3';
   let { data }: { data: ChartInput } = $props();
   let host: HTMLDivElement;
   let chart: Chart | undefined;

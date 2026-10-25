@@ -56,9 +56,12 @@ run('tar', [
 ]);
 cpSync('site/public', publicDir, { recursive: true });
 const alias = [
-  { find: 'astr3/ephemeris', replacement: join(cache, 'package/dist/ephemeris/index.js') },
-  { find: 'astr3/model', replacement: join(cache, 'package/dist/model/index.js') },
-  { find: /^astr3$/, replacement: join(cache, 'package/dist/index.js') },
+  {
+    find: '@yuzuwoeser/astr3/ephemeris',
+    replacement: join(cache, 'package/dist/ephemeris/index.js'),
+  },
+  { find: '@yuzuwoeser/astr3/model', replacement: join(cache, 'package/dist/model/index.js') },
+  { find: /^@yuzuwoeser\/astr3$/, replacement: join(cache, 'package/dist/index.js') },
 ];
 const browser = join(publicDir, 'downloads/browser');
 const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
@@ -71,7 +74,7 @@ cpSync(
 const wordpress = join(cache, 'wordpress');
 buildWordpress(wordpress, browser, version);
 zip(wordpress, join(publicDir, `downloads/astr3-wordpress-${version}.zip`));
-cpSync(join(cache, pack.filename), join(publicDir, 'downloads', pack.filename));
+cpSync(join(cache, pack.filename), join(publicDir, 'downloads', `astr3-${version}.tgz`));
 buildStarters(join(cache, 'starters'), join(cache, pack.filename), version, browser);
 for (const example of examples) {
   const archive = join(cache, 'starters', `astr3-${example.id}-${version}.zip`);

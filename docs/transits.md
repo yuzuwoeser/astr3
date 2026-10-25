@@ -12,7 +12,7 @@ This browser example uses invented positions. Mount `#wheel` with a nonzero
 width before running it:
 
 ```ts
-import { createTransitChart } from 'astr3';
+import { createTransitChart } from '@yuzuwoeser/astr3';
 
 const host = document.querySelector<HTMLElement>('#wheel');
 if (!host) throw new Error('Mount #wheel first.');
@@ -74,7 +74,7 @@ cross-chart pattern groups, and automatic pattern detection are not calculated.
 
 ### Headless helpers
 
-Import these functions and data types from `astr3/model` or `astr3`:
+Import these functions and data types from `@yuzuwoeser/astr3/model` or `@yuzuwoeser/astr3`:
 
 | Function                                                                        | Parameters and result                                                                                                                                                                                                                                          |
 | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -150,7 +150,7 @@ Render idempotently; avoid calling `select` unconditionally inside a listener.
 ## Layout and accessibility
 
 For reusable presentation presets, use a `kind: 'transit'` JSON template with
-`resolveTransitChartTemplate` from `astr3` and spread the returned options into
+`resolveTransitChartTemplate` from `@yuzuwoeser/astr3` and spread the returned options into
 `createTransitChart`. It supports source-specific glyphs/body visibility, transit
 layers, and `transitColor`; data, orbs, enablement, and accessible names remain
 application options. See [JSON templates](api.md#json-templates) for the full
@@ -172,11 +172,11 @@ phone views, zoom in or use **Explore chart objects**.
 
 ## Animated time steps
 
-`createTransitAnimation(chart: TransitChart, calculateTransits: TransitCalculator, options?: TransitAnimationOptions): TransitAnimation` is an opt-in browser controller exported from `astr3`. Inject a calculator with the same signature as the optional adapter's `calculateTransits`; the controller does not import Astronomy Engine. Existing `updateTransit` calls remain immediate.
+`createTransitAnimation(chart: TransitChart, calculateTransits: TransitCalculator, options?: TransitAnimationOptions): TransitAnimation` is an opt-in browser controller exported from `@yuzuwoeser/astr3`. Inject a calculator with the same signature as the optional adapter's `calculateTransits`; the controller does not import Astronomy Engine. Existing `updateTransit` calls remain immediate.
 
 ```ts
-import { createTransitAnimation } from 'astr3';
-import { createAstronomyProvider } from 'astr3/ephemeris';
+import { createTransitAnimation } from '@yuzuwoeser/astr3';
+import { createAstronomyProvider } from '@yuzuwoeser/astr3/ephemeris';
 
 const provider = createAstronomyProvider();
 // `chart` is an existing TransitChart, currently displaying the `from` time.
@@ -267,11 +267,11 @@ The demo owns time inputs and controls; these are not additional chart methods.
 
 ## Exported types
 
-| Entry point                  | Types                                                                                                                                           | Purpose                                                                                                |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `astr3/model` (also `astr3`) | `ChartSide`, `AspectFamily`, `BodyReference`                                                                                                    | Source names (`natal`/`transit`), aspect families (also `cross`), and `{ chart, id }` body references. |
-| `astr3/model` (also `astr3`) | `TransitChartInput`, `CrossAspectInput`, `CrossAspect`, `TransitBody`, `TransitChartModel`                                                      | Composite input and derived data.                                                                      |
-| `astr3/model` (also `astr3`) | `TransitModelOptions`, `TransitOrbs`, `TransitAspectEnabledConfig`                                                                              | Independent orb/enablement maps by family.                                                             |
-| `astr3/model` (also `astr3`) | `TransitSelection`, `TransitSelectionDetails`, `ScopedBody`, `ScopedAspect`, `ScopedGroup`                                                      | Source-qualified selections and results.                                                               |
-| `astr3`                      | `TransitChart`, `TransitChartOptions`, `TransitChartEvents`, `TransitLayers`, `TransitBodyVisibility`                                           | Mounted wheel, settings, event payloads, and visibility.                                               |
-| `astr3`                      | `TransitAnimation`, `TransitAnimationOptions`, `TransitAnimationState`, `TransitAnimationStatus`, `TransitAnimationEvents`, `TransitCalculator` | Optional animation controller and injected calculation contract.                                       |
+| Entry point                                          | Types                                                                                                                                           | Purpose                                                                                                |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `ChartSide`, `AspectFamily`, `BodyReference`                                                                                                    | Source names (`natal`/`transit`), aspect families (also `cross`), and `{ chart, id }` body references. |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `TransitChartInput`, `CrossAspectInput`, `CrossAspect`, `TransitBody`, `TransitChartModel`                                                      | Composite input and derived data.                                                                      |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `TransitModelOptions`, `TransitOrbs`, `TransitAspectEnabledConfig`                                                                              | Independent orb/enablement maps by family.                                                             |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `TransitSelection`, `TransitSelectionDetails`, `ScopedBody`, `ScopedAspect`, `ScopedGroup`                                                      | Source-qualified selections and results.                                                               |
+| `@yuzuwoeser/astr3`                                  | `TransitChart`, `TransitChartOptions`, `TransitChartEvents`, `TransitLayers`, `TransitBodyVisibility`                                           | Mounted wheel, settings, event payloads, and visibility.                                               |
+| `@yuzuwoeser/astr3`                                  | `TransitAnimation`, `TransitAnimationOptions`, `TransitAnimationState`, `TransitAnimationStatus`, `TransitAnimationEvents`, `TransitCalculator` | Optional animation controller and injected calculation contract.                                       |

@@ -11,17 +11,17 @@ Select a planet, point, house, aspect, or supplied configuration. Highlight its 
 ## Use the library
 
 Choose an installation route in the [installation guide](docs/installation.md):
-prebuilt npm tarball, a browser ZIP without build tools, or an installable WordPress
+npm package, a browser ZIP without build tools, or an installable WordPress
 plugin. Use Node.js 24 LTS (minimum 22.12.0) for bundled applications:
 
 ```sh
-npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three
+npm install @yuzuwoeser/astr3 three
 ```
 
-npm registry publication is pending; after publication use `npm install astr3 three`.
-No source checkout is required for the prebuilt downloads. For unpublished local
-changes, run `npm ci && npm pack` in a checkout and install the generated tarball.
-Framework starter ZIPs include that tarball and their own application files.
+The npm package is `@yuzuwoeser/astr3`. Browser downloads keep the `astr3.js`
+filename. For unpublished local changes, run `npm ci && npm pack` in a checkout
+and install the generated `yuzuwoeser-astr3-0.1.0.tgz` tarball. Framework starter
+ZIPs include a local tarball and their own application files.
 
 Mount after the host element exists. For example, add this HTML to a page served
 by your application's bundler:
@@ -32,7 +32,7 @@ by your application's bundler:
 ```
 
 ```ts
-import { createChart } from 'astr3';
+import { createChart } from '@yuzuwoeser/astr3';
 
 const host = document.querySelector<HTMLElement>('#wheel');
 const panel = document.querySelector<HTMLElement>('#details');
@@ -63,9 +63,9 @@ function unmount() {
 ```
 
 The wheel resizes as a square; the accessible object list stays below it in document
-flow. Importing `astr3` is SSR-safe; interactive graphics need a browser and WebGL 2.
+flow. Importing `@yuzuwoeser/astr3` is SSR-safe; interactive graphics need a browser and WebGL 2.
 If WebGL is unavailable, the HTML object list remains usable and `chart.error`
-explains the failure. For data-only use in Node or workers, import `astr3/model`.
+explains the failure. For data-only use in Node or workers, import `@yuzuwoeser/astr3/model`.
 
 ## Optional browser calculation
 
@@ -74,7 +74,7 @@ npm install astronomy-engine
 ```
 
 ```ts
-import { createAstronomyProvider } from 'astr3/ephemeris';
+import { createAstronomyProvider } from '@yuzuwoeser/astr3/ephemeris';
 
 const provider = createAstronomyProvider();
 const data = await provider.calculate({
@@ -88,7 +88,7 @@ const data = await provider.calculate({
 chart.update(data);
 ```
 
-`astr3/model` is a headless entry with no DOM, Three.js, or ephemeris imports. `astr3/ephemeris` imports Astronomy Engine but not Three.js. Renderers and selections never request new calculation data automatically. Any provider implementing `EphemerisProvider` can replace the example adapter.
+`@yuzuwoeser/astr3/model` is a headless entry with no DOM, Three.js, or ephemeris imports. `@yuzuwoeser/astr3/ephemeris` imports Astronomy Engine but not Three.js. Renderers and selections never request new calculation data automatically. Any provider implementing `EphemerisProvider` can replace the example adapter.
 
 ## Capabilities
 

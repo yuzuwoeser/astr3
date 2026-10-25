@@ -8,12 +8,12 @@ models, source-qualified selections, and animation are covered in the
 
 ## Entry points
 
-| Import                             | Exports and runtime                                                                                                                                                                                                  |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `astr3/model`                      | [Models and relationships](#model), [math and identity helpers](#model-helpers), constants, and data types. No DOM, Three.js, or ephemeris dependency.                                                               |
-| `astr3`                            | Everything from `astr3/model`, plus chart/animation factories, template resolvers, `ChartTemplateError`, `DARK_THEME`, `LIGHT_THEME`, and renderer/template/animation types. Import is SSR-safe; mount in a browser. |
-| `astr3/ephemeris`                  | [Calculation API](#calculation-api): `createAstronomyProvider`, `calculateHouses`, `CalculationError`, and provider/house types. Requires the optional `astronomy-engine` peer; no DOM or Three.js.                  |
-| `astr3/chart-template.schema.json` | Strict JSON Schema (draft 2020-12) for both [template variants](#json-templates). A packaged JSON asset.                                                                                                             |
+| Import                                         | Exports and runtime                                                                                                                                                                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@yuzuwoeser/astr3/model`                      | [Models and relationships](#model), [math and identity helpers](#model-helpers), constants, and data types. No DOM, Three.js, or ephemeris dependency.                                                                           |
+| `@yuzuwoeser/astr3`                            | Everything from `@yuzuwoeser/astr3/model`, plus chart/animation factories, template resolvers, `ChartTemplateError`, `DARK_THEME`, `LIGHT_THEME`, and renderer/template/animation types. Import is SSR-safe; mount in a browser. |
+| `@yuzuwoeser/astr3/ephemeris`                  | [Calculation API](#calculation-api): `createAstronomyProvider`, `calculateHouses`, `CalculationError`, and provider/house types. Requires the optional `astronomy-engine` peer; no DOM or Three.js.                              |
+| `@yuzuwoeser/astr3/chart-template.schema.json` | Strict JSON Schema (draft 2020-12) for both [template variants](#json-templates). A packaged JSON asset.                                                                                                                         |
 
 These three JavaScript entry points and the JSON Schema asset are public. Use
 them instead of importing internal files. [Exported types](#exported-types)
@@ -21,7 +21,7 @@ are indexed at the end of this page.
 
 ## Model
 
-Import types and pure functions from `astr3/model`. `createModel(input, { orbs?, enabledAspects? })` validates, normalizes, and freezes its own objects/arrays. It does not mutate or freeze the caller's input. Application metadata is opaque and retained by reference; treat it as immutable.
+Import types and pure functions from `@yuzuwoeser/astr3/model`. `createModel(input, { orbs?, enabledAspects? })` validates, normalizes, and freezes its own objects/arrays. It does not mutate or freeze the caller's input. Application metadata is opaque and retained by reference; treat it as immutable.
 
 | ChartInput field                | Meaning                                                                                                                                                                                                  |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -122,7 +122,7 @@ chart.setOptions({ enabledAspects: { square: false }, orbs: { quincunx: 2 } });
 
 ## Model helpers
 
-Import these from `astr3/model` or `astr3`. Helpers that accept a model expect one
+Import these from `@yuzuwoeser/astr3/model` or `@yuzuwoeser/astr3`. Helpers that accept a model expect one
 created by `createModel`; math helpers expect finite degrees.
 
 | Function                                                          | Parameters and result                                                                                                                                                                                                                                  |
@@ -187,7 +187,7 @@ line width. See the [weight profiles](architecture.md#label-placement-and-typogr
 for exact multipliers.
 
 ```ts
-import type { ChartWeight } from 'astr3';
+import type { ChartWeight } from '@yuzuwoeser/astr3';
 
 const chartWeight: ChartWeight = 'bold';
 chart.setOptions({ chartWeight });
@@ -202,7 +202,7 @@ the result into constructor options:
 
 ```ts
 import template from './my-chart.json';
-import { createChart, resolveChartTemplate } from 'astr3';
+import { createChart, resolveChartTemplate } from '@yuzuwoeser/astr3';
 
 const chart = createChart(container, {
   ...resolveChartTemplate(template),
@@ -231,7 +231,7 @@ display. The name does not become the accessible chart name. An empty `options`
 object is valid; every omitted setting retains its existing renderer default
 (including default layout, light chart weight, and `DARK_THEME`).
 
-| Helper exported from `astr3`                                               | Result                                                              |
+| Helper exported from `@yuzuwoeser/astr3`                                   | Result                                                              |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | `resolveChartTemplate(input: unknown): ChartTemplateOptions`               | Validate a natal template and return copied presentation options.   |
 | `resolveTransitChartTemplate(input: unknown): TransitChartTemplateOptions` | Validate a transit template and return copied presentation options. |
@@ -273,10 +273,10 @@ invalid root. Body IDs that need quoting use brackets, such as
 required fields, unsupported versions, wrong helper/kind combinations, and
 invalid values are rejected. Explicit `null` or `undefined` is not omission.
 
-The package includes the strict schema at `astr3/chart-template.schema.json`:
+The package includes the strict schema at `@yuzuwoeser/astr3/chart-template.schema.json`:
 
 ```ts
-import schema from 'astr3/chart-template.schema.json' with { type: 'json' };
+import schema from '@yuzuwoeser/astr3/chart-template.schema.json' with { type: 'json' };
 ```
 
 Use a draft 2020-12 validator or configure your editor to reference this asset.
@@ -314,7 +314,7 @@ SVG contains vector shapes and outlined text, and PNG rasterizes that same SVG.
 Export does not capture the WebGL canvas and also works when WebGL is unavailable.
 
 ```ts
-import type { ChartExportOptions, ChartPngExportOptions } from 'astr3';
+import type { ChartExportOptions, ChartPngExportOptions } from '@yuzuwoeser/astr3';
 
 const svgOptions: ChartExportOptions = { size: 1024, view: 'full' };
 const svg = await chart.exportSvg(svgOptions);
@@ -412,7 +412,7 @@ Alternative house dividers, highlights and picking stay within the outer annulus
 Alternative ruler dots stay on their source boundary and short leaders connect displaced symbols. A faint dashed radial guide connects an active body to its inner anchor; active aspects/groups guide their members. Guides add no picking targets. Natal/transit colors and inner circle/diamond markers retain their existing meaning. The inner aspect circle remains independent of house visibility.
 
 ```ts
-import type { ChartLayout } from 'astr3';
+import type { ChartLayout } from '@yuzuwoeser/astr3';
 
 const layout: ChartLayout = 'alternative';
 chart.setOptions({ layout });
@@ -454,7 +454,7 @@ The list survives graphics loss. Initial WebGL failure emits asynchronously for 
 
 ## Calculation API
 
-Import from `astr3/ephemeris`. `createAstronomyProvider(): AstronomyProvider`
+Import from `@yuzuwoeser/astr3/ephemeris`. `createAstronomyProvider(): AstronomyProvider`
 creates a stateless local adapter implementing `EphemerisProvider` plus UTC-only
 transit calculation. No chart is mounted or updated automatically.
 
@@ -497,17 +497,17 @@ Type-only imports are supported from the same entry point as their associated
 functions. This index groups related types; the sections above describe fields
 and behavior rather than duplicating declarations.
 
-| Entry point                  | Types                                                                                                                             | Reference                                        |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `astr3/model` (also `astr3`) | `ChartInput`, `BodyInput`, `HouseInput`, `AspectInput`, `GroupInput`, `ChartAngles`, `HouseStatus`, `AspectType`                  | [Input](#model)                                  |
-| `astr3/model` (also `astr3`) | `ChartModel`, `Body`, `House`, `Aspect`, `ZodiacPosition`                                                                         | [Normalized results](#normalized-results)        |
-| `astr3/model` (also `astr3`) | `ModelOptions`, `OrbConfig`, `AspectEnabledConfig`                                                                                | [Aspects](#aspects-and-enablement)               |
-| `astr3/model` (also `astr3`) | `Selection`, `ChartObject`, `SelectionDetails`                                                                                    | [Selection details](#events-and-details)         |
-| `astr3/model` (also `astr3`) | `CalculationRequest`, `EphemerisProvider`, `HouseSystem`                                                                          | [Calculation API](#calculation-api)              |
-| `astr3/model` (also `astr3`) | Transit data, reference, selection, and option types                                                                              | [Transit type index](transits.md#exported-types) |
-| `astr3`                      | `Chart`, `ChartOptions`, `ChartLayers`, `BodyVisibility`, `ChartLayout`, `ChartWeight`, `ChartTheme`, `ThemeOptions`, `LineStyle` | [Renderer](#renderer)                            |
-| `astr3`                      | `ChartEvents`, `ChartError`                                                                                                       | [Events](#events-and-details)                    |
-| `astr3`                      | `ChartExportOptions`, `ChartPngExportOptions`                                                                                     | [Export](#svg-and-png-export)                    |
-| `astr3`                      | `ChartTemplate`, `TransitChartTemplate`, `ChartTemplateOptions`, `TransitChartTemplateOptions`                                    | [JSON templates](#json-templates)                |
-| `astr3`                      | Transit renderer and animation types                                                                                              | [Transit type index](transits.md#exported-types) |
-| `astr3/ephemeris`            | `AstronomyProvider`, `HouseCalculation`, `EphemerisProvider`, `CalculationRequest`, `HouseSystem`                                 | [Calculation API](#calculation-api)              |
+| Entry point                                          | Types                                                                                                                             | Reference                                        |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `ChartInput`, `BodyInput`, `HouseInput`, `AspectInput`, `GroupInput`, `ChartAngles`, `HouseStatus`, `AspectType`                  | [Input](#model)                                  |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `ChartModel`, `Body`, `House`, `Aspect`, `ZodiacPosition`                                                                         | [Normalized results](#normalized-results)        |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `ModelOptions`, `OrbConfig`, `AspectEnabledConfig`                                                                                | [Aspects](#aspects-and-enablement)               |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `Selection`, `ChartObject`, `SelectionDetails`                                                                                    | [Selection details](#events-and-details)         |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | `CalculationRequest`, `EphemerisProvider`, `HouseSystem`                                                                          | [Calculation API](#calculation-api)              |
+| `@yuzuwoeser/astr3/model` (also `@yuzuwoeser/astr3`) | Transit data, reference, selection, and option types                                                                              | [Transit type index](transits.md#exported-types) |
+| `@yuzuwoeser/astr3`                                  | `Chart`, `ChartOptions`, `ChartLayers`, `BodyVisibility`, `ChartLayout`, `ChartWeight`, `ChartTheme`, `ThemeOptions`, `LineStyle` | [Renderer](#renderer)                            |
+| `@yuzuwoeser/astr3`                                  | `ChartEvents`, `ChartError`                                                                                                       | [Events](#events-and-details)                    |
+| `@yuzuwoeser/astr3`                                  | `ChartExportOptions`, `ChartPngExportOptions`                                                                                     | [Export](#svg-and-png-export)                    |
+| `@yuzuwoeser/astr3`                                  | `ChartTemplate`, `TransitChartTemplate`, `ChartTemplateOptions`, `TransitChartTemplateOptions`                                    | [JSON templates](#json-templates)                |
+| `@yuzuwoeser/astr3`                                  | Transit renderer and animation types                                                                                              | [Transit type index](transits.md#exported-types) |
+| `@yuzuwoeser/astr3/ephemeris`                        | `AstronomyProvider`, `HouseCalculation`, `EphemerisProvider`, `CalculationRequest`, `HouseSystem`                                 | [Calculation API](#calculation-api)              |

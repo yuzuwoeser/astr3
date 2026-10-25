@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, type Chart, type ChartInput } from 'astr3';
+import { createChart, type Chart, type ChartInput } from '@yuzuwoeser/astr3';
 
 export function Wheel({ data }: { data: ChartInput }) {
   const initialData = useRef(data);

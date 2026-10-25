@@ -4,17 +4,16 @@ This example targets Vue 3.5; pinned dependencies are included in the starter.
 
 ### Install
 
-Download this page’s **starter ZIP** for a standalone application, or install the
-[prebuilt npm tarball](https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz)
-in your existing application:
+Install the npm package in your existing application:
 
 ```sh
-npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three
+npm install @yuzuwoeser/astr3 three
 ```
 
-npm registry publication is pending. After publication the equivalent command is
-`npm install astr3 three`. The starter includes a local tarball and needs no
-ASTR3 repository checkout. Install `astronomy-engine` only for optional calculations.
+Or download this page’s **starter ZIP** for a standalone application. It includes
+a local tarball and needs no ASTR3 repository checkout. Install `astronomy-engine`
+only for optional calculations. Prebuilt tarballs are also available from the
+[installation chooser](https://yuzuwoeser.github.io/astr3/integrations/).
 
 ### Minimal integration
 

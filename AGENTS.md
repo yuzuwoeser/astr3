@@ -3,8 +3,9 @@
 These instructions apply to the entire repository. For agents integrating the
 library into another application, start with [docs/agent-integration.md](docs/agent-integration.md).
 
-Use **ASTR3** for the display name and project-name prose. Technical identifiers
-such as package imports, URLs, CSS classes and JavaScript globals use `astr3`.
+Use **ASTR3** for the display name and project-name prose. The npm package and
+its imports use `@yuzuwoeser/astr3`. Other technical identifiers such as URLs, CSS
+classes and JavaScript globals use `astr3`.
 The website wordmark is live text in Righteous Regular (400), with mint, sky blue,
 lavender, coral and gold characters on a dark background. Match the palette in
 `site/public/brand/palette.json`; keep the locally bundled font and its SIL OFL
@@ -61,7 +62,7 @@ also need browser validation. A release needs the full sequence in
 
 ## Contracts to preserve
 
-- `astr3/model` must import no DOM, Three.js, or ephemeris code. Importing the
+- `@yuzuwoeser/astr3/model` must import no DOM, Three.js, or ephemeris code. Importing the
   main entry must remain SSR-safe; mounting needs a browser and WebGL 2.
 - Use degrees for positions and orbs. Keep exact astronomical positions separate
   from displaced labels. Never move a longitude to solve a visual collision.

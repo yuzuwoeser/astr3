@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import { createChart } from 'astr3';
+import { createChart } from '@yuzuwoeser/astr3';
 
 export default class extends Controller {
   static targets = ['host', 'status', 'longitude'];

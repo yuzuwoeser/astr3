@@ -13,9 +13,9 @@
     "skipLibCheck": true,
     "types": ["node"],
     "paths": {
-      "astr3": ["./src/index.ts"],
-      "astr3/model": ["./src/model/index.ts"],
-      "astr3/ephemeris": ["./src/ephemeris/index.ts"]
+      "@yuzuwoeser/astr3": ["./src/index.ts"],
+      "@yuzuwoeser/astr3/model": ["./src/model/index.ts"],
+      "@yuzuwoeser/astr3/ephemeris": ["./src/ephemeris/index.ts"]
     }
   },
   "include": ["src", "site", "examples/playground", "tests", "*.config.ts"]

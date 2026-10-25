@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Publish the library as `@yuzuwoeser/astr3`, with matching scoped imports and
+  workspace/consumer validation. Keep browser filenames and release asset URLs
+  stable, and default scoped npm publication to public access.
+
 - Add shared release packaging for npm tarballs, versioned browser and WordPress
   ZIPs, complete framework/server starters, checksums and a source manifest.
   Add tag-triggered GitHub/npm publishing with exact-artifact rerun guards.
@@ -17,7 +21,7 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 - Add versioned JSON appearance templates for natal and transit charts, synchronous
   SSR-safe resolvers with field-path errors and independent option copies, and the
-  packaged `astr3/chart-template.schema.json` schema. Add homepage comparisons,
+  packaged `@yuzuwoeser/astr3/chart-template.schema.json` schema. Add homepage comparisons,
   a runnable template example with JSON downloads, and browser/PHP loading guidance.
 
 - Fix GitHub Pages builds on Linux when dependencies ship lowercase license
@@ -78,7 +82,7 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## 0.1.0
 
-Initial implementation; package publication is pending.
+Initial implementation.
 
 - Render Western natal wheels with Three.js and precomputed or locally calculated
   positions, actual house cusps, AC/MC axes, true lunar nodes and unknown-house support.

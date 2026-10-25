@@ -27,11 +27,11 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: 'astr3/ephemeris',
+        find: '@yuzuwoeser/astr3/ephemeris',
         replacement: root('../src/ephemeris/index.ts'),
       },
-      { find: 'astr3/model', replacement: root('../src/model/index.ts') },
-      { find: /^astr3$/, replacement: root('../src/index.ts') },
+      { find: '@yuzuwoeser/astr3/model', replacement: root('../src/model/index.ts') },
+      { find: /^@yuzuwoeser\/astr3$/, replacement: root('../src/index.ts') },
     ],
   },
   server: { fs: { allow: [root('../')] } },

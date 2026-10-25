@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import {
@@ -28,7 +28,9 @@ const [packed] = JSON.parse(
     output,
   ]),
 );
-const tarball = join(output, packed.filename);
+// Keep release asset URLs stable even though npm prefixes scoped tarball names.
+const tarball = join(output, `astr3-${version}.tgz`);
+if (join(output, packed.filename) !== tarball) renameSync(join(output, packed.filename), tarball);
 run('tar', ['-xzf', tarball, '--strip-components', '1', '-C', join(output, 'package')]);
 await buildBrowser(join(output, 'browser'), join(output, 'package'));
 buildWordpress(join(output, 'wordpress'), join(output, 'browser'), version);

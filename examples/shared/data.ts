@@ -1,4 +1,4 @@
-import type { ChartInput } from 'astr3';
+import type { ChartInput } from '@yuzuwoeser/astr3';
 
 // Invented teaching positions; no birth time, location, houses, or axes.
 export function chartData(offset = 0): ChartInput {

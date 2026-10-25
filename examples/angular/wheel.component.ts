@@ -8,7 +8,7 @@ import {
   ViewChild,
   signal,
 } from '@angular/core';
-import { createChart, type Chart, type ChartInput } from 'astr3';
+import { createChart, type Chart, type ChartInput } from '@yuzuwoeser/astr3';
 
 @Component({
   selector: 'astr3-wheel',

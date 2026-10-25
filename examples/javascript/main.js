@@ -1,4 +1,4 @@
-import { createChart } from 'astr3';
+import { createChart } from '@yuzuwoeser/astr3';
 import { chartData } from '../shared/data.js';
 import '../shared/preview.css';
 

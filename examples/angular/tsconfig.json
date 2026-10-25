@@ -12,7 +12,7 @@
     "rootDir": "..",
     "outDir": "../../.site-cache/angular",
     "paths": {
-      "astr3": ["../../.site-cache/package/dist/index.d.ts"]
+      "@yuzuwoeser/astr3": ["../../.site-cache/package/dist/index.d.ts"]
     }
   },
   "include": ["*.ts", "*.tsx", "*.vue", "*.svelte", "../shared/*.ts"],

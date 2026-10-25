@@ -7,9 +7,9 @@
     "build": "npm --prefix ../.. run build:site"
   },
   "dependencies": {
-    "astr3": "file:../..",
     "@hotwired/stimulus": "3.2.2",
     "@hotwired/turbo": "8.0.23",
-    "three": "^0.186.0"
+    "three": "^0.186.0",
+    "@yuzuwoeser/astr3": "file:../.."
   }
 }

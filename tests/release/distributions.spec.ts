@@ -9,6 +9,15 @@ test('release archives extract to the tested distributions and match their manif
   const manifest = JSON.parse(readFileSync('.release/manifest.json', 'utf8'));
   const scratch = mkdtempSync(join(tmpdir(), 'astr3-archives-'));
   try {
+    const metadata = spawnSync(
+      'tar',
+      ['-xOf', `.release/astr3-${manifest.version}.tgz`, 'package/package.json'],
+      { encoding: 'utf8' },
+    );
+    expect(metadata.status, metadata.stderr).toBe(0);
+    const npmPackage = JSON.parse(metadata.stdout);
+    expect(npmPackage.name).toBe('@yuzuwoeser/astr3');
+    expect(npmPackage.publishConfig.access).toBe('public');
     for (const artifact of manifest.artifacts) {
       const bytes = readFileSync(join('.release', artifact.name));
       expect(createHash('sha256').update(bytes).digest('hex')).toBe(artifact.sha256);

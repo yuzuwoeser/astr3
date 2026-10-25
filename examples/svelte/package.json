@@ -8,9 +8,9 @@
     "typecheck": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "astr3": "file:../..",
     "svelte": "5.57.2",
-    "three": "^0.186.0"
+    "three": "^0.186.0",
+    "@yuzuwoeser/astr3": "file:../.."
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",

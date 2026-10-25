@@ -10,7 +10,7 @@ import {
   formatPosition,
   getSelectionDetails,
   getTransitSelectionDetails,
-} from 'astr3';
+} from '@yuzuwoeser/astr3';
 import type {
   Chart,
   ChartInput,
@@ -31,7 +31,7 @@ import type {
   TransitAnimation,
   TransitAnimationState,
   ChartSide,
-} from 'astr3';
+} from '@yuzuwoeser/astr3';
 import { study } from './fixtures.js';
 import './style.css';
 import { stepTransitTime } from './transit-time.js';
@@ -318,7 +318,7 @@ async function calculate(): Promise<void> {
   const select = preset.value;
   $('calculation-status').textContent = 'Calculating in your browser…';
   try {
-    const { createAstronomyProvider } = await import('astr3/ephemeris');
+    const { createAstronomyProvider } = await import('@yuzuwoeser/astr3/ephemeris');
     if (ownRevision !== revision) return;
     const localValue = $<HTMLInputElement>('utc').value;
     const utc =
@@ -524,7 +524,7 @@ async function calculateTransit(utc?: string): Promise<void> {
   try {
     if (!transitTime.value || !transitTime.checkValidity())
       throw new RangeError('Choose a valid transit UTC time from 1900 through 2100.');
-    const { createAstronomyProvider } = await import('astr3/ephemeris');
+    const { createAstronomyProvider } = await import('@yuzuwoeser/astr3/ephemeris');
     if (ownRevision !== transitRevision) return;
     const data = await createAstronomyProvider().calculateTransits(
       { utc: utc ?? `${transitTime.value}Z` },
@@ -588,7 +588,7 @@ $('chart-view').addEventListener('change', () => {
     window.astr3Transit = transitChart;
     transitChart.on('update', renderBodyControls);
     transitAnimation = createTransitAnimation(transitChart, async (request, options) => {
-      const { createAstronomyProvider } = await import('astr3/ephemeris');
+      const { createAstronomyProvider } = await import('@yuzuwoeser/astr3/ephemeris');
       return createAstronomyProvider().calculateTransits(request, options);
     });
     window.astr3TransitAnimation = transitAnimation;

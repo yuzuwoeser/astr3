@@ -20,7 +20,7 @@ function fixture({ existing = false, changedAsset = false, changedNpm = false } 
   const artifact = 'astr3-0.1.0.tgz';
   writeFileSync(
     join(directory, 'package.json'),
-    JSON.stringify({ name: 'astr3', version: '0.1.0' }),
+    JSON.stringify({ name: '@yuzuwoeser/astr3', version: '0.1.0' }),
   );
   writeFileSync(join(directory, '.release', artifact), 'tested tarball bytes');
   writeFileSync(
@@ -59,9 +59,11 @@ if (basename(process.argv[1]) === 'git') {
     writeFileSync(join(directory, 'bin', command), stub, { mode: 0o755 });
   writeFileSync(
     join(directory, 'fetch.mjs'),
-    changedNpm
-      ? "globalThis.fetch = async () => new Response(JSON.stringify({dist: {integrity: 'different'}}), {status: 200});\n"
-      : "globalThis.fetch = async () => new Response('{}', {status: 404});\n",
+    "import assert from 'node:assert/strict';\nglobalThis.fetch = async (url) => {\nassert.equal(url, 'https://registry.npmjs.org/%40yuzuwoeser%2Fastr3/0.1.0');\nreturn " +
+      (changedNpm
+        ? "new Response(JSON.stringify({dist: {integrity: 'different'}}), {status: 200});\n"
+        : "new Response('{}', {status: 404});\n") +
+      '};\n',
   );
   const run = (dryRun: boolean) =>
     spawnSync(

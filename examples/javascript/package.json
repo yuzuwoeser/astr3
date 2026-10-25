@@ -7,7 +7,7 @@
     "build": "npm --prefix ../.. run build:site"
   },
   "dependencies": {
-    "astr3": "file:../..",
-    "three": "^0.186.0"
+    "three": "^0.186.0",
+    "@yuzuwoeser/astr3": "file:../.."
   }
 }

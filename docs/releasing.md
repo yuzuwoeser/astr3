@@ -1,7 +1,7 @@
 # Preparing a release
 
 The [source repository](https://github.com/yuzuwoeser/astr3) is public. The package
-version is 0.1.0; npm publication is pending. These steps validate a release
+version is 0.1.0; its npm name is `@yuzuwoeser/astr3`. These steps validate a release
 candidate locally. Pushing, enabling GitHub Pages, changing repository visibility,
 and publishing to npm require the owner's instruction.
 
@@ -118,11 +118,16 @@ Playground is a test-only dev dependency and is excluded from all distributions.
 
 ### One-time npm setup
 
-The package name is `astr3`. Confirm account ownership/name availability before
-publishing. If the name is unavailable, stop and resolve ownership; do not rename
-exports or silently switch to another scope. Initial package registration or
-publication may require the owner's authenticated npm session. Complete that
-setup before using CI; there is no token stored in this repository.
+The package name is `@yuzuwoeser/astr3`, published publicly under the npm account
+`yuzuwoeser`. npm rejects the unscoped name as too similar to another package;
+an unpublished name returning 404 is not a guarantee that npm will accept it.
+Keep `publishConfig.access` set to `public`. The source repository, display name,
+browser module names and release ZIP/tarball URLs keep their existing names.
+
+For the first publication, sign in as the owning account and publish the reviewed
+release tarball with `npm publish .release/astr3-0.1.0.tgz --access public --ignore-scripts`.
+Then configure trusted publishing under the scoped package’s npm settings.
+No token is stored in this repository. Do not silently switch package names again.
 
 Configure an [npm trusted publisher](https://docs.npmjs.com/trusted-publishers/)
 for GitHub repository `yuzuwoeser/astr3`, workflow `release.yml`, allowing direct
@@ -154,4 +159,4 @@ read-only preflight with the release environment and GitHub authentication set.
 The website installation chooser exposes downloads from the current main build;
 its versioned filenames are convenience links and can change before release.
 GitHub Release assets are the immutable installation path for published versions.
-Keep npm instructions marked pending until the first actual registry publication.
+Use `npm install @yuzuwoeser/astr3 three` for released registry versions.

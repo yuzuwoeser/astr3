@@ -5,7 +5,7 @@ import {
   resolveTransitChartTemplate,
   type Chart,
   type TransitChart,
-} from 'astr3';
+} from '@yuzuwoeser/astr3';
 import midnight from './midnight.json' with { type: 'json' };
 import paper from './paper.json' with { type: 'json' };
 import transit from './transit.json' with { type: 'json' };

@@ -1,4 +1,4 @@
-import { createChart, resolveChartTemplate, type Chart } from 'astr3';
+import { createChart, resolveChartTemplate, type Chart } from '@yuzuwoeser/astr3';
 import midnight from '../examples/json-templates/midnight.json' with { type: 'json' };
 import paper from '../examples/json-templates/paper.json' with { type: 'json' };
 import { chartData } from '../examples/shared/data.js';

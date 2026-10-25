@@ -33,10 +33,9 @@ TypeScript 7.
 
 ## Use code in another application
 
-Download a complete starter from the integration page or install the prebuilt
-tarball and `three` from [installation](../docs/installation.md). The starter
-includes a local tarball and needs no ASTR3 source checkout. npm publication is
-pending. The `file:../..` dependency in workspace manifests is only for this
+Install `@yuzuwoeser/astr3` and `three`, or download a complete starter from the
+integration page; see [installation](../docs/installation.md). The starter includes
+a local tarball and needs no ASTR3 source checkout. The `file:../..` dependency in workspace manifests is only for this
 checkout; generated starters replace it with their included tarball.
 
 The HTML download already bundles dependencies and can be self-hosted without

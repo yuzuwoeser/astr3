@@ -9,14 +9,14 @@ is not covered by this suite.
 ### Install
 
 Download this page’s **starter ZIP** to run the Stimulus/Turbo browser demo, or
-install the prebuilt tarball into an existing Rails app with jsbundling-rails:
+install the npm package into an existing Rails app with jsbundling-rails:
 
 ```sh
-npm install https://yuzuwoeser.github.io/astr3/downloads/astr3-0.1.0.tgz three @hotwired/stimulus @hotwired/turbo
+npm install @yuzuwoeser/astr3 three @hotwired/stimulus @hotwired/turbo
 ```
 
-npm registry publication is pending. For importmap-rails, self-host the browser
-bundle and pin `astr3` to its `astr3.js` URL, retaining the emitted relative chunks.
+For importmap-rails, self-host the browser
+bundle and pin `@yuzuwoeser/astr3` to its `astr3.js` URL, retaining the emitted relative chunks.
 
 ### Minimal integration
 
