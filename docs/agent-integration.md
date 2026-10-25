@@ -116,6 +116,34 @@ aspect circle. Layout changes preserve positions, selections and zoom/pan and do
 not calculate new data. This is a renderer option, not a `ChartInput` field or a
 headless-model setting. See [layout presets](api.md#layout-presets).
 
+## Load a presentation template
+
+Appearance can live in a versioned JSON file. In a bundler application:
+
+```ts
+import template from './my-chart.json';
+import { createChart, resolveChartTemplate } from 'astr3';
+
+const chart = createChart(host, {
+  ...resolveChartTemplate(template),
+  data,
+  ariaLabel: 'Natal chart',
+});
+```
+
+For application-owned HTTP loading, fetch the JSON before mounting, check
+`response.ok`, and pass `await response.json()` to the same resolver. Catch
+`ChartTemplateError` and display its `path`/message in your application. Resolution
+itself is synchronous and SSR-safe; chart creation still belongs after mount.
+Use `resolveTransitChartTemplate` for `kind: 'transit'` files.
+
+Omitted settings keep renderer defaults. Later object-spread options override
+earlier ones; nested objects replace rather than deeply merge. Keep chart data,
+calculation/orb settings, aspect enablement, and accessible names outside the
+template. Choose a new preset by disposing the old instance and creating a fresh
+chart. See [the API contract](api.md#json-templates) and
+[browser/PHP loading examples](integrations.md#json-appearance-presets).
+
 ## Connect a calculation provider
 
 ```js

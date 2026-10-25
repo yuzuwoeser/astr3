@@ -10,6 +10,9 @@
 - [Framework and website integrations](docs/integrations.md): example registry, live guides, browser download, WordPress/PHP and Rails recipes.
 - [Agent integration](docs/agent-integration.md): entry-point selection, headless example, browser lifecycle and common mistakes.
 - [API contracts](docs/api.md): entry points and exported types, normalized models, math/selection helpers, renderer options, events, SVG/PNG export, accessibility and calculation signatures.
+- [JSON templates](docs/api.md#json-templates): versioned natal/transit appearance presets, resolver types/errors, defaults, shallow overrides and the packaged schema.
+- [Template schema](chart-template.schema.json): strict JSON Schema draft 2020-12 for both template variants; exported as astr3/chart-template.schema.json.
+- [Runnable template example](https://yuzuwoeser.github.io/astr3/examples/json-templates/): live natal/transit previews, downloadable JSON and actual source.
 - [Transit API](docs/transits.md): a working wheel example, composite models and helpers, source-qualified selections, renderer/animation events and demo controls.
 - [Calculation conventions](docs/calculations.md): coordinate conventions, houses, nodes and measured accuracy limits.
 - [Architecture](docs/architecture.md): model/provider/application boundaries, shared drawing/export, packing, typography, conjunction geometry and animation sampling.

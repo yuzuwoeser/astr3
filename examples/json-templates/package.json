@@ -1,0 +1,14 @@
+{
+  "name": "@astr3-example/json-templates",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix ../.. run dev -- --open /previews/json-templates/",
+    "build": "npm --prefix ../.. run build:site",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "astr3": "file:../..",
+    "three": "^0.186.0"
+  }
+}

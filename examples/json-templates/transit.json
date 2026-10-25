@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Transit study",
+  "kind": "transit",
+  "options": {
+    "layout": "alternative",
+    "chartWeight": "regular",
+    "theme": {
+      "background": "#101827",
+      "accent": "#a8e6cf"
+    },
+    "transitColor": "#ef9399",
+    "glyphs": {
+      "transit": { "sun": "S" }
+    },
+    "bodyVisibility": {
+      "transit": { "jupiter": false }
+    },
+    "layers": {
+      "degrees": false,
+      "natalAspects": false,
+      "crossAspects": true,
+      "transitAspects": false
+    },
+    "lineStyles": {
+      "trine": { "width": 1.5, "dash": [4, 3] }
+    },
+    "selectionEffects": {
+      "color": "#eacb92",
+      "dimOpacity": 0.3,
+      "lineWidth": 3
+    },
+    "dimUnrelated": true
+  }
+}

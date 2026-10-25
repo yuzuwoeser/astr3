@@ -1,5 +1,5 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { basename, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { build } from 'vite';
@@ -163,6 +163,8 @@ for (const example of examples.filter((example) => example.build)) {
   });
 }
 for (const example of examples) {
+  for (const file of example.downloads ?? [])
+    cpSync(resolve('examples', file), join(publicDir, example.preview, basename(file)));
   if (example.id !== 'playground' && !existsSync(join(publicDir, example.preview, 'index.html')))
     throw new Error(`Missing preview: ${example.id}`);
 }

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "Paper",
+  "kind": "natal",
+  "options": {
+    "layout": "default",
+    "chartWeight": "bold",
+    "theme": {
+      "background": "#f7f5ed",
+      "foreground": "#283b3f",
+      "muted": "#627779",
+      "ring": "#b7c2bd",
+      "accent": "#875a22",
+      "group": "#3f8875",
+      "elements": ["#ad5a3b", "#617941", "#947923", "#447c99"],
+      "aspects": {
+        "conjunction": "#886731",
+        "sextile": "#37836e",
+        "square": "#ad544d",
+        "trine": "#427c9b",
+        "opposition": "#a65e76"
+      }
+    }
+  }
+}

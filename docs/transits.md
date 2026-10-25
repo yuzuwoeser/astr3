@@ -149,6 +149,14 @@ Render idempotently; avoid calling `select` unconditionally inside a listener.
 
 ## Layout and accessibility
 
+For reusable presentation presets, use a `kind: 'transit'` JSON template with
+`resolveTransitChartTemplate` from `astr3` and spread the returned options into
+`createTransitChart`. It supports source-specific glyphs/body visibility, transit
+layers, and `transitColor`; data, orbs, enablement, and accessible names remain
+application options. See [JSON templates](api.md#json-templates) for the full
+schema, defaults, errors, and override behavior, and the
+[runnable example](https://yuzuwoeser.github.io/astr3/examples/json-templates/).
+
 The default layout places transit labels outside the natal zodiac. The
 alternative places houses outermost, zodiac second, then transit/natal symbol
 bands and a shared inner aspect circle. Natal anchors are filled circles and

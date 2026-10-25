@@ -96,6 +96,8 @@ chart.update(data);
 - Exact longitude markers, bounded label placement, overlap choosers, touch/keyboard
   selection, and an accessible HTML object list.
 - Two layouts, themes, chart weights, custom glyphs, layers, and per-body visibility.
+- Reusable [JSON appearance templates](docs/api.md#json-templates) with synchronous
+  validation, copied options, and a packaged JSON Schema for natal/transit charts.
 - Browser [SVG/PNG export](docs/api.md#svg-and-png-export) and opt-in
   [transit animation](docs/transits.md#animated-time-steps) with reduced-motion support.
 
@@ -126,6 +128,12 @@ Angular examples, plus HTML, PHP, WordPress, and Ruby on Rails integration guide
 canonical examples. `site/` owns the website; `examples/` owns the source shown
 in its guides. `npm run dev` builds previews before starting Vite; restart it
 after changing an example.
+
+Choose [JSON templates](https://yuzuwoeser.github.io/astr3/examples/json-templates/)
+for a live preview and downloadable appearance presets. Import a JSON file and
+spread `resolveChartTemplate(template)` into `createChart` options, followed by
+your own `data` and `ariaLabel`. Transit charts use `resolveTransitChartTemplate`.
+See the [template API](docs/api.md#json-templates) for validation and overrides.
 
 ## Documentation and validation
 

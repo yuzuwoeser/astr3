@@ -38,6 +38,8 @@ try {
     'dist/export-fonts-OFL.txt',
     'dist/chart-export.js',
     'dist/export-font-data.js',
+    'dist/chart-template.d.ts',
+    'chart-template.schema.json',
     'docs/releasing.md',
   ])
     if (!pack.files.some((file) => file.path === path))
@@ -90,6 +92,8 @@ try {
 import { createChart, createTransitChart, createTransitAnimation, type ChartExportOptions, type ChartPngExportOptions, type BodyVisibility, type TransitBodyVisibility, type TransitAnimation, type TransitAnimationState, type TransitAnimationOptions, type TransitCalculator, type TransitSelection, type TransitChartInput, type Selection, type ChartInput, type ChartWeight, type ChartLayout, type AspectEnabledConfig, type TransitAspectEnabledConfig } from 'astr3';
 import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
+import { resolveChartTemplate, resolveTransitChartTemplate, ChartTemplateError, type ChartTemplate, type TransitChartTemplate, type ChartTemplateOptions, type TransitChartTemplateOptions } from 'astr3';
+import schema from 'astr3/chart-template.schema.json' with { type: 'json' };
 const input: ChartInput = { bodies: [{ id: 'sun', name: 'Sun', longitude: 1 }] };
 const selection: Selection = { kind: 'body', id: 'sun' };
 const enabledAspects: AspectEnabledConfig = { quincunx: true, square: false };
@@ -99,6 +103,14 @@ const chartWeight: ChartWeight = 'regular';
 const layout: ChartLayout = 'alternative';
 const bodyVisibility: BodyVisibility = { sun: false };
 const options: Parameters<typeof createChart>[1] = { data: input, chartWeight, layout, enabledAspects, bodyVisibility, lineStyles: { quincunx: { dash: [4, 3] } }, theme: { aspects: { quincunx: '#37836e' } } };
+const template: ChartTemplate = { version: 1, kind: 'natal', options: { layout, layers: { degrees: false } } };
+const appearance: ChartTemplateOptions = resolveChartTemplate(template);
+const transitTemplate: TransitChartTemplate = { version: 1, kind: 'transit', options: { glyphs: { transit: { sun: 'S' } }, transitColor: '#abcdef' } };
+const transitAppearance: TransitChartTemplateOptions = resolveTransitChartTemplate(transitTemplate);
+const fromTemplate: Parameters<typeof createChart>[1] = { ...appearance, data: input, ariaLabel: 'Template consumer' };
+const transitFromTemplate: Parameters<typeof createTransitChart>[1] = { ...transitAppearance, data: { natal: input, transit: input } };
+const templateError: ChartTemplateError = new ChartTemplateError('version', 'Unsupported version');
+void [schema.$schema, fromTemplate, transitFromTemplate, templateError.path, templateError.code];
 void [selection, model, chartFactory, createAstronomyProvider, options, calculateAspects(input.bodies, {}, enabledAspects), ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS];
 const pair: TransitChartInput = { natal: input, transit: input };
 const transitSelection: TransitSelection = { kind: 'body', chart: 'transit', id: 'sun' };
@@ -134,6 +146,7 @@ void exportCharts;
       compilerOptions: {
         target: 'ES2022',
         module: 'NodeNext',
+        resolveJsonModule: true,
         strict: true,
         noEmit: true,
         lib: ['ES2022', 'DOM'],
@@ -150,10 +163,17 @@ void exportCharts;
     join(directory, 'runtime.mjs'),
     `
 import assert from 'node:assert/strict';
+import schema from 'astr3/chart-template.schema.json' with { type: 'json' };
+import { resolveChartTemplate, resolveTransitChartTemplate, ChartTemplateError } from 'astr3';
 import { createChart, createTransitChart, createTransitAnimation } from 'astr3';
 import { createModel, createTransitModel, calculateAspects, ASPECT_DEFINITIONS, DEFAULT_ENABLED_ASPECTS } from 'astr3/model';
 import { createAstronomyProvider } from 'astr3/ephemeris';
 assert.equal(typeof globalThis.document, 'undefined');
+assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
+assert.equal(schema.oneOf.length, 2);
+assert.deepEqual(resolveChartTemplate({ version: 1, kind: 'natal', options: { layout: 'alternative', theme: { accent: '#abcdef' } } }), { layout: 'alternative', theme: { accent: '#abcdef' } });
+assert.deepEqual(resolveTransitChartTemplate({ version: 1, kind: 'transit', options: { transitColor: '#abcdef', bodyVisibility: { transit: { moon: false } } } }), { transitColor: '#abcdef', bodyVisibility: { transit: { moon: false } } });
+assert.throws(() => resolveChartTemplate({ version: 2, kind: 'natal', options: {} }), (error) => error instanceof ChartTemplateError && error.path === 'version');
 assert.equal(typeof createChart, 'function');
 assert.equal(typeof createTransitChart, 'function');
 assert.equal(typeof createTransitAnimation, 'function');
@@ -194,7 +214,7 @@ assert.equal(transits.houses, undefined);
   )
     throw new Error('Packed agent guide example does not match its documented result.');
   console.log(
-    'Package consumer passed: ESM imports, SSR-safe model/renderer import, optional adapter, TypeScript declarations.',
+    'Package consumer passed: ESM imports, SSR-safe model/renderer/templates, JSON Schema export, optional adapter, TypeScript declarations.',
   );
 } finally {
   rmSync(directory, { recursive: true, force: true });

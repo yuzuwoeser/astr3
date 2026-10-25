@@ -8,14 +8,16 @@ models, source-qualified selections, and animation are covered in the
 
 ## Entry points
 
-| Import            | Exports and runtime                                                                                                                                                                                   |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `astr3/model`     | [Models and relationships](#model), [math and identity helpers](#model-helpers), constants, and data types. No DOM, Three.js, or ephemeris dependency.                                                |
-| `astr3`           | Everything from `astr3/model`, plus `createChart`, `createTransitChart`, `createTransitAnimation`, `DARK_THEME`, `LIGHT_THEME`, and renderer/animation types. Import is SSR-safe; mount in a browser. |
-| `astr3/ephemeris` | [Calculation API](#calculation-api): `createAstronomyProvider`, `calculateHouses`, `CalculationError`, and provider/house types. Requires the optional `astronomy-engine` peer; no DOM or Three.js.   |
+| Import                             | Exports and runtime                                                                                                                                                                                                  |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `astr3/model`                      | [Models and relationships](#model), [math and identity helpers](#model-helpers), constants, and data types. No DOM, Three.js, or ephemeris dependency.                                                               |
+| `astr3`                            | Everything from `astr3/model`, plus chart/animation factories, template resolvers, `ChartTemplateError`, `DARK_THEME`, `LIGHT_THEME`, and renderer/template/animation types. Import is SSR-safe; mount in a browser. |
+| `astr3/ephemeris`                  | [Calculation API](#calculation-api): `createAstronomyProvider`, `calculateHouses`, `CalculationError`, and provider/house types. Requires the optional `astronomy-engine` peer; no DOM or Three.js.                  |
+| `astr3/chart-template.schema.json` | Strict JSON Schema (draft 2020-12) for both [template variants](#json-templates). A packaged JSON asset.                                                                                                             |
 
-Only these three entry points are public. Use them instead of importing internal
-files. [Exported types](#exported-types) are indexed at the end of this page.
+These three JavaScript entry points and the JSON Schema asset are public. Use
+them instead of importing internal files. [Exported types](#exported-types)
+are indexed at the end of this page.
 
 ## Model
 
@@ -191,6 +193,118 @@ const chartWeight: ChartWeight = 'bold';
 chart.setOptions({ chartWeight });
 chart.setOptions({ chartWeight: 'regular', glyphs: { sun: '☉' } });
 ```
+
+## JSON templates
+
+Templates are versioned JSON presets for appearance at chart creation. Load JSON
+in your application, validate it with the matching synchronous helper, and spread
+the result into constructor options:
+
+```ts
+import template from './my-chart.json';
+import { createChart, resolveChartTemplate } from 'astr3';
+
+const chart = createChart(container, {
+  ...resolveChartTemplate(template),
+  data,
+  ariaLabel: 'Natal chart',
+});
+```
+
+```json
+{
+  "version": 1,
+  "name": "Midnight",
+  "kind": "natal",
+  "options": {
+    "layout": "alternative",
+    "chartWeight": "regular",
+    "theme": { "background": "#101827", "accent": "#a8e6cf" },
+    "layers": { "degrees": false }
+  }
+}
+```
+
+`version`, `kind`, and `options` are required. Version must be the number `1`;
+`kind` is `'natal'` or `'transit'`. `name` is an optional string for application
+display. The name does not become the accessible chart name. An empty `options`
+object is valid; every omitted setting retains its existing renderer default
+(including default layout, light chart weight, and `DARK_THEME`).
+
+| Helper exported from `astr3`                                               | Result                                                              |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `resolveChartTemplate(input: unknown): ChartTemplateOptions`               | Validate a natal template and return copied presentation options.   |
+| `resolveTransitChartTemplate(input: unknown): TransitChartTemplateOptions` | Validate a transit template and return copied presentation options. |
+
+`ChartTemplate` and `TransitChartTemplate` type the envelopes. The returned option
+types pick presentation fields from `ChartOptions` and `TransitChartOptions`:
+
+| Options                                                                            | Natal                                       | Transit                                                                                                             |
+| ---------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `layout`, `chartWeight`, `theme`, `lineStyles`, `selectionEffects`, `dimUnrelated` | Same shapes as [renderer options](#options) | Same shapes as natal                                                                                                |
+| `glyphs`                                                                           | Body-ID-to-string record                    | `{ natal?: record, transit?: record }`                                                                              |
+| `bodyVisibility`                                                                   | Body-ID-to-boolean record                   | `{ natal?: record, transit?: record }`                                                                              |
+| `layers`                                                                           | Partial `ChartLayers`                       | Partial `TransitLayers`, including `natalBodies`, `transitBodies`, `natalAspects`, `crossAspects`, `transitAspects` |
+| `transitColor`                                                                     | Unavailable                                 | Color string; omitted uses the theme's group color                                                                  |
+
+Colors must be opaque `#rgb`/`#rrggbb`, a Three.js named color (case insensitive),
+or the renderer's comma-separated `rgb()` or `hsl()` syntax. Alpha channels, CSS
+variables, and external assets are unsupported. Theme `elements` has exactly four
+colors in fire/earth/air/water order. Aspect maps accept only the eleven existing
+aspect types. Widths and dash-on lengths must be finite and positive; dash-off
+lengths must be finite and nonnegative (`[1, 0]` is solid). `dimOpacity` must be
+finite and within `[0, 1]`. Body-ID keys must contain a non-whitespace character.
+Glyph strings are text and retain the usual [export font limits](#svg-and-png-export).
+
+All objects and arrays in the result are independent copies, including nested
+theme records, tuples, and transit source maps. Resolving does not freeze or
+mutate input and does not add defaults. Helpers return only `options`, excluding
+the envelope. They are synchronous and SSR-safe, accept parsed objects, and do
+no fetching, file access, or storage. Applications supply chart data, calculation
+settings/orbs, aspect enablement, and accessible names separately. Templates
+exclude those fields, custom geometry, inheritance, and executable content.
+
+Invalid templates throw `ChartTemplateError`, with `name: 'ChartTemplateError'`,
+`code: 'INVALID_CHART_TEMPLATE'`, `path`, and a message including the path.
+Paths identify the offending field, for example `version`, `kind`,
+`options.theme.accent`, or `options.lineStyles.trine.dash[1]`; `$` identifies an
+invalid root. Body IDs that need quoting use brackets, such as
+`options.glyphs["custom.point"]`. Unknown fields at any fixed level, missing
+required fields, unsupported versions, wrong helper/kind combinations, and
+invalid values are rejected. Explicit `null` or `undefined` is not omission.
+
+The package includes the strict schema at `astr3/chart-template.schema.json`:
+
+```ts
+import schema from 'astr3/chart-template.schema.json' with { type: 'json' };
+```
+
+Use a draft 2020-12 validator or configure your editor to reference this asset.
+The schema covers both variants and disallows additional fields; configure an
+editor's schema association outside the template rather than adding `$schema`
+to the envelope. Runtime resolution also checks that the kind matches the helper.
+
+Ordinary object-spread precedence applies: later properties override earlier
+ones, and nested objects are replaced rather than deeply merged. For example,
+`{ ...preset, theme: { accent: '#abcdef' } }` discards the preset's other theme
+overrides, which then fall back to library defaults. Merge deliberately to retain
+them:
+
+```ts
+const preset = resolveChartTemplate(template);
+const chart = createChart(container, {
+  ...preset,
+  theme: { ...preset.theme, accent: '#abcdef' },
+  data,
+  ariaLabel: 'Natal chart',
+});
+```
+
+Constructors and `setOptions` keep their existing behavior. Template replacement
+and hot reload are outside v1; create a fresh chart to choose another preset.
+See the [runnable JSON templates example](https://yuzuwoeser.github.io/astr3/examples/json-templates/)
+for natal/transit usage and downloadable JSON, and [integration guidance](integrations.md#json-appearance-presets)
+for application loading and PHP-to-JSON usage.
 
 ## SVG and PNG export
 
@@ -394,5 +508,6 @@ and behavior rather than duplicating declarations.
 | `astr3`                      | `Chart`, `ChartOptions`, `ChartLayers`, `BodyVisibility`, `ChartLayout`, `ChartWeight`, `ChartTheme`, `ThemeOptions`, `LineStyle` | [Renderer](#renderer)                            |
 | `astr3`                      | `ChartEvents`, `ChartError`                                                                                                       | [Events](#events-and-details)                    |
 | `astr3`                      | `ChartExportOptions`, `ChartPngExportOptions`                                                                                     | [Export](#svg-and-png-export)                    |
+| `astr3`                      | `ChartTemplate`, `TransitChartTemplate`, `ChartTemplateOptions`, `TransitChartTemplateOptions`                                    | [JSON templates](#json-templates)                |
 | `astr3`                      | Transit renderer and animation types                                                                                              | [Transit type index](transits.md#exported-types) |
 | `astr3/ephemeris`            | `AstronomyProvider`, `HouseCalculation`, `EphemerisProvider`, `CalculationRequest`, `HouseSystem`                                 | [Calculation API](#calculation-api)              |

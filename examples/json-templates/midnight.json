@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "Midnight",
+  "kind": "natal",
+  "options": {
+    "layout": "alternative",
+    "chartWeight": "regular",
+    "theme": {
+      "background": "#101827",
+      "accent": "#a8e6cf"
+    },
+    "layers": {
+      "degrees": false
+    }
+  }
+}

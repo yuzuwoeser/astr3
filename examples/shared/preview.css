@@ -20,6 +20,7 @@ h1 {
   font-size: 1.25rem;
 }
 button,
+select,
 a {
   font: inherit;
 }
@@ -31,7 +32,16 @@ button {
   background: white;
   cursor: pointer;
 }
+select {
+  max-width: 100%;
+  padding: 0.55rem;
+  color: #263a3e;
+  background: white;
+  border: 1px solid #a3b4aa;
+  border-radius: 5px;
+}
 button:focus-visible,
+select:focus-visible,
 a:focus-visible {
   outline: 3px solid #325b50;
   outline-offset: 3px;

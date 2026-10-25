@@ -32,8 +32,9 @@ Keep emitted lazy modules and license notices with the download. Serve modules
 with a JavaScript MIME type. Opening through `file://` is unsupported.
 
 This is an application distribution built for the website, not a new npm export.
-Normal npm consumers continue to use `astr3`, `astr3/model`, and
-`astr3/ephemeris`, with their existing peer dependencies. Until npm publication,
+Normal npm consumers use `astr3`, `astr3/model`, and `astr3/ephemeris`, with their
+existing peer dependencies, plus the `astr3/chart-template.schema.json` asset
+when validating JSON presets in an editor or another tool. Until npm publication,
 install from a local tarball as described in [getting started](../README.md#use-the-library).
 
 ## Data and lifecycle
@@ -45,9 +46,61 @@ For Turbo or other partial navigation, clean up before caching or replacing DOM.
 Use platform JSON encoders and escape for the HTML context rather than inserting
 server data into executable JavaScript.
 
-The website loads live previews on demand in isolated iframes. PHP/WordPress
+The website loads example live previews on demand in isolated iframes. PHP/WordPress
 previews reuse the browser embed; the Rails preview runs its actual Stimulus
 controller and Turbo navigation. GitHub Pages does not run backend servers.
+
+## JSON appearance presets
+
+The [JSON templates example](https://yuzuwoeser.github.io/astr3/examples/json-templates/)
+includes natal/transit usage, live charts, and downloadable presets. The
+homepage's two previews use those same JSON files with identical invented data.
+The [API reference](api.md#json-templates) defines the complete format, strict
+schema, errors, defaults, and shallow object-spread override behavior.
+
+Bundlers can import JSON directly. Without a JSON loader, let the application
+fetch it before chart creation (use `./astr3.js` from the browser download in
+place of the package import):
+
+```js
+import { createChart, resolveChartTemplate } from 'astr3';
+
+const response = await fetch('./midnight.json');
+if (!response.ok) throw new Error(`Template load failed: ${response.status}`);
+const appearance = resolveChartTemplate(await response.json());
+const chart = createChart(host, { ...appearance, data, ariaLabel: 'Natal chart' });
+```
+
+PHP can keep a preset on disk or construct the same JSON envelope as an array.
+Encode it into non-executable JSON alongside your separately encoded chart data:
+
+```php
+<?php
+$template = json_decode(file_get_contents(__DIR__ . '/midnight.json'), false, 512, JSON_THROW_ON_ERROR);
+$templateJson = json_encode($template, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
+?>
+<script type="application/json" id="chart-template"><?= $templateJson ?></script>
+```
+
+```js
+import { createChart, resolveChartTemplate } from './astr3/astr3.js';
+
+const template = JSON.parse(document.getElementById('chart-template').textContent);
+const chart = createChart(host, {
+  ...resolveChartTemplate(template),
+  data, // ChartInput loaded separately, as in the PHP recipe.
+  ariaLabel: 'Natal chart',
+});
+// Retain chart and dispose it before replacing this part of the page.
+```
+
+Decoding with `false` preserves JSON objects, including empty option maps. Use
+`(object) []` for empty maps if constructing the envelope in PHP.
+
+Keep PHP's JSON encoding flags when embedding JSON in HTML. Template validation
+is performed in the browser by ASTR3; the PHP snippet only loads and encodes the
+file. ASTR3 does no loading or storage itself. Use the transit helper and template
+variant when mounting `createTransitChart`.
 
 See [the examples contributor guide](https://github.com/yuzuwoeser/astr3/blob/main/examples/README.md)
 for adding an example. API contracts remain in [api.md](api.md),

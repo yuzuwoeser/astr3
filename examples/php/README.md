@@ -27,3 +27,10 @@ recipe demonstrates a lifecycle-aware integration for dynamic navigation.
 
 See the [PHP JSON documentation](https://www.php.net/manual/en/function.json-encode.php)
 for the encoding flags.
+
+For reusable appearance, keep chart data separate from a JSON template and call
+`resolveChartTemplate` before mounting. The
+[PHP-to-JSON template guide](https://github.com/yuzuwoeser/astr3/blob/main/docs/integrations.md#json-appearance-presets)
+shows safe encoding and browser resolution; the
+[JSON templates example](https://yuzuwoeser.github.io/astr3/examples/json-templates/)
+provides downloadable natal and transit presets.

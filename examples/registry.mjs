@@ -2,6 +2,30 @@
 // Backend recipes reuse the HTML browser preview; they are not CMS runtime demos.
 export const examples = [
   {
+    id: 'json-templates',
+    build: 'vite',
+    title: 'JSON templates',
+    category: 'example',
+    description: 'Reuse chart appearance with validated JSON presets for natal and transit wheels.',
+    preview: 'previews/json-templates/',
+    downloads: [
+      'json-templates/midnight.json',
+      'json-templates/paper.json',
+      'json-templates/transit.json',
+    ],
+    files: [
+      'json-templates/main.ts',
+      'json-templates/midnight.json',
+      'json-templates/paper.json',
+      'json-templates/transit.json',
+      'json-templates/index.html',
+      'json-templates/package.json',
+      'json-templates/tsconfig.json',
+      'shared/data.ts',
+      'shared/preview.css',
+    ],
+  },
+  {
     id: 'playground',
     title: 'Chart playground',
     category: 'example',

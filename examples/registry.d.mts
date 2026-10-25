@@ -6,6 +6,7 @@ export interface Example {
   description: string;
   preview: string;
   browserOnly?: boolean;
+  downloads?: string[];
   files: string[];
 }
 export const examples: Example[];

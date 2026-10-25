@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JSON templates + ASTR3</title>
+  </head>
+  <body>
+    <main>
+      <h1>JSON templates + ASTR3</h1>
+      <p>One set of invented natal positions, three ways to present it.</p>
+      <div class="controls">
+        <label for="template">Template</label>
+        <select id="template">
+          <option value="midnight">Midnight · natal</option>
+          <option value="paper">Paper · natal</option>
+          <option value="transit">Transit study · natal + transit</option>
+        </select>
+        <a id="download-template" href="./midnight.json" download>Download JSON</a>
+        <button id="export-svg" type="button">Download SVG</button>
+      </div>
+      <div id="wheel" class="chart-host"></div>
+      <p role="status"></p>
+      <details>
+        <summary>Selected template JSON</summary>
+        <pre id="template-json" style="overflow: auto"></pre>
+      </details>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

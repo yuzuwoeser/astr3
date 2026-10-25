@@ -4,6 +4,11 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add versioned JSON appearance templates for natal and transit charts, synchronous
+  SSR-safe resolvers with field-path errors and independent option copies, and the
+  packaged `astr3/chart-template.schema.json` schema. Add homepage comparisons,
+  a runnable template example with JSON downloads, and browser/PHP loading guidance.
+
 - Fix GitHub Pages builds on Linux when dependencies ship lowercase license
   filenames, preserving their actual casing when collecting notices.
 

@@ -10,6 +10,7 @@ test('landing, gallery, and integration navigation work without loading framewor
 }) => {
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Charts that belong');
+  await expect(page.locator('[data-template-preview] .astr3')).toHaveCount(2);
   await expect(page.locator('iframe')).toHaveCount(0);
   expect(assetRequests.some((path) => path.includes('/previews/'))).toBe(false);
   await page.getByRole('navigation').getByRole('link', { name: 'Examples', exact: true }).click();

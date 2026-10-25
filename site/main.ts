@@ -1,5 +1,10 @@
 import './style.css';
 
+if (document.querySelector('[data-template-showcase]'))
+  void import('./template-previews.js').then(({ startTemplatePreviews }) =>
+    startTemplatePreviews(),
+  );
+
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preview]')) {
   button.addEventListener(
     'click',
