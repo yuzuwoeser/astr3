@@ -156,7 +156,7 @@ describe('outlined chart exports', () => {
     const hidden = drawing(input);
     expect(
       hidden.labels.find((label) => label.body && label.selection?.id === 'sun')?.caption,
-    ).toBe(' ℞');
+    ).toBe(`5° ${SIGN_GLYPHS[0]} 00′ ℞`);
     expect(hidden.labels.filter((label) => label.className === 'astr3-cusp')).toHaveLength(0);
   });
 
@@ -215,6 +215,68 @@ describe('outlined chart exports', () => {
     input.model = createModel({ bodies: input.model.bodies });
     expect(drawing(input).labels.some((label) => label.selection?.kind === 'house')).toBe(false);
   });
+
+  it.each([280, 480, 800, 1600])(
+    'retains advanced position captions at %s pixels with the degree scale hidden',
+    (size) => {
+      const input = snapshot('advanced');
+      input.visible.degrees = false;
+      input.view = {
+        ...input.view,
+        width: size,
+        height: size,
+        pixelsPerUnit: size / (2 * input.geometry.extent),
+      };
+      input.outputWidth = input.outputHeight = size;
+      const result = drawing(input);
+      const bodies = result.labels.filter((label) => label.body);
+      if (size >= 480) expect(bodies).toHaveLength(3);
+      for (const label of bodies) {
+        const body = input.model.bodies.find((body) => body.id === label.selection!.id)!;
+        expect(label.caption).toBe(
+          `${formatGlyphPosition(body.longitude)}${body.retrograde ? ' ℞' : ''}`,
+        );
+        expect(label.compact).toBe(false);
+        expect(label.captionSize).toBeGreaterThanOrEqual(9);
+      }
+      expect(
+        result.targets.filter(
+          (target) => target.selection.kind === 'body' && target.shape === 'circle',
+        ),
+      ).toHaveLength(6);
+      expect(() => renderSvg(input)).not.toThrow();
+    },
+  );
+
+  it.each(['default', 'alternative', 'advanced'] as const)(
+    'uses no advanced body leaders, guide lines or ruler ticks (%s)',
+    (layout) => {
+      const input = snapshot(layout);
+      input.model = createModel({ bodies: input.model.bodies, aspects: [] });
+      input.visible = {
+        ...input.visible,
+        zodiac: false,
+        houses: false,
+        axes: false,
+        degrees: false,
+        groups: false,
+      };
+      for (const selected of [null, { kind: 'body' as const, id: 'sun' }]) {
+        input.selected = selected;
+        const result = drawing(input);
+        const lines = result.shapes.filter(
+          (shape) => shape.kind === 'stroke' && shape.points.length === 2,
+        );
+        if (layout === 'advanced') expect(lines).toHaveLength(0);
+        else expect(lines.length).toBeGreaterThan(0);
+        expect(
+          result.targets.filter(
+            (target) => target.selection.kind === 'body' && target.shape === 'circle',
+          ),
+        ).toHaveLength(6);
+      }
+    },
+  );
   it('retains crowding badges and meaningful unknown-house notices', () => {
     const input = snapshot();
     const data = {

@@ -61,8 +61,15 @@ for (const layout of ['alternative', 'advanced'] as const) {
       await expect(root).toHaveAttribute('data-layout', layout);
       await expect(root).toHaveCSS('background-color', 'rgb(16, 24, 39)');
       await expect(root.locator('canvas')).toHaveCount(1);
+      if (layout === 'advanced')
+        await page.evaluate((kind) => {
+          const chart = kind === 'natal' ? window.astr3 : window.astr3Transit!;
+          chart.zoomBy(1200 / Math.max(280, chart.element.getBoundingClientRect().width));
+        }, kind);
       await expect(root.locator('.astr3-body')).toHaveCount(kind === 'natal' ? 2 : 5);
-      await expect(root.locator('.astr3-body small')).toHaveCount(0);
+      await expect(root.locator('.astr3-body small')).toHaveCount(
+        layout === 'advanced' ? (kind === 'natal' ? 2 : 5) : 0,
+      );
       const side = kind === 'natal' ? '' : '[data-chart=transit]';
       await expect(root.locator(`.astr3-body${side}`).filter({ hasText: 'S' })).toHaveCount(1);
       await expect(root.locator('.astr3-access')).toHaveAttribute(

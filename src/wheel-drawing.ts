@@ -118,10 +118,11 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
   const { pixelsPerUnit } = view;
   const project = (point: Point) => projectWheel(point, view);
   const visualWeight = weightProfile(options.chartWeight);
+  const advanced = geometry.layout === 'advanced';
   const text = chartText(pixelsPerUnit);
-  // Advanced's position captions remain useful at a normal full-wheel size.
-  if (geometry.layout === 'advanced' && pixelsPerUnit >= 0.65)
-    text.caption = Math.max(9, text.caption);
+  if (advanced && pixelsPerUnit >= 0.65) text.caption = Math.max(9, text.caption);
+  // Advanced identifies displaced symbols by their positions, without leaders.
+  const bodyCaptionSize = advanced ? Math.max(9, text.caption) : text.caption;
   const textMetrics = { measure: input.measure };
   const layoutCache = input.cache ?? new Map<string, BodyLayout>();
   const shapes: WheelShape[] = [],
@@ -486,7 +487,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
       });
     }
   }
-  if (innerBands && visible.bodies && primary && primary.kind !== 'house') {
+  if (geometry.layout === 'alternative' && visible.bodies && primary && primary.kind !== 'house') {
     const guideIds = primary.kind === 'body' ? new Set([primary.id]) : activeBodies;
     for (const body of shownBodies) {
       if (!guideIds.has(body.id)) continue;
@@ -563,8 +564,14 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
       return { ...point, width: rect.width / pixelsPerUnit, height: rect.height / pixelsPerUnit };
     });
     const symbolScale = (body: Body) => (['AC', 'MC'].includes(glyph(body)) ? 0.72 : 1);
-    const caption = (body: Body) =>
-      `${visible.degrees ? (geometry.layout === 'advanced' ? formatGlyphPosition(body.longitude) : formatPosition(body.longitude).split(' ')[0]) : ''}${body.retrograde ? ' ℞' : ''}`;
+    const caption = (body: Body) => {
+      const position = advanced
+        ? formatGlyphPosition(body.longitude)
+        : visible.degrees
+          ? formatPosition(body.longitude).split(' ')[0]
+          : '';
+      return `${position}${body.retrograde ? ' ℞' : ''}`;
+    };
     const measureBody = (body: Body, size: number, compact: boolean) => {
       const measured = textMetrics.measure({
         text: glyph(body),
@@ -572,7 +579,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         body: true,
         compact,
         caption: compact ? undefined : caption(body),
-        captionSize: text.caption,
+        captionSize: bodyCaptionSize,
       });
       return {
         width: measured.width + visualWeight.symbolStroke,
@@ -621,22 +628,24 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         return result;
       };
       // Prefer a closer transit band, retaining wider bounds for crowding.
-      // Hide captions before moving outward; shrink glyphs only after
-      // trying every bound at the current size.
+      // Advanced always retains position captions, shrinking or clustering
+      // instead. Other layouts hide captions before trying smaller glyphs.
       const bounds = band.bounds;
       const sizes = [text.glyph, ...[24, 18, 14].filter((size) => size < text.glyph)];
       for (const size of sizes) {
         for (const outer of bounds) {
-          if (size === text.glyph && text.caption) {
+          if ((advanced || size === text.glyph) && bodyCaptionSize) {
             const full = fit(size, false, outer);
             if (full.placements.length === bodies.length) return { layout: full, size };
           }
-          const layout = fit(size, true, outer);
-          if (layout.placements.length === bodies.length) return { layout, size };
+          if (!advanced) {
+            const layout = fit(size, true, outer);
+            if (layout.placements.length === bodies.length) return { layout, size };
+          }
         }
       }
       const size = sizes.at(-1)!;
-      return { layout: fit(size, true, band.outer, true), size };
+      return { layout: fit(size, !advanced, band.outer, true), size };
     };
     const natal = placeBand(shownBodies.filter((body) => !isTransit(body.id)));
     const transit = placeBand(
@@ -707,7 +716,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
       element.compact = band.layout.compact;
       element.opacity = opacity(activeBodies.has(body.id));
       element.caption = !band.layout.compact ? caption(body) : undefined;
-      element.captionSize = text.caption;
+      element.captionSize = bodyCaptionSize;
       element.box = textMetrics.measure({
         text: element.text,
         size: element.size,
@@ -726,7 +735,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
       const color = active ? accent : isTransit(body.id) ? transitColor : colors.foreground,
         alpha = opacity(active);
       const selection: Selection = { kind: 'body', id: body.id };
-      if (placement) {
+      if (placement && !advanced) {
         const dx = marker.x - placement.label.x,
           dy = marker.y - placement.label.y;
         const factor = Math.min(
@@ -741,19 +750,20 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
           alpha * 0.7,
         );
       }
-      stroke(
-        [
-          polar(
-            body.longitude,
-            !innerBands && isTransit(body.id) ? markerRadius : markerRadius - 3,
-            asc,
-          ),
-          polar(body.longitude, markerRadius + 4, asc),
-        ],
-        active ? accent : colors.foreground,
-        active ? 2 : 1.5,
-        alpha,
-      );
+      if (!advanced)
+        stroke(
+          [
+            polar(
+              body.longitude,
+              !innerBands && isTransit(body.id) ? markerRadius : markerRadius - 3,
+              asc,
+            ),
+            polar(body.longitude, markerRadius + 4, asc),
+          ],
+          active ? accent : colors.foreground,
+          active ? 2 : 1.5,
+          alpha,
+        );
       circle(2.3 / pixelsPerUnit, color, alpha, marker, 1.5);
       targets.push({
         selection,

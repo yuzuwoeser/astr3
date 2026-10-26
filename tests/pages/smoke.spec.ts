@@ -92,9 +92,15 @@ for (const layout of ['default', 'alternative', 'advanced'] as const) {
     await ready(page);
     await page.locator('#chart-layout').selectOption(layout);
     await expect(page.locator('#chart .astr3')).toHaveAttribute('data-layout', layout);
-    const sun = await labelPoint(page, '#chart .astr3-body[data-object="body:sun"]');
-    if (isMobile) await page.touchscreen.tap(sun.x, sun.y);
-    else await page.mouse.click(sun.x, sun.y);
+    if (layout === 'advanced') {
+      // Full position captions may group bodies on small professional wheels.
+      await page.locator('#chart .astr3-access summary').click();
+      await page.locator('#chart button[data-selection="body:sun"]').click();
+    } else {
+      const sun = await labelPoint(page, '#chart .astr3-body[data-object="body:sun"]');
+      if (isMobile) await page.touchscreen.tap(sun.x, sun.y);
+      else await page.mouse.click(sun.x, sun.y);
+    }
     await expect(page.locator('#inspector-heading')).toHaveText('Sun');
 
     const scriptsBefore = new Set(assetRequests.filter((path) => path.endsWith('.js'))).size;

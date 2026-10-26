@@ -421,16 +421,20 @@ numbers, or cusp captions, and hiding houses leaves the aspect circle intact.
 
 Advanced labels are upright: a planet glyph above a degree/sign-glyph/minute
 caption, followed by ℞ for retrograde motion. Positions round to the nearest
-minute with carry into the next sign. Exact natal cusp positions appear outside
-the zodiac when space permits. Axis captions take priority; colliding cusp
+minute with carry into the next sign. Every displayed body symbol retains this
+caption at every zoom level, including when the `degrees` layer is off. Body
+connector lines and active radial guides are omitted; exact position dots
+and central aspect anchors remain selectable. Exact natal cusp positions appear
+outside the zodiac when space permits. Axis captions take priority; colliding cusp
 captions are omitted in house-number order without moving their longitudes.
 House numbers that cannot fit their actual sectors are also omitted. Exact
 positions remain available in selection details and the accessible object list.
-The `degrees` layer controls position captions; the `houses` layer also controls
-cusp captions. Retrograde indicators retain their existing behavior. Small or
-crowded views may omit captions or cluster planets using the same bounded packing
-as other layouts. Advanced uses the current theme and chart weight and is shared
-by browser rendering, SVG/PNG export, and JSON templates.
+In Advanced, the `degrees` layer controls the rulers and outer cusp captions;
+the `houses` layer also controls cusp captions. Small or crowded views shrink
+glyphs or cluster planets while preserving complete position captions on each
+displayed symbol. Bodies that cannot fit remain selectable through exact dots
+and the accessible object list. Advanced uses the current theme and chart weight
+and is shared by browser rendering, SVG/PNG export, and JSON templates.
 
 ```ts
 import type { ChartLayout } from '@yuzuwoeser/astr3';
@@ -458,12 +462,15 @@ for the rendering algorithm.
 Anchor dots select the same body and expose the same hover/selection details as its symbol. They share relationship highlighting, dimming, theme colors, and chart weight, with a 6 CSS pixel picking radius for mouse and 12 for touch. Overlapping dots open the object chooser. The `bodies` layer controls the dots alongside symbols and outer markers; dots remain at the same radius when houses are hidden or unknown and when aspects are hidden.
 
 Labels stay within their source band and within 30° of their true longitude.
-Crowded views omit secondary captions, reduce glyph size, then use count badges
+In the default and alternative layouts, crowded views omit secondary captions,
+reduce glyph size, then use count badges
 that open a chooser of original bodies. Enter/Space opens a focused badge;
 Escape closes the chooser and returns focus. Zooming or resizing can expand
 badges into individual symbols. Exact dots and accessible entries remain
 selectable even when no label fits. Hidden position and retrograde captions
 remain available in selection/hover details and **Explore chart objects**.
+Advanced retains full position captions on every individual symbol, shrinking
+glyphs or using the same badges/dots/list instead of dropping captions.
 See [label placement and typography](architecture.md#label-placement-and-typography)
 for solver details and size thresholds.
 

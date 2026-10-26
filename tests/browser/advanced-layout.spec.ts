@@ -56,7 +56,7 @@ async function ready(page: Page, transit: boolean) {
   );
   const root = page.locator(transit ? '#transit-chart .astr3' : '#chart .astr3');
   await expect(root).toHaveAttribute('data-layout', 'advanced');
-  await expect(root.locator('.astr3-body')).toHaveCount(transit ? 6 : 3);
+  await expect(root.locator('.astr3-access button[data-kind=body]')).toHaveCount(transit ? 6 : 3);
   return root;
 }
 
@@ -178,7 +178,7 @@ for (const transit of [false, true]) {
       transit,
     );
     await expect(root.locator('.astr3-cusp')).toHaveCount(0);
-    await expect(sun.locator('small')).toHaveText('℞');
+    await expect(sun.locator('small')).toHaveText(/5°.*♈.*30′.*℞/);
     await page.evaluate(
       ({ transit, data }) => {
         const unknown: ChartInput = {

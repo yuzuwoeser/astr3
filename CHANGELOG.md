@@ -8,6 +8,8 @@ User-visible changes are recorded here. The API is experimental until 1.0.
   ring, house-cusp spokes, inner house numbers, a small central aspect circle,
   detailed planet positions, and outer cusp captions when space permits.
   Support existing themes, JSON templates, and SVG/PNG exports.
+  Keep full positions on every displayed Advanced symbol at all zoom levels,
+  including with the degree scale hidden, and omit body connector lines.
 
 - Lead the website and README with a real interactive chart, selection-driven
   application content, and first-chart links. Add a focused natal/transit demo,

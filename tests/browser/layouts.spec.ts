@@ -456,6 +456,22 @@ for (const layout of ['alternative', 'advanced'] as const) {
               { transit, zoom },
             );
             await expect.poll(() => bandViolations(page, transit, zoom, layout)).toEqual([]);
+            if (layout === 'advanced') {
+              await expect(page.locator(`${host} .astr3-body[data-compact=true]`)).toHaveCount(0);
+              await expect
+                .poll(() =>
+                  page
+                    .locator(`${host} .astr3-body`)
+                    .evaluateAll((elements) =>
+                      elements.every((element) =>
+                        /\d+°.*[♈-♓].*\d{2}′/.test(
+                          element.querySelector('small')?.textContent ?? '',
+                        ),
+                      ),
+                    ),
+                )
+                .toBe(true);
+            }
             await expect(page.locator(`${host} .astr3-access button[data-kind=body]`)).toHaveCount(
               transit ? 24 : 12,
             );

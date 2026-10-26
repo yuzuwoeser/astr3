@@ -260,10 +260,9 @@ export function layoutBodies(
     return { placements: [], clusters: [], compact };
   }
   if (mode === 'compact') return fit(true, !!measureCluster);
+  if (mode === 'full') return fit(false, !!measureCluster);
   const full = fit(false);
-  return mode === 'full' || full.placements.length === bodies.length
-    ? full
-    : fit(true, !!measureCluster);
+  return full.placements.length === bodies.length ? full : fit(true, !!measureCluster);
 }
 
 export function distanceToSegment(point: Point, a: Point, b: Point): number {

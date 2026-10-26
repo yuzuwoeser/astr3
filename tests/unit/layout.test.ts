@@ -214,6 +214,43 @@ it('omits unplaceable labels instead of using the house disk or unbounded outer 
   expect(layoutBodies(model.bodies, 0, 0.05).placements).toEqual([]);
 });
 
+it('clusters full labels without measuring or returning compact glyphs', () => {
+  const model = createModel({
+    bodies: [
+      ...Array.from({ length: 12 }, (_, i) => ({
+        id: `p${i}`,
+        name: `Point ${i}`,
+        longitude: i / 10,
+      })),
+      { id: 'isolated', name: 'Isolated point', longitude: 180 },
+    ],
+  });
+  const measuredModes: boolean[] = [];
+  const layout = layoutBodies(
+    model.bodies,
+    0,
+    1.2,
+    (_body, compact) => {
+      measuredModes.push(compact);
+      return { width: 56, height: 38 };
+    },
+    [],
+    undefined,
+    'full',
+    () => ({ width: 24, height: 24 }),
+  );
+  expect(measuredModes.length).toBeGreaterThan(0);
+  expect(measuredModes.every((compact) => !compact)).toBe(true);
+  expect(layout.compact).toBe(false);
+  expect(layout.clusters.length).toBeGreaterThan(0);
+  expect(layout.placements.some((body) => body.id === 'isolated')).toBe(true);
+  expect(
+    layout.placements.length +
+      layout.clusters.reduce((n, cluster) => n + cluster.bodyIds.length, 0),
+  ).toBe(model.bodies.length);
+  expectWithinBand([...layout.placements, ...layout.clusters], 1.2);
+});
+
 it('balances circular displacement, preserves row order, and handles the zodiac seam', () => {
   const items = Array.from({ length: 6 }, (_, i) => ({
     id: `p${i}`,

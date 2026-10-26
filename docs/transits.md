@@ -163,6 +163,9 @@ bands and a shared inner aspect circle. Advanced puts both symbol bands inside
 the zodiac with natal house spokes across them, detailed position captions, and
 a small shared aspect circle. Natal anchors are filled circles and
 transit anchors outlined diamonds; text and list headings also identify sources.
+Advanced omits body leader lines and active radial guides, retaining full
+degree/sign/minute captions on every displayed symbol even with the degree
+scale hidden. Crowded bodies use clusters or exact dots and accessible entries.
 Coincident anchors open a chooser. Houses/axes come solely from natal data;
 unknown time does not fabricate them.
 

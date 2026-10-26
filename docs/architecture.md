@@ -71,14 +71,16 @@ central aspect disk, and annular house picking that excludes that disk. Its
 upright planet captions include zodiac sign glyphs, and measured outer cusp
 captions yield to axis captions and earlier house numbers when they collide.
 The shared drawing pipeline applies these choices to HTML labels and SVG/PNG
-exports. At effective scales of at least 0.65, Advanced attempts full position
-captions; smaller or crowded views retain the existing compact/cluster fallback.
+exports. Advanced keeps body position captions at every effective scale, with a
+9px minimum. It shrinks glyphs or clusters bodies without dropping their
+captions, even when the degree scale is hidden. It draws no body leaders or
+active radial guides; exact dots and aspect anchors remain selectable.
 
 Each source's exact longitude markers and central aspect anchors remain fixed
 when labels move. Default transit labels prefer a band close to the zodiac,
 omitting captions before using the wider available band. Alternative sources
 use equal-width symbol bands and separate inner-facing rulers. Active bodies
-and aspect/group members gain faint dashed guides to their inner anchors;
+and aspect/group members in the alternative layout gain faint dashed guides to their inner anchors;
 these guides add no picking targets.
 
 Per-body visibility excludes hidden bodies from packing, exact markers,
@@ -100,11 +102,14 @@ chooser. Original bodies, markers, selection IDs, and accessible entries remain.
 
 Default planet labels stay between the house circle and outer degree ticks;
 alternative labels stay within their source band. Both keep 4 CSS pixels of
-clearance. The solver preserves zodiac order within each row. Indicator lines
-terminate at label edges; exact longitude markers and aspect anchors never move.
+clearance. Advanced also uses bounded source bands. The solver preserves zodiac
+order within each row. Default/alternative indicator lines terminate at label
+edges; exact longitude markers and aspect anchors never move.
 These rules also apply when houses are unknown or hidden.
 
 Wheel text uses four size tiers based on effective scale (CSS pixels per wheel unit, including viewport size and camera zoom):
+
+Advanced body captions override the table with a 9px minimum at every tier.
 
 | Effective scale |                                  Body/zodiac glyphs | House numbers / axis captions | Scale numbers | Body degree/retrograde captions |
 | --------------- | --------------------------------------------------: | ----------------------------: | ------------: | ------------------------------: |
@@ -115,7 +120,7 @@ Wheel text uses four size tiers based on effective scale (CSS pixels per wheel u
 
 AC/MC body glyphs retain their 0.72 optical scaling. Controls, detail panels, object-list text, marker sizes, and picking tolerances keep their normal screen sizes. Chart weight can affect available space through measured glyph dimensions.
 
-Each natal/transit band first checks whether its full captions fit at the selected glyph size. If they do not, it omits the captions before trying smaller glyph presets (24, 18, then 14px as applicable). This retains readable symbols instead of shrinking them to accommodate secondary text. Below the smallest tier, glyphs shrink proportionally with zoom to the 10px floor. Hidden positions and retrograde status remain available through selection/hover details and **Explore chart objects**.
+Each default/alternative natal/transit band first checks whether its full captions fit at the selected glyph size. If they do not, it omits the captions before trying smaller glyph presets (24, 18, then 14px as applicable). Advanced instead keeps complete captions while trying smaller glyphs, then clusters bodies without a compact-symbol fallback. Below the smallest tier, glyphs shrink proportionally with zoom to the 10px floor. Positions and retrograde status remain available through selection/hover details and **Explore chart objects** when a body has no individual label.
 
 When symbols still cannot fit locally, count badges represent crowded neighborhoods. Each badge stays within 30° of all its members. Click/tap or press Enter/Space to open a chooser and select an original body; Escape closes the chooser and returns focus to the badge. A badge highlights when it contains an active body. Badges introduce no model object or selection type. Zooming/resizing expands them into individual symbols when space permits. If even a badge cannot fit, exact dots and accessible entries remain available.
 
