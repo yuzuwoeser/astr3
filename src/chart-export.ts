@@ -39,12 +39,16 @@ function textPaths(
   color: string,
   weight: ChartWeight | undefined,
   symbol = false,
+  rotation?: number,
 ): string {
   const run = exportRun(text, size);
   const stroke = exportTextStroke(weight, symbol);
-  const left = x - run.width / 2 - run.left;
-  const baseline = y - (run.top + run.bottom) / 2;
-  return `<g fill="${exportColor(color)}"${stroke ? ` stroke="${exportColor(color)}" stroke-width="${number(stroke)}" stroke-linejoin="round" paint-order="stroke fill"` : ''}>${run.paths
+  // Center individual upright characters on their ink, including raised °/′.
+  const left =
+    rotation === undefined ? x - run.width / 2 - run.left : x - (run.ink.left + run.ink.right) / 2;
+  const baseline =
+    y - (rotation === undefined ? run.top + run.bottom : run.ink.top + run.ink.bottom) / 2;
+  return `<g fill="${exportColor(color)}"${rotation !== undefined ? ` transform="rotate(${number(rotation)} ${number(x)} ${number(y)})"` : ''}${stroke ? ` stroke="${exportColor(color)}" stroke-width="${number(stroke)}" stroke-linejoin="round" paint-order="stroke fill"` : ''}>${run.paths
     .map(
       (glyph) =>
         `<path transform="translate(${number(left + glyph.x)} ${number(baseline)}) scale(${number(size / 1000)})"${stroke ? ` stroke-width="${number((stroke * 1000) / size)}"` : ''} d="${glyph.path}"/>`,
@@ -62,35 +66,37 @@ function labelSvg(label: WheelLabel, snapshot: ExportSnapshot): string {
       result += `<rect x="${number(x - box.width / 2 - 2)}" y="${number(y - box.height / 2 - 2)}" width="${number(box.width + 4)}" height="${number(box.height + 4)}" rx="9" fill="${exportColor(accent)}" opacity="0.18"/>`;
     result += `<rect x="${number(x - box.width / 2)}" y="${number(y - box.height / 2)}" width="${number(box.width)}" height="${number(box.height)}" rx="7" fill="${exportColor(snapshot.colors.background)}"${label.active ? ` stroke="${exportColor(accent)}"` : ''}/>`;
   }
-  const inline = label.radial && !!label.caption;
+  if (label.radialText) {
+    for (const run of label.radialText.runs) {
+      result += `<g fill="${exportColor(color)}">`;
+      for (const character of run.characters)
+        result += textPaths(
+          character.text,
+          run.size,
+          x + run.x + character.x,
+          y,
+          color,
+          weight,
+          !run.caption,
+          -label.rotation!,
+        );
+      result += '</g>';
+    }
+    return result + '</g>';
+  }
   const captionSize = label.captionSize ?? 10;
-  const symbolWidth = inline
-    ? exportRun(label.text, size).width + exportTextStroke(weight, true)
-    : 0;
-  const captionWidth = inline
-    ? exportRun(label.caption!, captionSize).width +
-      Math.max(0, [...label.caption!].length - 1) * captionSize * 0.01 +
-      exportTextStroke(weight, false)
-    : 0;
-  const captionHeight = label.caption && !inline ? captionSize * 1.15 + 2 : 0;
+  const captionHeight = label.caption ? captionSize * 1.15 + 2 : 0;
   result += textPaths(
     label.text,
     size,
-    inline ? x - (captionWidth + 4) / 2 : x,
+    x,
     y - captionHeight / 2,
     color,
     weight,
     body || label.className === 'astr3-symbol',
   );
   if (label.caption)
-    result += textPaths(
-      label.caption,
-      captionSize,
-      inline ? x + (symbolWidth + 4) / 2 : x,
-      inline ? y : y + (size * 1.15) / 2 + 1,
-      color,
-      weight,
-    );
+    result += textPaths(label.caption, captionSize, x, y + (size * 1.15) / 2 + 1, color, weight);
   return result + '</g>';
 }
 export function renderSvg(snapshot: ExportSnapshot): string {

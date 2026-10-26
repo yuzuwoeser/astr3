@@ -1,4 +1,5 @@
 import { EXPORT_GLYPHS } from './export-font-data.js';
+import { layoutRadialText } from './chart-text.js';
 import type { TextSize, TextSpec } from './chart-text.js';
 import type { ChartWeight } from './types.js';
 import { weightProfile } from './wheel-drawing.js';
@@ -26,6 +27,7 @@ export function exportRun(text: string, size: number) {
     right = 0,
     top = 0,
     bottom = 0;
+  const ink = { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity };
   const paths: { x: number; path: string }[] = [];
   for (const character of characters(text)) {
     const [width, x1, y1, x2, y2, path] = EXPORT_GLYPHS[character]!;
@@ -35,6 +37,10 @@ export function exportRun(text: string, size: number) {
       right = Math.max(right, advance + x2);
       top = Math.min(top, y1);
       bottom = Math.max(bottom, y2);
+      ink.left = Math.min(ink.left, advance + x1);
+      ink.right = Math.max(ink.right, advance + x2);
+      ink.top = Math.min(ink.top, y1);
+      ink.bottom = Math.max(ink.bottom, y2);
     }
     advance += width;
   }
@@ -45,6 +51,12 @@ export function exportRun(text: string, size: number) {
     width: ((Math.max(advance, right) - left) * size) / 1000,
     top: (top * size) / 1000,
     bottom: (bottom * size) / 1000,
+    ink: {
+      left: paths.length ? (ink.left * size) / 1000 : 0,
+      right: paths.length ? (ink.right * size) / 1000 : 0,
+      top: paths.length ? (ink.top * size) / 1000 : 0,
+      bottom: paths.length ? (ink.bottom * size) / 1000 : 0,
+    },
   };
 }
 export function exportTextStroke(weight: ChartWeight | undefined, symbol: boolean): number {
@@ -55,7 +67,7 @@ export function exportTextStroke(weight: ChartWeight | undefined, symbol: boolea
 }
 export function createExportMeasurer(weight: ChartWeight | undefined, innerBands: boolean) {
   const cache = new Map<string, TextSize>();
-  return (spec: TextSpec): TextSize => {
+  const measure = (spec: TextSpec): TextSize => {
     const key = JSON.stringify([
       spec.text,
       spec.size,
@@ -65,13 +77,20 @@ export function createExportMeasurer(weight: ChartWeight | undefined, innerBands
       spec.body,
       spec.compact,
       spec.radial,
+      spec.rotation,
     ]);
     const cached = cache.get(key);
     if (cached) return cached;
+    if (spec.radial) {
+      const result = layoutRadialText(spec, measure);
+      cache.set(key, result);
+      return result;
+    }
     const symbol = !!spec.body || spec.className === 'astr3-symbol';
     const run = exportRun(spec.text, spec.size);
     const stroke = exportTextStroke(weight, symbol);
     let width = run.width + stroke;
+    if (spec.className === 'astr3-caption') width += [...spec.text].length * spec.size * 0.01;
     let height = Math.max(spec.size * 1.15, run.bottom - run.top + stroke);
     if (spec.caption) {
       const captionSize = spec.captionSize ?? 10;
@@ -81,13 +100,8 @@ export function createExportMeasurer(weight: ChartWeight | undefined, innerBands
         Math.max(0, [...spec.caption].length - 1) * captionSize * 0.01 +
         exportTextStroke(weight, false);
       const captionHeight = Math.max(captionSize * 1.15, caption.bottom - caption.top);
-      if (spec.radial) {
-        width += 4 + captionWidth;
-        height = Math.max(height, captionHeight);
-      } else {
-        width = Math.max(width, captionWidth);
-        height += 2 + captionHeight;
-      }
+      width = Math.max(width, captionWidth);
+      height += 2 + captionHeight;
     }
     if (spec.body) {
       const tight = innerBands && spec.compact;
@@ -98,4 +112,5 @@ export function createExportMeasurer(weight: ChartWeight | undefined, innerBands
     cache.set(key, result);
     return result;
   };
+  return measure;
 }

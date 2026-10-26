@@ -10,7 +10,7 @@ import { validateExportDimensions } from '../../src/export-options.js';
 import { resolveWheelGeometry } from '../../src/wheel-geometry.js';
 import { boxesOverlap, polar } from '../../src/layout.js';
 import type { ChartLayout } from '../../src/types.js';
-import { formatGlyphPosition } from '../../src/chart-text.js';
+import { formatGlyphPosition, layoutRadialText } from '../../src/chart-text.js';
 
 function snapshot(layout: ChartLayout = 'default'): ExportSnapshot {
   const data = {
@@ -213,10 +213,42 @@ describe('outlined chart exports', () => {
     expect(
       result.labels.filter((label) => !label.body).every((label) => label.rotation === undefined),
     ).toBe(true);
-    expect(renderSvg(input).match(/transform="rotate\(/g)).toHaveLength(ids.length);
+    expect(renderSvg(input).match(/<g opacity="[^"]+" transform="rotate\(/g)).toHaveLength(
+      ids.length,
+    );
     for (const layout of ['default', 'alternative'] as const) {
       const unchanged = drawing(snapshot(layout)).labels.filter((label) => label.body);
       expect(unchanged.every((label) => !label.radial && label.rotation === undefined)).toBe(true);
+    }
+  });
+
+  it('spaces upright graphemes without collisions at every radial direction', () => {
+    const spec = { text: 'AC', size: 24, caption: '12° ♈︎ 34′ ℞', captionSize: 10 };
+    const measure = ({ size }: { size: number }) => ({ width: size * 0.6, height: size * 1.15 });
+    const reserve = layoutRadialText(spec, measure);
+    for (const rotation of [0, 30, 45, 60, 90, 135, 180, 225, 270, 315]) {
+      const row = layoutRadialText({ ...spec, rotation }, measure);
+      expect(row.width).toBeLessThanOrEqual(reserve.width + 1e-8);
+      expect(row.height).toBeLessThanOrEqual(reserve.height + 1e-8);
+      const angle = (rotation * Math.PI) / 180;
+      const cosine = Math.abs(Math.cos(angle)),
+        sine = Math.abs(Math.sin(angle));
+      let previousEnd = -Infinity;
+      for (const run of row.runs) {
+        expect(run.characters.map((character) => character.text).join('')).toBe(run.text);
+        const size = measure(run);
+        const along = size.width * cosine + size.height * sine;
+        const across = size.width * sine + size.height * cosine;
+        expect(across).toBeLessThanOrEqual(row.height - 6 + 1e-8);
+        for (const character of run.characters) {
+          const center = run.x + character.x;
+          expect(center - along / 2).toBeGreaterThanOrEqual(previousEnd - 1e-8);
+          expect(center - along / 2).toBeGreaterThanOrEqual(-row.width / 2 + 4 - 1e-8);
+          expect(center + along / 2).toBeLessThanOrEqual(row.width / 2 - 4 + 1e-8);
+          previousEnd = center + along / 2;
+        }
+      }
+      expect(row.runs[1]!.characters.some((character) => character.text === '♈︎')).toBe(true);
     }
   });
 
@@ -290,7 +322,14 @@ describe('outlined chart exports', () => {
       input.outputWidth = input.outputHeight = size;
       const result = drawing(input);
       const bodies = result.labels.filter((label) => label.body);
-      if (size >= 480) expect(bodies).toHaveLength(3);
+      if (size >= 800) expect(bodies).toHaveLength(3);
+      // Upright characters need more room along steep hands at small sizes.
+      expect(
+        [
+          ...bodies.map((label) => label.selection!.id),
+          ...result.badges.flatMap((badge) => badge.bodyIds),
+        ].sort(),
+      ).toEqual(input.model.bodies.map((body) => body.id).sort());
       for (const label of bodies) {
         const body = input.model.bodies.find((body) => body.id === label.selection!.id)!;
         expect(label.caption).toBe(

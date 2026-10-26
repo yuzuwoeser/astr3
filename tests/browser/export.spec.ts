@@ -284,12 +284,13 @@ test('demo downloads both formats and reports export errors', async ({ page }) =
 for (const layout of ['default', 'alternative', 'advanced'] as const) {
   test(`large SVG download retains or restores crowded natal/transit captions in ${layout} layout`, async ({
     page,
-  }) => {
+  }, info) => {
     await ready(page);
     await page.locator('#chart-layout').selectOption(layout);
     const data = {
       title: 'Synthetic crowded export study',
-      bodies: Array.from({ length: 6 }, (_, i) => ({
+      // Upright Advanced characters occupy more angular space than rotated text.
+      bodies: Array.from({ length: layout === 'advanced' ? 4 : 6 }, (_, i) => ({
         id: `point-${i}`,
         name: `Point ${i}`,
         longitude: (359 + i / 10) % 360,
@@ -316,6 +317,7 @@ for (const layout of ['default', 'alternative', 'advanced'] as const) {
       const file = await download;
       expect(file.suggestedFilename()).toBe(`astr3-${mode}-large.svg`);
       const svg = await readFile((await file.path())!, 'utf8');
+      if (layout === 'advanced') await writeFile(info.outputPath(`${mode}-large.svg`), svg);
       const result = await page.evaluate(
         ({ standard, svg }) => {
           function inspect(source: string) {
@@ -341,7 +343,9 @@ for (const layout of ['default', 'alternative', 'advanced'] as const) {
       expect(result.large.height).toBe('1600');
       // The smaller large preset restores at least one band's full captions;
       // tightly crowded transit bands can still compact independently.
-      expect(result.large.captions).toBeGreaterThanOrEqual(data.bodies.length);
+      expect(result.large.captions, `${layout} ${mode} captions`).toBeGreaterThanOrEqual(
+        data.bodies.length,
+      );
       // Advanced's expanded natal band can already fit every caption at 800px.
       if (layout === 'advanced')
         expect(result.large.captions).toBeGreaterThanOrEqual(result.standard.captions);

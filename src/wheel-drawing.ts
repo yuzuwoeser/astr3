@@ -21,8 +21,8 @@ import {
 import { housePolygon } from './wheel-geometry.js';
 import type { WheelGeometry } from './wheel-geometry.js';
 import type { BodyLayout, Box, Point } from './layout.js';
-import { chartText, formatGlyphPosition } from './chart-text.js';
-import type { TextSpec, TextSize } from './chart-text.js';
+import { chartText, formatGlyphPosition, layoutRadialText } from './chart-text.js';
+import type { RadialTextLayout, TextSpec, TextSize } from './chart-text.js';
 import type { HitTarget } from './picking.js';
 import type { AspectFamily, BodyReference, ChartSide } from './model/transits.js';
 
@@ -70,8 +70,7 @@ export type WheelShape =
   | { kind: 'fill'; points: readonly Point[]; color: string; opacity: number }
   | { kind: 'disc'; center: Point; radius: number; color: string; opacity: number };
 export interface WheelLabel extends TextSpec, Point {
-  /** Clockwise degrees in screen coordinates, around the label center. */
-  rotation?: number;
+  radialText?: RadialTextLayout;
   color: string;
   opacity: number;
   active: boolean;
@@ -574,15 +573,24 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
           : '';
       return `${position}${body.retrograde ? ' ℞' : ''}`;
     };
-    const measureBody = (body: Body, size: number, compact: boolean) => {
+    const rotationAt = (point: Point) => (Math.atan2(point.y, -point.x) * 180) / Math.PI;
+    const captionSizeAt = (size: number) =>
+      advanced ? Math.max(9, bodyCaptionSize * Math.min(1, size / text.glyph)) : bodyCaptionSize;
+    const measureBody = (
+      body: Body,
+      size: number,
+      compact: boolean,
+      rotation: number | null = rotationAt(polar(body.longitude, 1, asc)),
+    ) => {
       const measured = textMetrics.measure({
         text: glyph(body),
         size: size * symbolScale(body),
         body: true,
         compact,
         radial: advanced,
+        rotation: advanced ? (rotation ?? undefined) : undefined,
         caption: compact ? undefined : caption(body),
-        captionSize: bodyCaptionSize,
+        captionSize: captionSizeAt(size),
       });
       return {
         width: measured.width + visualWeight.symbolStroke,
@@ -601,7 +609,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         outer: number = band.outer,
         clusters = false,
       ) => {
-        const sizes = bodies.map((body) => measureBody(body, size, compact));
+        let sizes = bodies.map((body) => measureBody(body, size, compact));
         const key = JSON.stringify([
           bodies.map((body) => [body.id, body.longitude]),
           sizes,
@@ -616,16 +624,46 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         ]);
         const cached = layoutCache.get(key);
         if (cached) return cached;
-        const result = layoutBodies(
-          bodies,
-          asc,
-          pixelsPerUnit,
-          (body) => sizes[bodies.indexOf(body)]!,
-          reservedBoxes,
-          { ...band, outer },
-          compact ? 'compact' : 'full',
-          clusters ? measureCluster : undefined,
-        );
+        let result: BodyLayout;
+        // Upright characters take more radial space as a hand becomes vertical.
+        // Grow reservations after displacement for at most 16 trials, using
+        // angle-independent character bounds on the final trial.
+        for (let pass = 0; ; pass++) {
+          result = layoutBodies(
+            bodies,
+            asc,
+            pixelsPerUnit,
+            (body) => sizes[bodies.indexOf(body)]!,
+            reservedBoxes,
+            { ...band, outer },
+            compact ? 'compact' : 'full',
+            clusters ? measureCluster : undefined,
+          );
+          if (!advanced || pass === 15) break;
+          let grew = false;
+          for (const placement of result.placements) {
+            const index = bodies.findIndex((body) => body.id === placement.id);
+            const measured = measureBody(
+              bodies[index]!,
+              size,
+              compact,
+              rotationAt(placement.label),
+            );
+            const reserved = sizes[index]!;
+            if (
+              measured.width > reserved.width + 1e-6 ||
+              measured.height > reserved.height + 1e-6
+            ) {
+              sizes[index] = {
+                width: Math.max(reserved.width, measured.width),
+                height: Math.max(reserved.height, measured.height),
+              };
+              grew = true;
+            }
+          }
+          if (!grew) break;
+          if (pass === 14) sizes = bodies.map((body) => measureBody(body, size, compact, null));
+        }
         if (layoutCache.size >= 24) layoutCache.delete(layoutCache.keys().next().value!);
         layoutCache.set(key, result);
         return result;
@@ -720,21 +758,22 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
       element.compact = band.layout.compact;
       element.radial = advanced;
       // The symbol sits toward the rim, followed inward by its full position.
-      // Packing uses circumscribed discs, so its clearance survives rotation.
-      if (advanced)
-        element.rotation = (Math.atan2(placement.label.y, -placement.label.x) * 180) / Math.PI;
+      // Characters counter-rotate individually while the baseline stays radial.
+      if (advanced) element.rotation = rotationAt(placement.label);
       element.opacity = opacity(activeBodies.has(body.id));
       element.caption = !band.layout.compact ? caption(body) : undefined;
-      element.captionSize = bodyCaptionSize;
+      element.captionSize = captionSizeAt(band.size);
       element.box = textMetrics.measure({
         text: element.text,
         size: element.size,
         body: true,
         compact: element.compact,
         radial: element.radial,
+        rotation: element.rotation,
         caption: element.caption,
         captionSize: element.captionSize,
       });
+      if (advanced) element.radialText = layoutRadialText(element, textMetrics.measure);
       elements.set(body.id, element);
     }
     for (const body of shownBodies) {
@@ -789,8 +828,8 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
       element.y = screen.y;
       const box: Box = {
         ...screen,
-        width: placement.box.width * pixelsPerUnit,
-        height: placement.box.height * pixelsPerUnit,
+        width: advanced ? element.box.width : placement.box.width * pixelsPerUnit,
+        height: advanced ? element.box.height : placement.box.height * pixelsPerUnit,
       };
       targets.push({ selection, priority: 0, shape: 'box', box, rotation: element.rotation });
     }

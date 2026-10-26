@@ -36,6 +36,72 @@ export interface TextSpec {
   body?: boolean;
   compact?: boolean;
   radial?: boolean;
+  /** Clockwise screen angle; omitted radial measurements reserve any angle. */
+  rotation?: number;
+}
+
+export interface RadialTextRun extends TextSize {
+  text: string;
+  size: number;
+  caption: boolean;
+  x: number;
+  characters: { text: string; x: number }[];
+}
+export interface RadialTextLayout extends TextSize {
+  runs: RadialTextRun[];
+}
+const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+
+/** Space upright characters along a radial baseline without overlapping them. */
+export function layoutRadialText(
+  spec: TextSpec,
+  measure: (spec: TextSpec) => TextSize,
+): RadialTextLayout {
+  const angle = ((spec.rotation ?? 0) * Math.PI) / 180;
+  const cosine = Math.abs(Math.cos(angle)),
+    sine = Math.abs(Math.sin(angle));
+  const runs: RadialTextRun[] = [];
+  for (const [text, size, caption] of [
+    [spec.text, spec.size, false],
+    [spec.caption ?? '', spec.captionSize ?? 10, true],
+  ] as const) {
+    if (!text) continue;
+    let width = 0,
+      height = 0;
+    const characters = [...segmenter.segment(text)].map(({ segment }) => {
+      const measured = measure({
+        text: segment,
+        size,
+        className: caption ? 'astr3-caption' : 'astr3-symbol',
+      });
+      const along =
+        spec.rotation === undefined
+          ? Math.hypot(measured.width, measured.height)
+          : measured.width * cosine + measured.height * sine;
+      const across =
+        spec.rotation === undefined
+          ? Math.hypot(measured.width, measured.height)
+          : measured.width * sine + measured.height * cosine;
+      const character = { text: segment, x: width + along / 2 };
+      width += along;
+      height = Math.max(height, across);
+      return character;
+    });
+    for (const character of characters) character.x -= width / 2;
+    runs.push({ text, size, caption, x: 0, width, height, characters });
+  }
+  const contentWidth =
+    runs.reduce((width, run) => width + run.width, 0) + Math.max(0, runs.length - 1) * 4;
+  let offset = -contentWidth / 2;
+  for (const run of runs) {
+    run.x = offset + run.width / 2;
+    offset += run.width + 4;
+  }
+  return {
+    width: contentWidth + 8,
+    height: Math.max(0, ...runs.map((run) => run.height)) + 6,
+    runs,
+  };
 }
 
 /** Measures cache misses in an invisible probe, never in the live chart labels. */
@@ -48,7 +114,7 @@ export function createTextMeasurer(root: HTMLElement) {
   root.append(probe);
   const cache = new Map<string, TextSize>();
   let styleKey = '';
-  return {
+  const measurer = {
     reset() {
       cache.clear();
     },
@@ -64,6 +130,12 @@ export function createTextMeasurer(root: HTMLElement) {
       const key = JSON.stringify(spec);
       const cached = cache.get(key);
       if (cached) return cached;
+      if (spec.radial) {
+        const size = layoutRadialText(spec, (part) => measurer.measure(part));
+        if (cache.size >= 2048) cache.clear();
+        cache.set(key, size);
+        return size;
+      }
       const element = doc.createElement('span');
       element.className = `astr3-label ${spec.className ?? ''}${spec.body ? ' astr3-body' : ''}`;
       element.style.fontSize = `${spec.size}px`;
@@ -94,6 +166,7 @@ export function createTextMeasurer(root: HTMLElement) {
       probe.remove();
     },
   };
+  return measurer;
 }
 
 /** Round once, carrying minutes into the next sign just like formatPosition. */

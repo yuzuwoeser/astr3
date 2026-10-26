@@ -85,7 +85,7 @@ for (const transit of [false, true]) {
     page,
     isMobile,
   }, info) => {
-    await page.setViewportSize({ width: 1400, height: 1500 });
+    await page.setViewportSize({ width: 2600, height: 2700 });
     await ready(page, transit);
     await page.evaluate(
       async ({ transit, data }) => {
@@ -96,7 +96,7 @@ for (const transit of [false, true]) {
         const host = document.createElement('div');
         host.id = 'radial-fixture';
         host.style.cssText =
-          'position:absolute;left:0;top:0;width:1200px;z-index:100;background:#111c20';
+          'position:absolute;left:0;top:0;width:2400px;z-index:100;background:#111c20';
         document.body.append(host);
         const bodies = [
           ...data.bodies,
@@ -132,9 +132,41 @@ for (const transit of [false, true]) {
         const offset = Math.abs(x * radialY - y * radialX) / Math.hypot(radialX, radialY);
         const inward = x * radialX + y * radialY;
         const orientation = Math.abs(rotation.a * radialY - rotation.b * radialX);
+        let previousEnd = -Infinity;
+        const upright = [...element.querySelectorAll<HTMLElement>('.astr3-character')].every(
+          (character) => {
+            const counter = new DOMMatrixReadOnly(getComputedStyle(character).transform);
+            const net = rotation.multiply(counter);
+            const rect = character.getBoundingClientRect();
+            const x =
+              rect.x +
+              rect.width / 2 -
+              element.getBoundingClientRect().x -
+              element.getBoundingClientRect().width / 2;
+            const y =
+              rect.y +
+              rect.height / 2 -
+              element.getBoundingClientRect().y -
+              element.getBoundingClientRect().height / 2;
+            const offset = Math.abs(x * rotation.b - y * rotation.a);
+            const along = x * rotation.a + y * rotation.b;
+            const half =
+              (rect.width * Math.abs(rotation.a) + rect.height * Math.abs(rotation.b)) / 2;
+            const separate = along - half >= previousEnd - 0.1;
+            previousEnd = along + half;
+            return (
+              Math.abs(net.a - 1) < 1e-5 &&
+              Math.abs(net.b) < 1e-5 &&
+              Math.abs(net.c) < 1e-5 &&
+              Math.abs(net.d - 1) < 1e-5 &&
+              offset < 0.1 &&
+              separate
+            );
+          },
+        );
         // CSS layout quantizes label centers to fractions of a pixel.
-        return offset > 0.1 || inward >= 0 || orientation > 0.1
-          ? [{ id: element.dataset.object, offset, inward, orientation }]
+        return offset > 0.1 || inward >= 0 || orientation > 0.1 || !upright
+          ? [{ id: element.dataset.object, offset, inward, orientation, upright }]
           : [];
       });
     });
@@ -175,24 +207,47 @@ for (const transit of [false, true]) {
       .locator('.astr3-stage')
       .screenshot({ path: info.outputPath(`advanced-${mode}-radial.png`) });
     const exported = await page.evaluate(async (transit) => {
-      const svg = await (transit ? window.astr3Transit! : window.astr3).exportSvg({ size: 1200 });
+      const svg = await (transit ? window.astr3Transit! : window.astr3).exportSvg({ size: 2400 });
       const holder = document.createElement('div');
       holder.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden';
       holder.innerHTML = svg;
       document.body.append(holder);
       try {
-        const rows = [...holder.querySelectorAll<SVGGElement>('g[transform^="rotate("]')];
+        const rows = [...holder.querySelectorAll<SVGGElement>('g[opacity][transform^="rotate("]')];
+        const toWheel = holder.querySelector('svg')!.getCTM()!.inverse();
         return {
           count: rows.length,
           errors: rows.flatMap((row) => {
             const runs = [...row.querySelectorAll<SVGGElement>(':scope > g[fill]')];
             if (runs.length !== 2) return [{ count: runs.length, offset: 0, gap: 0 }];
-            const symbol = runs[0]!.getBBox(),
-              caption = runs[1]!.getBBox();
-            const offset = Math.abs(symbol.y + symbol.height / 2 - caption.y - caption.height / 2);
-            const gap = caption.x - symbol.x - symbol.width;
-            // Outlined font bounds are rounded separately from their paths.
-            return offset < 0.25 && gap > 0 ? [] : [{ count: runs.length, offset, gap }];
+            const baseline = row.transform.baseVal.consolidate()!.matrix;
+            const center = row.querySelector('rect')!;
+            const point = new DOMPoint(
+              center.x.baseVal.value + center.width.baseVal.value / 2,
+              center.y.baseVal.value + center.height.baseVal.value / 2,
+            ).matrixTransform(baseline);
+            const upright = runs.every((run) =>
+              [...run.querySelectorAll<SVGGElement>(':scope > g')].every((character) => {
+                if (!character.querySelector('path')) return true;
+                const matrix = toWheel.multiply(character.getCTM()!);
+                const box = character.getBBox();
+                const position = new DOMPoint(
+                  box.x + box.width / 2,
+                  box.y + box.height / 2,
+                ).matrixTransform(matrix);
+                const offset = Math.abs(
+                  (position.x - point.x) * baseline.b - (position.y - point.y) * baseline.a,
+                );
+                return (
+                  Math.abs(matrix.a - 1) < 1e-5 &&
+                  Math.abs(matrix.b) < 1e-5 &&
+                  Math.abs(matrix.c) < 1e-5 &&
+                  Math.abs(matrix.d - 1) < 1e-5 &&
+                  offset < 0.25
+                );
+              }),
+            );
+            return upright ? [] : [{ count: runs.length, offset: 1, gap: 0 }];
           }),
         };
       } finally {

@@ -422,6 +422,8 @@ numbers, or cusp captions, and hiding houses leaves the aspect circle intact.
 Advanced aligns each planet or point glyph and its degree/sign-glyph/minute
 caption in one radial line, perpendicular to the ring. The glyph sits toward
 the rim, with the caption extending inward and ℞ marking retrograde motion.
+Each individual character stays upright while its position follows the hand;
+spacing adjusts to keep upright characters apart on vertical and diagonal hands.
 Zodiac ring symbols remain upright. Displaced labels follow the radius at their
 packed position; exact longitudes stay unchanged. Positions round to the nearest
 minute with carry into the next sign. Every displayed body symbol retains this
@@ -434,7 +436,7 @@ House numbers that cannot fit their actual sectors are also omitted. Exact
 positions remain available in selection details and the accessible object list.
 In Advanced, the `degrees` layer controls the rulers and outer cusp captions;
 the `houses` layer also controls cusp captions. Small or crowded views shrink
-glyphs or cluster planets while preserving complete position captions on each
+text or cluster planets while preserving complete position captions on each
 displayed symbol. Bodies that cannot fit remain selectable through exact dots
 and the accessible object list. Advanced uses the current theme and chart weight
 and is shared by browser rendering, SVG/PNG export, and JSON templates.
