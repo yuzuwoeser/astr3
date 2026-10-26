@@ -68,13 +68,19 @@ polygon rather than a sector extending to the center. Layout never enters the
 headless model or provider request. Advanced keeps the zodiac outermost, with
 house spokes across its planet bands, house numbers immediately outside a small
 central aspect disk, and annular house picking that excludes that disk. Its
-upright planet captions include zodiac sign glyphs, and measured outer cusp
+radial planet captions include zodiac sign glyphs, and measured outer cusp
 captions yield to axis captions and earlier house numbers when they collide.
 The shared drawing pipeline applies these choices to HTML labels and SVG/PNG
 exports. Advanced keeps body position captions at every effective scale, with a
 9px minimum. It shrinks glyphs or clusters bodies without dropping their
 captions, even when the degree scale is hidden. It draws no body leaders or
 active radial guides; exact dots and aspect anchors remain selectable.
+Each planet or point glyph and caption share one line, with the glyph toward
+the rim. The line rotates around its center to follow its packed radius,
+perpendicular to the ring; zodiac ring symbols stay upright. The packing
+solver's circumscribed discs preserve clearance under rotation. HTML probes and
+export metrics measure the inline row; picking rotates pointer coordinates into
+that same row while retaining screen-pixel touch tolerance.
 
 Each source's exact longitude markers and central aspect anchors remain fixed
 when labels move. Default transit labels prefer a band close to the zodiac,

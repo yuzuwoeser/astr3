@@ -70,6 +70,8 @@ export type WheelShape =
   | { kind: 'fill'; points: readonly Point[]; color: string; opacity: number }
   | { kind: 'disc'; center: Point; radius: number; color: string; opacity: number };
 export interface WheelLabel extends TextSpec, Point {
+  /** Clockwise degrees in screen coordinates, around the label center. */
+  rotation?: number;
   color: string;
   opacity: number;
   active: boolean;
@@ -578,6 +580,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         size: size * symbolScale(body),
         body: true,
         compact,
+        radial: advanced,
         caption: compact ? undefined : caption(body),
         captionSize: bodyCaptionSize,
       });
@@ -710,10 +713,16 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         element.dataset.bodyId = ref.id;
       }
       element.dataset.compact = String(band.layout.compact);
+      element.dataset.radial = String(advanced);
       element.dataset.dim = String(opacity(activeBodies.has(body.id)) < 1);
       element.text = glyph(body);
       element.body = true;
       element.compact = band.layout.compact;
+      element.radial = advanced;
+      // The symbol sits toward the rim, followed inward by its full position.
+      // Packing uses circumscribed discs, so its clearance survives rotation.
+      if (advanced)
+        element.rotation = (Math.atan2(placement.label.y, -placement.label.x) * 180) / Math.PI;
       element.opacity = opacity(activeBodies.has(body.id));
       element.caption = !band.layout.compact ? caption(body) : undefined;
       element.captionSize = bodyCaptionSize;
@@ -722,6 +731,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         size: element.size,
         body: true,
         compact: element.compact,
+        radial: element.radial,
         caption: element.caption,
         captionSize: element.captionSize,
       });
@@ -782,7 +792,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         width: placement.box.width * pixelsPerUnit,
         height: placement.box.height * pixelsPerUnit,
       };
-      targets.push({ selection, priority: 0, shape: 'box', box });
+      targets.push({ selection, priority: 0, shape: 'box', box, rotation: element.rotation });
     }
     // Draw every planet's anchor above the aspect network and leader lines.
     // Anchors remain available when symbols compact or overflow the label band.

@@ -35,6 +35,7 @@ export interface TextSpec {
   captionSize?: number;
   body?: boolean;
   compact?: boolean;
+  radial?: boolean;
 }
 
 /** Measures cache misses in an invisible probe, never in the live chart labels. */
@@ -68,6 +69,7 @@ export function createTextMeasurer(root: HTMLElement) {
       element.style.fontSize = `${spec.size}px`;
       if (spec.body) {
         element.dataset.compact = String(!!spec.compact);
+        element.dataset.radial = String(!!spec.radial);
         const symbol = doc.createElement('span');
         symbol.className = 'astr3-symbol';
         symbol.textContent = spec.text;

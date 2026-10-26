@@ -102,6 +102,7 @@ const STYLE = `
 .astr3-symbol{-webkit-text-stroke:var(--astr3-symbol-stroke) currentColor;paint-order:stroke fill}
 .astr3-body{min-width:34px;padding:2px 3px;border-radius:7px;background:var(--astr3-bg);border:1px solid transparent;font-size:23px}
 .astr3-body small{display:block;font-size:10px;letter-spacing:.01em;font-variant-numeric:tabular-nums;margin-top:2px}.astr3-body[data-active=true]{border-color:var(--astr3-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--astr3-accent) 18%,transparent)}
+.astr3-body[data-radial=true]{display:inline-flex;align-items:center;gap:4px;min-width:0}.astr3-body[data-radial=true] small{margin-top:0}
 .astr3-body[data-compact=true]{min-width:0}.astr3-body[data-compact=true] small{display:none}
 .astr3[data-layout=alternative] .astr3-body[data-compact=true],.astr3[data-layout=advanced] .astr3-body[data-compact=true]{padding:0 1px}
 .astr3-clusters{position:absolute;inset:0;pointer-events:none}.astr3-clusters .astr3-cluster{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;min-width:24px;min-height:24px;padding:2px 5px;line-height:1.15;font-size:12px;font-weight:var(--astr3-label-weight);border-radius:12px}.astr3-cluster[data-active=true]{border-color:var(--astr3-accent);color:var(--astr3-accent)}
@@ -688,6 +689,8 @@ export function createWheel(
       color: value.color,
       opacity: String(value.opacity),
     });
+    if (value.rotation !== undefined)
+      element.style.transform = `translate(-50%,-50%) rotate(${value.rotation}deg)`;
     Object.assign(element.dataset, value.dataset);
     if (value.selection) {
       element.dataset.object = selectionKey(value.selection);

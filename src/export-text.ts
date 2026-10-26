@@ -64,6 +64,7 @@ export function createExportMeasurer(weight: ChartWeight | undefined, innerBands
       spec.captionSize,
       spec.body,
       spec.compact,
+      spec.radial,
     ]);
     const cached = cache.get(key);
     if (cached) return cached;
@@ -75,17 +76,22 @@ export function createExportMeasurer(weight: ChartWeight | undefined, innerBands
     if (spec.caption) {
       const captionSize = spec.captionSize ?? 10;
       const caption = exportRun(spec.caption, captionSize);
-      width = Math.max(
-        width,
+      const captionWidth =
         caption.width +
-          Math.max(0, [...spec.caption].length - 1) * captionSize * 0.01 +
-          exportTextStroke(weight, false),
-      );
-      height += 2 + Math.max(captionSize * 1.15, caption.bottom - caption.top);
+        Math.max(0, [...spec.caption].length - 1) * captionSize * 0.01 +
+        exportTextStroke(weight, false);
+      const captionHeight = Math.max(captionSize * 1.15, caption.bottom - caption.top);
+      if (spec.radial) {
+        width += 4 + captionWidth;
+        height = Math.max(height, captionHeight);
+      } else {
+        width = Math.max(width, captionWidth);
+        height += 2 + captionHeight;
+      }
     }
     if (spec.body) {
       const tight = innerBands && spec.compact;
-      width = Math.max(spec.compact ? 0 : 34, width + (tight ? 4 : 8));
+      width = Math.max(spec.compact || spec.radial ? 0 : 34, width + (tight ? 4 : 8));
       height += tight ? 2 : 6;
     }
     const result = { width, height };

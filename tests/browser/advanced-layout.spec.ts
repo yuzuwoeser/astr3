@@ -81,6 +81,131 @@ async function clickAt(
 
 for (const transit of [false, true]) {
   const mode = transit ? 'transit' : 'natal';
+  test(`aligns advanced ${mode} symbols and captions along selectable radial hands`, async ({
+    page,
+    isMobile,
+  }, info) => {
+    await page.setViewportSize({ width: 1400, height: 1500 });
+    await ready(page, transit);
+    await page.evaluate(
+      async ({ transit, data }) => {
+        const modulePath = '/library.ts';
+        const { createChart, createTransitChart } = (await import(
+          modulePath
+        )) as typeof import('../../src/index.js');
+        const host = document.createElement('div');
+        host.id = 'radial-fixture';
+        host.style.cssText =
+          'position:absolute;left:0;top:0;width:1200px;z-index:100;background:#111c20';
+        document.body.append(host);
+        const bodies = [
+          ...data.bodies,
+          { id: 'north-node', name: 'North Node', longitude: 65.5 },
+          { id: 'custom', name: 'Custom point', glyph: 'CP', longitude: 185.5 },
+          { id: 'ascendant', name: 'Ascendant', longitude: 0 },
+          { id: 'midheaven', name: 'Midheaven', longitude: 270 },
+        ];
+        const natal = { ...data, bodies, aspects: [] };
+        if (transit)
+          window.astr3Transit = createTransitChart(host, {
+            data: { natal, transit: { bodies }, crossAspects: [] },
+            layout: 'advanced',
+          });
+        else window.astr3 = createChart(host, { data: natal, layout: 'advanced' });
+      },
+      { transit, data: fixture },
+    );
+    const root = page.locator('#radial-fixture .astr3');
+    await expect(root.locator('.astr3-body')).toHaveCount(transit ? 14 : 7);
+    const errors = await root.evaluate((root) => {
+      const stage = root.querySelector('.astr3-stage')!.getBoundingClientRect();
+      const center = { x: stage.x + stage.width / 2, y: stage.y + stage.height / 2 };
+      return [...root.querySelectorAll<HTMLElement>('.astr3-body')].flatMap((element) => {
+        const symbol = element.querySelector('.astr3-symbol')!.getBoundingClientRect();
+        const caption = element.querySelector('small')!.getBoundingClientRect();
+        const x = caption.x + caption.width / 2 - symbol.x - symbol.width / 2;
+        const y = caption.y + caption.height / 2 - symbol.y - symbol.height / 2;
+        const rect = element.getBoundingClientRect();
+        const radialX = rect.x + rect.width / 2 - center.x;
+        const radialY = rect.y + rect.height / 2 - center.y;
+        const rotation = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+        const offset = Math.abs(x * radialY - y * radialX) / Math.hypot(radialX, radialY);
+        const inward = x * radialX + y * radialY;
+        const orientation = Math.abs(rotation.a * radialY - rotation.b * radialX);
+        // CSS layout quantizes label centers to fractions of a pixel.
+        return offset > 0.1 || inward >= 0 || orientation > 0.1
+          ? [{ id: element.dataset.object, offset, inward, orientation }]
+          : [];
+      });
+    });
+    expect(errors).toEqual([]);
+    expect(
+      await root.locator('.astr3-labels > .astr3-symbol').evaluateAll((elements) =>
+        elements.every((element) => {
+          const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+          return matrix.a === 1 && matrix.b === 0 && matrix.c === 0 && matrix.d === 1;
+        }),
+      ),
+    ).toBe(true);
+    const moon = root.locator(
+      transit
+        ? '.astr3-body[data-chart=natal][data-body-id=moon]'
+        : '.astr3-body[data-object="body:moon"]',
+    );
+    for (const part of ['.astr3-symbol', 'small']) {
+      const rect = (await moon.locator(part).boundingBox())!;
+      const x = rect.x + rect.width / 2,
+        y = rect.y + rect.height / 2;
+      if (isMobile) await page.touchscreen.tap(x, y);
+      else await page.mouse.click(x, y);
+      await expect
+        .poll(() =>
+          page.evaluate(
+            (transit) => (transit ? window.astr3Transit! : window.astr3).selection,
+            transit,
+          ),
+        )
+        .toEqual({ kind: 'body', id: 'moon', ...(transit ? { chart: 'natal' } : {}) });
+      await page.evaluate(
+        (transit) => (transit ? window.astr3Transit! : window.astr3).clearSelection(),
+        transit,
+      );
+    }
+    await root
+      .locator('.astr3-stage')
+      .screenshot({ path: info.outputPath(`advanced-${mode}-radial.png`) });
+    const exported = await page.evaluate(async (transit) => {
+      const svg = await (transit ? window.astr3Transit! : window.astr3).exportSvg({ size: 1200 });
+      const holder = document.createElement('div');
+      holder.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden';
+      holder.innerHTML = svg;
+      document.body.append(holder);
+      try {
+        const rows = [...holder.querySelectorAll<SVGGElement>('g[transform^="rotate("]')];
+        return {
+          count: rows.length,
+          errors: rows.flatMap((row) => {
+            const runs = [...row.querySelectorAll<SVGGElement>(':scope > g[fill]')];
+            if (runs.length !== 2) return [{ count: runs.length, offset: 0, gap: 0 }];
+            const symbol = runs[0]!.getBBox(),
+              caption = runs[1]!.getBBox();
+            const offset = Math.abs(symbol.y + symbol.height / 2 - caption.y - caption.height / 2);
+            const gap = caption.x - symbol.x - symbol.width;
+            // Outlined font bounds are rounded separately from their paths.
+            return offset < 0.25 && gap > 0 ? [] : [{ count: runs.length, offset, gap }];
+          }),
+        };
+      } finally {
+        holder.remove();
+      }
+    }, transit);
+    expect(exported).toEqual({ count: transit ? 14 : 7, errors: [] });
+    await page.evaluate(
+      (transit) => (transit ? window.astr3Transit! : window.astr3).dispose(),
+      transit,
+    );
+  });
+
   test(`picks advanced ${mode} houses, source markers, central aspects and accessible bodies`, async ({
     page,
     isMobile,

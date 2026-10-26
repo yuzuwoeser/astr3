@@ -107,6 +107,28 @@ it('prioritizes labels, provides screen-pixel line tolerance, and offers overlap
   expect(hitTest(targets, { x: 50, y: 50 })).toEqual([{ kind: 'group', id: 'group' }]);
 });
 
+it('picks rotated labels along their visible rectangle with the existing touch tolerance', () => {
+  const selection = { kind: 'body' as const, id: 'radial' };
+  const targets: HitTarget[] = [
+    {
+      selection,
+      priority: 0,
+      shape: 'box',
+      box: { x: 100, y: 100, width: 100, height: 20 },
+      rotation: -45,
+    },
+  ];
+  const point = (x: number, y: number) => ({
+    x: 100 + (x + y) / Math.SQRT2,
+    y: 100 + (-x + y) / Math.SQRT2,
+  });
+  expect(hitTest(targets, point(45, 0))).toEqual([selection]);
+  expect(hitTest(targets, point(0, 14))).toEqual([]);
+  expect(hitTest(targets, point(0, 14), true)).toEqual([selection]);
+  expect(hitTest(targets, point(0, 17), true)).toEqual([]);
+  expect(hitTest(targets, { x: 130, y: 130 })).toEqual([]);
+});
+
 it('reserves house-label space without moving markers or mutating the reserved boxes', () => {
   const model = createModel({
     bodies: Array.from({ length: 8 }, (_, i) => ({

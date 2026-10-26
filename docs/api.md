@@ -419,8 +419,11 @@ symbols, with separate source rulers and one shared aspect circle. House picking
 and highlights exclude the central aspect disk. Unknown houses add no spokes,
 numbers, or cusp captions, and hiding houses leaves the aspect circle intact.
 
-Advanced labels are upright: a planet glyph above a degree/sign-glyph/minute
-caption, followed by ℞ for retrograde motion. Positions round to the nearest
+Advanced aligns each planet or point glyph and its degree/sign-glyph/minute
+caption in one radial line, perpendicular to the ring. The glyph sits toward
+the rim, with the caption extending inward and ℞ marking retrograde motion.
+Zodiac ring symbols remain upright. Displaced labels follow the radius at their
+packed position; exact longitudes stay unchanged. Positions round to the nearest
 minute with carry into the next sign. Every displayed body symbol retains this
 caption at every zoom level, including when the `degrees` layer is off. Body
 connector lines and active radial guides are omitted; exact position dots

@@ -4,7 +4,7 @@ import type { Selection } from './model/types.js';
 import { selectionKey } from './model/model.js';
 
 export type HitTarget =
-  | { selection: Selection; priority: number; shape: 'box'; box: Box }
+  | { selection: Selection; priority: number; shape: 'box'; box: Box; rotation?: number }
   | { selection: Selection; priority: number; shape: 'line'; a: Point; b: Point }
   | { selection: Selection; priority: number; shape: 'polygon'; points: readonly Point[] }
   | { selection: Selection; priority: number; shape: 'circle'; center: Point; radius: number };
@@ -17,8 +17,17 @@ export function hitTest(targets: readonly HitTarget[], point: Point, touch = fal
       let hit = false,
         distance = 0;
       if (target.shape === 'box') {
-        const dx = Math.max(0, Math.abs(point.x - target.box.x) - target.box.width / 2);
-        const dy = Math.max(0, Math.abs(point.y - target.box.y) - target.box.height / 2);
+        const angle = ((target.rotation ?? 0) * Math.PI) / 180;
+        const x = point.x - target.box.x,
+          y = point.y - target.box.y;
+        const dx = Math.max(
+          0,
+          Math.abs(x * Math.cos(angle) + y * Math.sin(angle)) - target.box.width / 2,
+        );
+        const dy = Math.max(
+          0,
+          Math.abs(-x * Math.sin(angle) + y * Math.cos(angle)) - target.box.height / 2,
+        );
         distance = Math.hypot(dx, dy);
         hit = distance <= (touch ? 6 : 0);
       } else if (target.shape === 'line') {

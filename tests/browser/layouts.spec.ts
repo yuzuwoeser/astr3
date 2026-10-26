@@ -85,13 +85,17 @@ async function bandViolations(
       return [...root.querySelectorAll<HTMLElement>('.astr3-body,.astr3-cluster')].flatMap(
         (element) => {
           const rect = element.getBoundingClientRect();
-          const x = Math.abs(rect.x + rect.width / 2 - stage.x - stage.width / 2);
-          const y = Math.abs(rect.y + rect.height / 2 - stage.y - stage.height / 2);
-          const near = Math.hypot(
-            Math.max(0, x - rect.width / 2),
-            Math.max(0, y - rect.height / 2),
-          );
-          const far = Math.hypot(x + rect.width / 2, y + rect.height / 2);
+          const style = getComputedStyle(element);
+          const matrix = new DOMMatrixReadOnly(style.transform);
+          const centerX = rect.x + rect.width / 2 - stage.x - stage.width / 2;
+          const centerY = rect.y + rect.height / 2 - stage.y - stage.height / 2;
+          // Measure the ring center in the label's unrotated coordinate system.
+          const x = Math.abs(centerX * matrix.a + centerY * matrix.b);
+          const y = Math.abs(-centerX * matrix.b + centerY * matrix.a);
+          const width = parseFloat(style.width),
+            height = parseFloat(style.height);
+          const near = Math.hypot(Math.max(0, x - width / 2), Math.max(0, y - height / 2));
+          const far = Math.hypot(x + width / 2, y + height / 2);
           const band = element.dataset.chart === 'transit' ? g.transit : g.natal;
           return near < band.inner * scale + 3.8 || far > band.outer * scale - 3.8
             ? [element.dataset.object ?? element.dataset.cluster]

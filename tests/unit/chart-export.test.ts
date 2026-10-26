@@ -160,6 +160,66 @@ describe('outlined chart exports', () => {
     expect(hidden.labels.filter((label) => label.className === 'astr3-cusp')).toHaveLength(0);
   });
 
+  it('aligns every advanced planet and point radially through a panned wheel center', () => {
+    const input = snapshot('advanced');
+    const ids = [
+      'ascendant',
+      'sun',
+      'north-node',
+      'moon',
+      'custom',
+      'mars',
+      'midheaven',
+      'south-node',
+    ];
+    const data = {
+      bodies: ids.map((id, i) => ({ id, name: id, longitude: 37 + i * 45 })),
+      angles: { ascendant: 37, midheaven: 307 },
+      aspects: [],
+    };
+    input.model = createModel(data);
+    input.options = { ...input.options, data, glyphs: { custom: 'CP' } };
+    input.view = { width: 1600, height: 1600, pixelsPerUnit: 1600 / 980, pan: { x: 20, y: -15 } };
+    input.outputWidth = input.outputHeight = 1600;
+    const result = drawing(input);
+    const center = {
+      x: 800 - input.view.pan.x * input.view.pixelsPerUnit,
+      y: 800 + input.view.pan.y * input.view.pixelsPerUnit,
+    };
+    const labels = result.labels.filter((label) => label.body);
+    expect(labels).toHaveLength(ids.length);
+    for (const label of labels) {
+      expect(label.radial).toBe(true);
+      const angle = (label.rotation! * Math.PI) / 180;
+      const x = label.x - center.x,
+        y = label.y - center.y;
+      expect(x * Math.sin(angle) - y * Math.cos(angle)).toBeCloseTo(0, 8);
+      expect(x * Math.cos(angle) + y * Math.sin(angle)).toBeLessThan(0);
+      const target = result.targets.find(
+        (target) =>
+          target.shape === 'box' &&
+          target.selection.id === label.selection!.id &&
+          target.rotation !== undefined,
+      );
+      expect(target).toMatchObject({ shape: 'box', rotation: label.rotation });
+      const radius = Math.hypot(x, y);
+      const near = radius - label.box.width / 2;
+      const far = Math.hypot(radius + label.box.width / 2, label.box.height / 2);
+      expect(near).toBeGreaterThanOrEqual(
+        input.geometry.natal.inner * input.view.pixelsPerUnit + 4,
+      );
+      expect(far).toBeLessThanOrEqual(input.geometry.natal.outer * input.view.pixelsPerUnit - 4);
+    }
+    expect(
+      result.labels.filter((label) => !label.body).every((label) => label.rotation === undefined),
+    ).toBe(true);
+    expect(renderSvg(input).match(/transform="rotate\(/g)).toHaveLength(ids.length);
+    for (const layout of ['default', 'alternative'] as const) {
+      const unchanged = drawing(snapshot(layout)).labels.filter((label) => label.body);
+      expect(unchanged.every((label) => !label.radial && label.rotation === undefined)).toBe(true);
+    }
+  });
+
   it('omits colliding advanced cusp captions while retaining exact house sectors and axes', () => {
     const input = snapshot('advanced');
     const data = {

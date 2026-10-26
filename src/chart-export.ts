@@ -56,17 +56,27 @@ function labelSvg(label: WheelLabel, snapshot: ExportSnapshot): string {
   const { x, y, color, size, box } = label;
   const weight = snapshot.options.chartWeight;
   const accent = snapshot.options.selectionEffects?.color ?? snapshot.colors.accent;
-  let result = `<g opacity="${number(label.opacity)}">`;
+  let result = `<g opacity="${number(label.opacity)}"${label.rotation !== undefined ? ` transform="rotate(${number(label.rotation)} ${number(x)} ${number(y)})"` : ''}>`;
   if (body) {
     if (label.active)
       result += `<rect x="${number(x - box.width / 2 - 2)}" y="${number(y - box.height / 2 - 2)}" width="${number(box.width + 4)}" height="${number(box.height + 4)}" rx="9" fill="${exportColor(accent)}" opacity="0.18"/>`;
     result += `<rect x="${number(x - box.width / 2)}" y="${number(y - box.height / 2)}" width="${number(box.width)}" height="${number(box.height)}" rx="7" fill="${exportColor(snapshot.colors.background)}"${label.active ? ` stroke="${exportColor(accent)}"` : ''}/>`;
   }
-  const captionHeight = label.caption ? (label.captionSize ?? 10) * 1.15 + 2 : 0;
+  const inline = label.radial && !!label.caption;
+  const captionSize = label.captionSize ?? 10;
+  const symbolWidth = inline
+    ? exportRun(label.text, size).width + exportTextStroke(weight, true)
+    : 0;
+  const captionWidth = inline
+    ? exportRun(label.caption!, captionSize).width +
+      Math.max(0, [...label.caption!].length - 1) * captionSize * 0.01 +
+      exportTextStroke(weight, false)
+    : 0;
+  const captionHeight = label.caption && !inline ? captionSize * 1.15 + 2 : 0;
   result += textPaths(
     label.text,
     size,
-    x,
+    inline ? x - (captionWidth + 4) / 2 : x,
     y - captionHeight / 2,
     color,
     weight,
@@ -75,9 +85,9 @@ function labelSvg(label: WheelLabel, snapshot: ExportSnapshot): string {
   if (label.caption)
     result += textPaths(
       label.caption,
-      label.captionSize ?? 10,
-      x,
-      y + (size * 1.15) / 2 + 1,
+      captionSize,
+      inline ? x + (symbolWidth + 4) / 2 : x,
+      inline ? y : y + (size * 1.15) / 2 + 1,
       color,
       weight,
     );

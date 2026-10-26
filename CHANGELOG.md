@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Align Advanced planet and point symbols with their full position captions in
+  radial clock hands perpendicular to the ring. Keep zodiac ring symbols upright
+  and match rotation in selection targets and SVG/PNG exports.
+
 - Add the Advanced layout for natal and transit charts, with an outer zodiac
   ring, house-cusp spokes, inner house numbers, a small central aspect circle,
   detailed planet positions, and outer cusp captions when space permits.
