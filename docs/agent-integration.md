@@ -109,11 +109,14 @@ data changes, `setOptions` for settings, and dispose at unmount. Avoid rebuildin
 the entire chart for every hover. Selection events can fire on programmatic
 selection and data refresh, so do not unconditionally call `select` inside them.
 
-Both browser factories accept `layout: 'default' | 'alternative'`; omit it to keep
+Both browser factories accept `layout: 'default' | 'alternative' | 'advanced'`; omit it to keep
 the original layout. Call `chart.setOptions({ layout: 'alternative' })` to place
 houses outermost, zodiac second and celestial symbols inside it. Transit charts
 use an outer transit symbol band and inner natal band, sharing a separate central
-aspect circle. Layout changes preserve positions, selections and zoom/pan and do
+aspect circle. Use `'advanced'` for an outer zodiac ring, house spokes across the
+planet area, inner house numbers, a small central aspect circle, and upright
+degree/sign/minute labels. It supports both chart modes and the current theme.
+Layout changes preserve positions, selections and zoom/pan and do
 not calculate new data. This is a renderer option, not a `ChartInput` field or a
 headless-model setting. See [layout presets](api.md#layout-presets).
 

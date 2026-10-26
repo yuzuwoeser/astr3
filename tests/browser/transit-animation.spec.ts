@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { formatPosition } from '../../src/model/math.js';
+import { polar } from '../../src/layout.js';
+import { resolveWheelGeometry } from '../../src/wheel-geometry.js';
 import { labelPoint } from './label-point.js';
 
 async function ready(page: Page) {
@@ -14,7 +16,7 @@ async function ready(page: Page) {
     .toBe('2024-04-08T18:00:00.000Z');
 }
 
-for (const layout of ['default', 'alternative']) {
+for (const layout of ['default', 'alternative', 'advanced'] as const) {
   test(`animates exact times with synchronized selection, labels and pause/resume in ${layout} layout`, async ({
     page,
   }) => {
@@ -57,10 +59,26 @@ for (const layout of ['default', 'alternative']) {
       const at = await labelPoint(page, selector);
       await page.mouse.click(at.x, at.y);
     } else {
-      await page
+      const cluster = page
         .locator('#transit-chart')
-        .getByRole('button', { name: /clustered bodies:.*Mars/ })
-        .click();
+        .getByRole('button', { name: /clustered bodies:.*Mars/ });
+      if (await cluster.count()) await cluster.click();
+      else {
+        // Tiny bands can retain only exact dots and accessible entries.
+        const stage = page.locator('#transit-chart .astr3-stage');
+        await stage.scrollIntoViewIfNeeded();
+        const rect = (await stage.boundingBox())!;
+        const ascendant = await page.evaluate(
+          () => window.astr3Transit!.model.natal.angles.ascendant ?? 0,
+        );
+        const geometry = resolveWheelGeometry(layout, true);
+        const point = polar(position, geometry.transit.marker, ascendant);
+        const scale = (Math.min(rect.width, rect.height) / (2 * geometry.extent)) * 1.1;
+        await page.mouse.click(
+          rect.x + rect.width / 2 + point.x * scale,
+          rect.y + rect.height / 2 - point.y * scale,
+        );
+      }
     }
     const chooser = page.locator('#transit-chart .astr3-chooser button');
     if (await chooser.count()) await chooser.filter({ hasText: 'Mars' }).click();

@@ -175,7 +175,7 @@
       "additionalProperties": false,
       "properties": {
         "layout": {
-          "enum": ["default", "alternative"]
+          "enum": ["default", "alternative", "advanced"]
         },
         "chartWeight": {
           "enum": ["light", "regular", "bold"]
@@ -259,7 +259,7 @@
       "additionalProperties": false,
       "properties": {
         "layout": {
-          "enum": ["default", "alternative"]
+          "enum": ["default", "alternative", "advanced"]
         },
         "chartWeight": {
           "enum": ["light", "regular", "bold"]

@@ -184,6 +184,8 @@ describe('JSON chart templates', () => {
       completeTransit,
       natal({ layout: 'default', chartWeight: 'light', selectionEffects: { dimOpacity: 1 } }),
       natal({ chartWeight: 'regular', lineStyles: { trine: {} } }),
+      natal({ layout: 'advanced' }),
+      transit({ layout: 'advanced' }),
       transit({ glyphs: {}, bodyVisibility: { transit: {} }, layers: { bodies: false } }),
       ...['midnight', 'paper', 'transit'].map((file) =>
         JSON.parse(
@@ -202,6 +204,11 @@ describe('JSON chart templates', () => {
       expect(() => resolve(input)).not.toThrow();
     }
     for (const [input] of invalid) expect(validateSchema(input), JSON.stringify(input)).toBe(false);
+  });
+
+  it.each(['natal', 'transit'])('round-trips the advanced %s appearance through JSON', (kind) => {
+    const template = { version: 1, kind, options: { layout: 'advanced' } };
+    expect(resolve(JSON.parse(JSON.stringify(template)))).toEqual(template.options);
   });
 
   it('copies every nested record and tuple, without freezing or sharing caller objects', () => {

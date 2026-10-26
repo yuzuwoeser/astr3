@@ -86,7 +86,7 @@ Import these functions and data types from `@yuzuwoeser/astr3/model` or `@yuzuwo
 
 ## Options
 
-- `layout`: `'default'` or `'alternative'` (default: `'default'`). The alternative places natal houses outermost, zodiac second, transit symbols inside its inner ruler, then a second natal ruler and natal symbols. Both project to a separate shared inner aspect circle. Runtime switching preserves selections and view. See [layout presets](api.md#layout-presets).
+- `layout`: `'default'`, `'alternative'`, or `'advanced'` (default: `'default'`). The alternative places natal houses outermost, zodiac second, transit symbols inside its inner ruler, then a second natal ruler and natal symbols. Advanced keeps the zodiac outermost, natal symbols inside transit symbols, house numbers near a small shared aspect circle, and actual natal cusp spokes across both planet bands. Its upright planet captions include degree, sign, and minute; natal cusp captions appear outside when space permits. Runtime switching preserves selections and view. See [layout presets](api.md#layout-presets).
 - `orbs: { natal?, cross?, transit? }`: independent partial aspect-to-degree maps. Each starts with the [natal orb defaults](api.md#aspects-and-enablement). Limits accept finite values from 0° through 180°. Nested updates patch by family and aspect type.
 - `enabledAspects: { natal?, cross?, transit? }`: independent partial aspect-to-boolean maps (`TransitAspectEnabledConfig`). For example, `wheel.setOptions({ enabledAspects: { cross: { quincunx: true, square: false } } })` changes only those cross-family flags. Disabled aspects leave the model, wheel, explorer, and relationship details; removed selections clear. Orb changes do not toggle enablement. The headless `createTransitModel(data, options)` accepts the same family settings through `TransitModelOptions`.
 - `layers`: the existing zodiac, houses, axes, bodies, aspects, groups, and degrees switches, plus `natalBodies`, `transitBodies`, `natalAspects`, `crossAspects`, and `transitAspects`. Both body sets and cross aspects start visible; natal and transit-to-transit aspects start hidden. Master `bodies`/`aspects` switches apply to both sides/all families. Visibility does not remove data or accessible list entries.
@@ -159,7 +159,9 @@ schema, defaults, errors, and override behavior, and the
 
 The default layout places transit labels outside the natal zodiac. The
 alternative places houses outermost, zodiac second, then transit/natal symbol
-bands and a shared inner aspect circle. Natal anchors are filled circles and
+bands and a shared inner aspect circle. Advanced puts both symbol bands inside
+the zodiac with natal house spokes across them, detailed position captions, and
+a small shared aspect circle. Natal anchors are filled circles and
 transit anchors outlined diamonds; text and list headings also identify sources.
 Coincident anchors open a chooser. Houses/axes come solely from natal data;
 unknown time does not fabricate them.

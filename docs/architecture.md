@@ -58,14 +58,21 @@ colors, size limits, and failures.
 
 ## Layout geometry and visibility
 
-The wheel-geometry resolver supplies the selected `default` or `alternative`
+The wheel-geometry resolver supplies the selected `default`, `alternative`, or `advanced`
 preset to camera fitting, rulers, house sectors, label bands, anchors, and
 picking. Default natal houses sit inside the zodiac; transit labels pin outward
 from its outer edge without a separate rim. Alternative houses form an outer
 annulus, with zodiac second and both source symbol bands inside; the aspect
 circle is independent of houses. Alternative house picking uses an annular
 polygon rather than a sector extending to the center. Layout never enters the
-headless model or provider request.
+headless model or provider request. Advanced keeps the zodiac outermost, with
+house spokes across its planet bands, house numbers immediately outside a small
+central aspect disk, and annular house picking that excludes that disk. Its
+upright planet captions include zodiac sign glyphs, and measured outer cusp
+captions yield to axis captions and earlier house numbers when they collide.
+The shared drawing pipeline applies these choices to HTML labels and SVG/PNG
+exports. At effective scales of at least 0.65, Advanced attempts full position
+captions; smaller or crowded views retain the existing compact/cluster fallback.
 
 Each source's exact longitude markers and central aspect anchors remain fixed
 when labels move. Default transit labels prefer a band close to the zodiac,

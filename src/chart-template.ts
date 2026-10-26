@@ -141,7 +141,7 @@ const layerFields = {
   degrees: boolean,
 };
 const optionFields = {
-  layout: choice('default', 'alternative'),
+  layout: choice('default', 'alternative', 'advanced'),
   chartWeight: choice('light', 'regular', 'bold'),
   theme: fields({
     background: color,

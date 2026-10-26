@@ -64,7 +64,7 @@ test('lazily exports vector SVG and captures state without altering the live cha
   expect(requests.some((url) => url.includes('export-font-data'))).toBe(true);
 });
 
-for (const layout of ['default', 'alternative'] as const) {
+for (const layout of ['default', 'alternative', 'advanced'] as const) {
   test(`exports ${layout} natal/transit wheels and PNG pixels matching the SVG`, async ({
     page,
   }, testInfo) => {
@@ -281,8 +281,8 @@ test('demo downloads both formats and reports export errors', async ({ page }) =
   await expect(page.locator('#export-png')).toBeEnabled();
 });
 
-for (const layout of ['default', 'alternative'] as const) {
-  test(`large SVG download restores crowded natal/transit captions in ${layout} layout`, async ({
+for (const layout of ['default', 'alternative', 'advanced'] as const) {
+  test(`large SVG download retains or restores crowded natal/transit captions in ${layout} layout`, async ({
     page,
   }) => {
     await ready(page);
@@ -342,7 +342,10 @@ for (const layout of ['default', 'alternative'] as const) {
       // The smaller large preset restores at least one band's full captions;
       // tightly crowded transit bands can still compact independently.
       expect(result.large.captions).toBeGreaterThanOrEqual(data.bodies.length);
-      expect(result.large.captions).toBeGreaterThan(result.standard.captions);
+      // Advanced's expanded natal band can already fit every caption at 800px.
+      if (layout === 'advanced')
+        expect(result.large.captions).toBeGreaterThanOrEqual(result.standard.captions);
+      else expect(result.large.captions).toBeGreaterThan(result.standard.captions);
       await expect(page.locator('#export-status')).toHaveText('Large SVG download ready.');
     }
   });

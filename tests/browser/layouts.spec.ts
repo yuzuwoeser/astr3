@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import type { ChartInput } from '../../src/index.js';
+import type { ChartInput, ChartLayout } from '../../src/index.js';
 import { aspectPath, polar } from '../../src/layout.js';
 import { resolveWheelGeometry } from '../../src/wheel-geometry.js';
 import { labelPoint } from './label-point.js';
@@ -71,8 +71,13 @@ async function clickAt(
   if (mobile) await page.touchscreen.tap(point.x, point.y);
   else await page.mouse.click(point.x, point.y);
 }
-async function bandViolations(page: Page, transit: boolean, zoom: number) {
-  const g = resolveWheelGeometry('alternative', transit);
+async function bandViolations(
+  page: Page,
+  transit: boolean,
+  zoom: number,
+  layout: ChartLayout = 'alternative',
+) {
+  const g = resolveWheelGeometry(layout, transit);
   return page.locator(transit ? '#transit-chart' : '#chart').evaluate(
     (root, { g, zoom }) => {
       const stage = root.querySelector('.astr3-stage')!.getBoundingClientRect();
@@ -98,54 +103,52 @@ async function bandViolations(page: Page, transit: boolean, zoom: number) {
   );
 }
 
-test('switches layouts at runtime without changing data, selection or view and restores default placement', async ({
-  page,
-}) => {
-  await ready(page);
-  await page.evaluate((data) => {
-    window.astr3.update(data);
-    window.astr3.select({ kind: 'body', id: 'sun' });
-    window.astr3.zoomBy(1.25);
-  }, fixture);
-  const positions = () =>
-    page
-      .locator('#chart .astr3-body')
-      .evaluateAll((elements) =>
-        elements.map((element) => [
-          element.getAttribute('data-object'),
-          (element as HTMLElement).style.left,
-          (element as HTMLElement).style.top,
-        ]),
-      );
-  await expect(page.locator('#chart .astr3-body')).toHaveCount(3);
-  const before = await positions();
-  const model = await page.evaluate(() => JSON.stringify(window.astr3.model));
-  await page
-    .getByRole('combobox', { name: 'Chart layout', exact: true })
-    .selectOption('alternative');
-  await expect(page.locator('#chart .astr3')).toHaveAttribute('data-layout', 'alternative');
-  const g = resolveWheelGeometry('alternative');
-  const point = await screenPoint(page, false, 0, g.natal.marker, 1.25);
-  await page.mouse.click(point.x, point.y);
-  await expect
-    .poll(() => page.evaluate(() => window.astr3.selection))
-    .toEqual({ kind: 'body', id: 'sun' });
-  expect(await page.evaluate(() => JSON.stringify(window.astr3.model))).toBe(model);
-  await page.locator('#chart-layout').selectOption('default');
-  await expect.poll(positions).toEqual(before);
-  const stage = await page.locator('#chart .astr3-stage').boundingBox();
-  const center = { x: stage!.x + stage!.width / 2, y: stage!.y + stage!.height / 2 };
-  await page.mouse.move(center.x, center.y);
-  await page.mouse.down();
-  await page.mouse.move(center.x + 20, center.y + 12, { steps: 3 });
-  await page.mouse.up();
-  await expect.poll(positions).not.toEqual(before);
-  const panned = await positions();
-  await page.locator('#chart-layout').selectOption('alternative');
-  await expect(page.locator('#chart .astr3')).toHaveAttribute('data-layout', 'alternative');
-  await page.locator('#chart-layout').selectOption('default');
-  await expect.poll(positions).toEqual(panned);
-});
+for (const layout of ['alternative', 'advanced'] as const) {
+  test(`switches to ${layout} without changing data, selection or view and restores default placement`, async ({
+    page,
+  }) => {
+    await ready(page);
+    await page.evaluate((data) => {
+      window.astr3.update(data);
+      window.astr3.select({ kind: 'body', id: 'sun' });
+      window.astr3.zoomBy(1.25);
+    }, fixture);
+    const positions = () =>
+      page
+        .locator('#chart .astr3-body')
+        .evaluateAll((elements) =>
+          elements.map((element) => [
+            element.getAttribute('data-object'),
+            (element as HTMLElement).style.left,
+            (element as HTMLElement).style.top,
+          ]),
+        );
+    await expect(page.locator('#chart .astr3-body')).toHaveCount(3);
+    const before = await positions();
+    const model = await page.evaluate(() => JSON.stringify(window.astr3.model));
+    await page.getByRole('combobox', { name: 'Chart layout', exact: true }).selectOption(layout);
+    await expect(page.locator('#chart .astr3')).toHaveAttribute('data-layout', layout);
+    await expect
+      .poll(() => page.evaluate(() => window.astr3.selection))
+      .toEqual({ kind: 'body', id: 'sun' });
+    expect(await page.evaluate(() => JSON.stringify(window.astr3.model))).toBe(model);
+    await page.locator('#chart-layout').selectOption('default');
+    await expect.poll(positions).toEqual(before);
+    await page.locator('#chart .astr3-stage').scrollIntoViewIfNeeded();
+    const stage = await page.locator('#chart .astr3-stage').boundingBox();
+    const center = { x: stage!.x + stage!.width / 2, y: stage!.y + stage!.height / 2 };
+    await page.mouse.move(center.x, center.y);
+    await page.mouse.down();
+    await page.mouse.move(center.x + 20, center.y + 12, { steps: 3 });
+    await page.mouse.up();
+    await expect.poll(positions).not.toEqual(before);
+    const panned = await positions();
+    await page.locator('#chart-layout').selectOption(layout);
+    await expect(page.locator('#chart .astr3')).toHaveAttribute('data-layout', layout);
+    await page.locator('#chart-layout').selectOption('default');
+    await expect.poll(positions).toEqual(panned);
+  });
+}
 
 test('selects outer houses, ruler dots, inner anchors, aspects and group interiors', async ({
   page,
@@ -392,9 +395,9 @@ test('rejects invalid layouts atomically in both constructors and runtime option
       const chart = transit
         ? createTransitChart(host, {
             data: { natal: { bodies: [] }, transit: { bodies: [] } },
-            layout: 'alternative',
+            layout: 'advanced',
           })
-        : createChart(host, { data: { bodies: [] }, layout: 'alternative' });
+        : createChart(host, { data: { bodies: [] }, layout: 'advanced' });
       const before = chart.model;
       try {
         chart.setOptions({ layout: 'wrong' as never });
@@ -403,7 +406,7 @@ test('rejects invalid layouts atomically in both constructors and runtime option
         checks.push(
           error instanceof RangeError &&
             chart.model === before &&
-            chart.element.dataset.layout === 'alternative',
+            chart.element.dataset.layout === 'advanced',
         );
       }
       chart.dispose();
@@ -414,59 +417,64 @@ test('rejects invalid layouts atomically in both constructors and runtime option
   expect(result).toEqual([true, true, true, true]);
 });
 
-for (const transit of [false, true]) {
-  test(`contains crowded alternative ${transit ? 'transit' : 'natal'} symbols across weights and zoom`, async ({
-    page,
-    isMobile,
-  }) => {
-    await ready(page);
-    await page.locator('#chart-layout').selectOption('alternative');
-    if (transit) await enableTransits(page);
-    await page.evaluate(
-      ({ transit, data }) => {
-        const bodies = Array.from({ length: 12 }, (_, i) => ({
-          id: `p${i}`,
-          name: `Synthetic ${i}`,
-          glyph: String(i % 10),
-          longitude: (350 + i) % 360,
-        }));
-        const natal = { ...data, bodies, aspects: [], groups: [] };
-        if (transit) window.astr3Transit!.update({ natal, transit: { bodies }, crossAspects: [] });
-        else window.astr3.update(natal);
-      },
-      { transit, data: fixture },
-    );
-    const host = transit ? '#transit-chart' : '#chart';
-    for (const width of [isMobile ? 393 : 1280, 360]) {
-      await page.setViewportSize({ width, height: 1000 });
-      for (const weight of ['light', 'regular', 'bold']) {
-        await page.locator('#chart-weight').selectOption(weight);
-        for (const zoom of [1, 1.8]) {
-          await page.evaluate(
-            ({ transit, zoom }) => {
-              const chart = transit ? window.astr3Transit! : window.astr3;
-              chart.resetView();
-              chart.zoomBy(zoom);
-            },
-            { transit, zoom },
-          );
-          await expect.poll(() => bandViolations(page, transit, zoom)).toEqual([]);
-          await expect(page.locator(`${host} .astr3-access button[data-kind=body]`)).toHaveCount(
-            transit ? 24 : 12,
-          );
+for (const layout of ['alternative', 'advanced'] as const) {
+  for (const transit of [false, true]) {
+    test(`contains crowded ${layout} ${transit ? 'transit' : 'natal'} symbols across weights and zoom`, async ({
+      page,
+      isMobile,
+    }) => {
+      await ready(page);
+      await page.locator('#chart-layout').selectOption(layout);
+      if (transit) await enableTransits(page);
+      await page.evaluate(
+        ({ transit, data }) => {
+          const bodies = Array.from({ length: 12 }, (_, i) => ({
+            id: `p${i}`,
+            name: `Synthetic ${i}`,
+            glyph: String(i % 10),
+            longitude: (350 + i) % 360,
+          }));
+          const natal = { ...data, bodies, aspects: [], groups: [] };
+          if (transit)
+            window.astr3Transit!.update({ natal, transit: { bodies }, crossAspects: [] });
+          else window.astr3.update(natal);
+        },
+        { transit, data: fixture },
+      );
+      const host = transit ? '#transit-chart' : '#chart';
+      for (const width of [isMobile ? 393 : 1280, 360]) {
+        await page.setViewportSize({ width, height: 1000 });
+        for (const weight of ['light', 'regular', 'bold']) {
+          await page.locator('#chart-weight').selectOption(weight);
+          for (const zoom of [1, 1.8]) {
+            await page.evaluate(
+              ({ transit, zoom }) => {
+                const chart = transit ? window.astr3Transit! : window.astr3;
+                chart.resetView();
+                chart.zoomBy(zoom);
+              },
+              { transit, zoom },
+            );
+            await expect.poll(() => bandViolations(page, transit, zoom, layout)).toEqual([]);
+            await expect(page.locator(`${host} .astr3-access button[data-kind=body]`)).toHaveCount(
+              transit ? 24 : 12,
+            );
+          }
         }
       }
-    }
-    await expect(page.locator(`${host} .astr3-body,${host} .astr3-cluster`).first()).toBeVisible();
-    await page.evaluate(
-      (transit) =>
-        transit
-          ? window.astr3Transit!.select({ chart: 'natal', kind: 'body', id: 'p0' })
-          : window.astr3.select({ kind: 'body', id: 'p0' }),
-      transit,
-    );
-    await expect(page.locator('#inspector-heading')).toContainText('Synthetic 0');
-  });
+      await expect(
+        page.locator(`${host} .astr3-body,${host} .astr3-cluster`).first(),
+      ).toBeVisible();
+      await page.evaluate(
+        (transit) =>
+          transit
+            ? window.astr3Transit!.select({ chart: 'natal', kind: 'body', id: 'p0' })
+            : window.astr3.select({ kind: 'body', id: 'p0' }),
+        transit,
+      );
+      await expect(page.locator('#inspector-heading')).toContainText('Synthetic 0');
+    });
+  }
 }
 
 test('retains the preset through mode/time changes and renders both alternative wheels', async ({

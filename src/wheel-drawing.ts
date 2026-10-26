@@ -21,7 +21,7 @@ import {
 import { housePolygon } from './wheel-geometry.js';
 import type { WheelGeometry } from './wheel-geometry.js';
 import type { BodyLayout, Box, Point } from './layout.js';
-import { chartText } from './chart-text.js';
+import { chartText, formatGlyphPosition } from './chart-text.js';
 import type { TextSpec, TextSize } from './chart-text.js';
 import type { HitTarget } from './picking.js';
 import type { AspectFamily, BodyReference, ChartSide } from './model/transits.js';
@@ -119,6 +119,9 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
   const project = (point: Point) => projectWheel(point, view);
   const visualWeight = weightProfile(options.chartWeight);
   const text = chartText(pixelsPerUnit);
+  // Advanced's position captions remain useful at a normal full-wheel size.
+  if (geometry.layout === 'advanced' && pixelsPerUnit >= 0.65)
+    text.caption = Math.max(9, text.caption);
   const textMetrics = { measure: input.measure };
   const layoutCache = input.cache ?? new Map<string, BodyLayout>();
   const shapes: WheelShape[] = [],
@@ -199,7 +202,8 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
   const dotExtentPx = (id: string) =>
     dotRadiusPx + (isTransit(id) ? (1.1 * visualWeight.strokeMultiplier) / 2 : 0);
   const transitColor = p?.transitColor ?? colors.group;
-  const alternative = geometry.layout === 'alternative';
+  const innerBands = geometry.layout !== 'default';
+  const annularHouses = geometry.house.inner > 0;
   const axisRadius = geometry.axis;
   const plottedBodies = model.bodies.filter((body) => bodyVisible(body.id));
   const shownBodies = plottedBodies.filter(
@@ -219,7 +223,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
   const activeWidth = options.selectionEffects?.lineWidth ?? 2.5;
   const reservedLabels: { element: WheelLabel; point: Point }[] = [];
   const houseNumberSpace: Box[] =
-    p && !alternative
+    p && !annularHouses
       ? [...bodyAnchors.values()].map((point) => ({
           ...point,
           width: 9 / pixelsPerUnit,
@@ -255,7 +259,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
       ).title = SIGNS[sign]!;
     }
   }
-  if (alternative) {
+  if (innerBands) {
     if (visible.bodies || visible.aspects || visible.groups)
       circle(geometry.anchor, colors.ring, 0.6);
     if (visible.bodies || visible.degrees)
@@ -307,7 +311,8 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
     }
   if (visible.houses && model.houses.length) {
     circle(geometry.house.ring, colors.ring, 0.6);
-    if (alternative && !visible.zodiac) circle(geometry.house.inner, colors.ring);
+    if (geometry.layout === 'alternative' && !visible.zodiac)
+      circle(geometry.house.inner, colors.ring);
     for (let i = 0; i < model.houses.length; i++) {
       const house = model.houses[i]!,
         next = model.houses[(i + 1) % 12]!;
@@ -326,7 +331,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         0.65,
       );
       const houseRadius =
-        p && !alternative
+        p && !annularHouses
           ? Math.max(
               20,
               Math.min(geometry.house.label, geometry.anchor - 10 / Math.max(pixelsPerUnit, 0.05)),
@@ -342,7 +347,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         selection,
       );
       let showNumber = true;
-      if (alternative) {
+      if (annularHouses) {
         const rect = houseLabel.box;
         const box = {
           ...labelPoint,
@@ -350,7 +355,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
           height: rect.height / pixelsPerUnit,
         };
         // Tiny or narrow sectors keep their full clickable band/list entry.
-        // Never move their number into the zodiac or another house.
+        // Never move their number into the aspect disk, zodiac or another house.
         showNumber =
           [-1, 1].every((x) =>
             [-1, 1].every((y) =>
@@ -434,7 +439,54 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         point: opposite,
       });
     }
-  if (alternative && visible.bodies && primary && primary.kind !== 'house') {
+  if (visible.houses && visible.degrees && geometry.house.cuspLabel && text.caption) {
+    // Axis captions have priority. Keep cusp captions at their true longitude;
+    // omit collisions in stable house-number order instead of displacing them.
+    const occupied = reservedLabels.map(({ element, point }) => ({
+      ...point,
+      width: element.box.width / pixelsPerUnit,
+      height: element.box.height / pixelsPerUnit,
+    }));
+    for (const house of model.houses) {
+      const point = polar(house.longitude, geometry.house.cuspLabel, asc);
+      const spec = {
+        text: formatGlyphPosition(house.longitude),
+        size: text.caption,
+        className: 'astr3-cusp',
+      };
+      const measured = textMetrics.measure(spec);
+      const box = {
+        ...point,
+        width: measured.width / pixelsPerUnit,
+        height: measured.height / pixelsPerUnit,
+      };
+      if (
+        Math.hypot(Math.abs(point.x) + box.width / 2, Math.abs(point.y) + box.height / 2) >
+          geometry.extent - 4 / pixelsPerUnit ||
+        occupied.some((other) => boxesOverlap(box, other, 3 / pixelsPerUnit))
+      )
+        continue;
+      const element = label(
+        point,
+        spec.text,
+        spec.size,
+        primary?.kind === 'house' && primary.id === house.id ? accent : colors.muted,
+        spec.className,
+        { kind: 'house', id: house.id },
+      );
+      element.title = `House ${house.number} · ${formatPosition(house.longitude)}`;
+      element.dataset.house = String(house.number);
+      occupied.push(box);
+      reservedLabels.push({ element, point });
+      targets.push({
+        selection: { kind: 'house', id: house.id },
+        priority: 3,
+        shape: 'box',
+        box: { ...project(point), ...measured },
+      });
+    }
+  }
+  if (innerBands && visible.bodies && primary && primary.kind !== 'house') {
     const guideIds = primary.kind === 'body' ? new Set([primary.id]) : activeBodies;
     for (const body of shownBodies) {
       if (!guideIds.has(body.id)) continue;
@@ -512,7 +564,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
     });
     const symbolScale = (body: Body) => (['AC', 'MC'].includes(glyph(body)) ? 0.72 : 1);
     const caption = (body: Body) =>
-      `${visible.degrees ? formatPosition(body.longitude).split(' ')[0] : ''}${body.retrograde ? ' ℞' : ''}`;
+      `${visible.degrees ? (geometry.layout === 'advanced' ? formatGlyphPosition(body.longitude) : formatPosition(body.longitude).split(' ')[0]) : ''}${body.retrograde ? ' ℞' : ''}`;
     const measureBody = (body: Body, size: number, compact: boolean) => {
       const measured = textMetrics.measure({
         text: glyph(body),
@@ -693,7 +745,7 @@ export function buildWheelDrawing(input: WheelDrawingInput): WheelDrawing {
         [
           polar(
             body.longitude,
-            !alternative && isTransit(body.id) ? markerRadius : markerRadius - 3,
+            !innerBands && isTransit(body.id) ? markerRadius : markerRadius - 3,
             asc,
           ),
           polar(body.longitude, markerRadius + 4, asc),

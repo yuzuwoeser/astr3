@@ -102,12 +102,12 @@ const enabledAspects: AspectEnabledConfig = { quincunx: true, square: false };
 const model = createModel(input, { enabledAspects });
 const chartFactory: typeof createChart = createChart;
 const chartWeight: ChartWeight = 'regular';
-const layout: ChartLayout = 'alternative';
+const layout: ChartLayout = 'advanced';
 const bodyVisibility: BodyVisibility = { sun: false };
 const options: Parameters<typeof createChart>[1] = { data: input, chartWeight, layout, enabledAspects, bodyVisibility, lineStyles: { quincunx: { dash: [4, 3] } }, theme: { aspects: { quincunx: '#37836e' } } };
 const template: ChartTemplate = { version: 1, kind: 'natal', options: { layout, layers: { degrees: false } } };
 const appearance: ChartTemplateOptions = resolveChartTemplate(template);
-const transitTemplate: TransitChartTemplate = { version: 1, kind: 'transit', options: { glyphs: { transit: { sun: 'S' } }, transitColor: '#abcdef' } };
+const transitTemplate: TransitChartTemplate = { version: 1, kind: 'transit', options: { layout, glyphs: { transit: { sun: 'S' } }, transitColor: '#abcdef' } };
 const transitAppearance: TransitChartTemplateOptions = resolveTransitChartTemplate(transitTemplate);
 const fromTemplate: Parameters<typeof createChart>[1] = { ...appearance, data: input, ariaLabel: 'Template consumer' };
 const transitFromTemplate: Parameters<typeof createTransitChart>[1] = { ...transitAppearance, data: { natal: input, transit: input } };
@@ -176,6 +176,10 @@ assert.equal(schema.oneOf.length, 2);
 assert.deepEqual(resolveChartTemplate({ version: 1, kind: 'natal', options: { layout: 'alternative', theme: { accent: '#abcdef' } } }), { layout: 'alternative', theme: { accent: '#abcdef' } });
 assert.deepEqual(resolveTransitChartTemplate({ version: 1, kind: 'transit', options: { transitColor: '#abcdef', bodyVisibility: { transit: { moon: false } } } }), { transitColor: '#abcdef', bodyVisibility: { transit: { moon: false } } });
 assert.throws(() => resolveChartTemplate({ version: 2, kind: 'natal', options: {} }), (error) => error instanceof ChartTemplateError && error.path === 'version');
+for (const kind of ['natal', 'transit']) {
+  const resolve = kind === 'natal' ? resolveChartTemplate : resolveTransitChartTemplate;
+  assert.deepEqual(resolve({ version: 1, kind, options: { layout: 'advanced' } }), { layout: 'advanced' });
+}
 assert.equal(typeof createChart, 'function');
 assert.equal(typeof createTransitChart, 'function');
 assert.equal(typeof createTransitAnimation, 'function');

@@ -168,7 +168,7 @@ than DOM custom events. Read [events and details](#events-and-details) for paylo
 
 ### Options
 
-- `layout`: `'default'` (library and demo default) or `'alternative'`, typed as `ChartLayout`. Both constructors and `setOptions` accept it. Invalid values throw `RangeError` before changing live state. See [Layout presets](#layout-presets).
+- `layout`: `'default'` (library and demo default), `'alternative'`, or `'advanced'`, typed as `ChartLayout`. Both constructors and `setOptions` accept it. Invalid values throw `RangeError` before changing live state. See [Layout presets](#layout-presets).
 - `chartWeight`: `light` (library default), `regular`, or `bold`. Changes chart strokes, label weight, and symbol strokes. Crowded labels may choose a smaller font to fit the measured weight. The demo starts at Regular and provides a Chart weight selector. Invalid values throw `RangeError`; invalid option updates leave the previous settings intact.
 - `theme`: patch background, foreground, muted, ring, accent, group, the four element colors (fire, earth, air, water), and per-type aspect colors. Defaults to `DARK_THEME`; exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
 - `glyphs`: body-ID-to-text overrides, falling back to the body's glyph, built-in symbol, or two name characters. Strings are text, never injected HTML. Use short glyphs.
@@ -411,10 +411,31 @@ Alternative house dividers, highlights and picking stay within the outer annulus
 
 Alternative ruler dots stay on their source boundary and short leaders connect displaced symbols. A faint dashed radial guide connects an active body to its inner anchor; active aspects/groups guide their members. Guides add no picking targets. Natal/transit colors and inner circle/diamond markers retain their existing meaning. The inner aspect circle remains independent of house visibility.
 
+`layout: 'advanced'` retains twelve equal zodiac sectors outside a broad planet
+area. Actual house-cusp spokes extend from a small central aspect circle to the
+zodiac's inner edge, with house numbers in a narrow inner annulus. A natal chart
+uses one expanded planet band; a bi-wheel places natal symbols inside transit
+symbols, with separate source rulers and one shared aspect circle. House picking
+and highlights exclude the central aspect disk. Unknown houses add no spokes,
+numbers, or cusp captions, and hiding houses leaves the aspect circle intact.
+
+Advanced labels are upright: a planet glyph above a degree/sign-glyph/minute
+caption, followed by ℞ for retrograde motion. Positions round to the nearest
+minute with carry into the next sign. Exact natal cusp positions appear outside
+the zodiac when space permits. Axis captions take priority; colliding cusp
+captions are omitted in house-number order without moving their longitudes.
+House numbers that cannot fit their actual sectors are also omitted. Exact
+positions remain available in selection details and the accessible object list.
+The `degrees` layer controls position captions; the `houses` layer also controls
+cusp captions. Retrograde indicators retain their existing behavior. Small or
+crowded views may omit captions or cluster planets using the same bounded packing
+as other layouts. Advanced uses the current theme and chart weight and is shared
+by browser rendering, SVG/PNG export, and JSON templates.
+
 ```ts
 import type { ChartLayout } from '@yuzuwoeser/astr3';
 
-const layout: ChartLayout = 'alternative';
+const layout: ChartLayout = 'advanced';
 chart.setOptions({ layout });
 chart.setOptions({ layout: 'default' });
 ```

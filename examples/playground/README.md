@@ -1,7 +1,7 @@
 ## Full chart playground
 
 Explore supplied teaching data, or calculate documented public reference charts
-locally with Astronomy Engine. Try natal/transit views, two layouts, body and
+locally with Astronomy Engine. Try natal/transit views, three layouts, body and
 aspect controls, selection, zoom, and SVG/PNG downloads.
 
 ### Run from this checkout

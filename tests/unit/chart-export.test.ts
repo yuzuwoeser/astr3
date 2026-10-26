@@ -9,8 +9,10 @@ import { createExportMeasurer, exportRun, assertExportText } from '../../src/exp
 import { validateExportDimensions } from '../../src/export-options.js';
 import { resolveWheelGeometry } from '../../src/wheel-geometry.js';
 import { boxesOverlap, polar } from '../../src/layout.js';
+import type { ChartLayout } from '../../src/types.js';
+import { formatGlyphPosition } from '../../src/chart-text.js';
 
-function snapshot(layout: 'default' | 'alternative' = 'default'): ExportSnapshot {
+function snapshot(layout: ChartLayout = 'default'): ExportSnapshot {
   const data = {
     title: 'Invented <wheel> & "study"',
     bodies: [
@@ -54,10 +56,7 @@ function snapshot(layout: 'default' | 'alternative' = 'default'): ExportSnapshot
 const drawing = (input: ExportSnapshot) =>
   buildWheelDrawing({
     ...input,
-    measure: createExportMeasurer(
-      input.options.chartWeight,
-      input.geometry.layout === 'alternative',
-    ),
+    measure: createExportMeasurer(input.options.chartWeight, input.geometry.layout !== 'default'),
   });
 
 describe('outlined chart exports', () => {
@@ -106,7 +105,7 @@ describe('outlined chart exports', () => {
     input.transparent = true;
     expect(renderSvg(input)).not.toContain('height="1024" fill="#111c20"');
   });
-  for (const layout of ['default', 'alternative'] as const) {
+  for (const layout of ['default', 'alternative', 'advanced'] as const) {
     it(`packs outlined ${layout} labels inside their band without moving anchors`, () => {
       const input = snapshot(layout);
       const result = drawing(input);
@@ -142,6 +141,80 @@ describe('outlined chart exports', () => {
       );
     });
   }
+  it('renders full advanced positions with correctly rounded sign and minute boundaries', () => {
+    const input = snapshot('advanced');
+    expect(formatGlyphPosition(29.999)).toBe(`0° ${SIGN_GLYPHS[1]} 00′`);
+    expect(formatGlyphPosition(359.999)).toBe(`0° ${SIGN_GLYPHS[0]} 00′`);
+    expect(formatGlyphPosition(-0.02)).toBe(`29° ${SIGN_GLYPHS[11]} 59′`);
+    const result = drawing(input);
+    expect(result.labels.find((label) => label.selection?.id === 'sun')?.caption).toBe(
+      `5° ${SIGN_GLYPHS[0]} 00′ ℞`,
+    );
+    expect(result.labels.filter((label) => label.className === 'astr3-cusp')).toHaveLength(12);
+    expect(() => renderSvg(input)).not.toThrow();
+    input.visible.degrees = false;
+    const hidden = drawing(input);
+    expect(
+      hidden.labels.find((label) => label.body && label.selection?.id === 'sun')?.caption,
+    ).toBe(' ℞');
+    expect(hidden.labels.filter((label) => label.className === 'astr3-cusp')).toHaveLength(0);
+  });
+
+  it('omits colliding advanced cusp captions while retaining exact house sectors and axes', () => {
+    const input = snapshot('advanced');
+    const data = {
+      ...input.options.data,
+      houses: [0, 0.1, 0.2, 30, 60, 90, 120, 150, 180, 210, 240, 270].map((longitude, i) => ({
+        id: `h${i}`,
+        number: i + 1,
+        longitude,
+      })),
+      angles: { ascendant: 0, midheaven: 270 },
+    };
+    input.model = createModel(data);
+    input.options = { ...input.options, data };
+    const result = drawing(input);
+    const cusps = result.labels.filter((label) => label.className === 'astr3-cusp');
+    expect(cusps.length).toBeGreaterThan(0);
+    expect(cusps.length).toBeLessThan(12);
+    const outer = result.labels.filter((label) =>
+      ['astr3-cusp', 'astr3-axis'].includes(label.className ?? ''),
+    );
+    outer.forEach((a, i) =>
+      outer.slice(i + 1).forEach((b) => {
+        expect(boxesOverlap({ ...a, ...a.box }, { ...b, ...b.box })).toBe(false);
+      }),
+    );
+    expect(
+      result.targets.filter(
+        (target) => target.shape === 'polygon' && target.selection.kind === 'house',
+      ),
+    ).toHaveLength(12);
+    for (const label of cusps) {
+      const house = input.model.houses.find((house) => house.id === label.selection!.id)!;
+      const point = polar(house.longitude, input.geometry.house.cuspLabel!);
+      expect(label.x).toBeCloseTo(512 + point.x * input.view.pixelsPerUnit);
+      expect(label.y).toBeCloseTo(512 - point.y * input.view.pixelsPerUnit);
+      expect(label.x - label.box.width / 2).toBeGreaterThanOrEqual(0);
+      expect(label.x + label.box.width / 2).toBeLessThanOrEqual(1024);
+      expect(label.y - label.box.height / 2).toBeGreaterThanOrEqual(0);
+      expect(label.y + label.box.height / 2).toBeLessThanOrEqual(1024);
+    }
+    input.visible.houses = false;
+    const hidden = drawing(input);
+    expect(hidden.labels.some((label) => label.className === 'astr3-cusp')).toBe(false);
+    expect(
+      hidden.shapes.some(
+        (shape) =>
+          shape.kind === 'stroke' &&
+          shape.points.length === 181 &&
+          Math.abs(shape.points[0]!.x - input.geometry.anchor) < 1e-8,
+      ),
+    ).toBe(true);
+    input.visible.houses = true;
+    input.model = createModel({ bodies: input.model.bodies });
+    expect(drawing(input).labels.some((label) => label.selection?.kind === 'house')).toBe(false);
+  });
   it('retains crowding badges and meaningful unknown-house notices', () => {
     const input = snapshot();
     const data = {

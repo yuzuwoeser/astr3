@@ -1,3 +1,5 @@
+import { normalize, SIGN_GLYPHS } from './model/math.js';
+
 export interface ChartText {
   glyph: number;
   number: number;
@@ -90,4 +92,10 @@ export function createTextMeasurer(root: HTMLElement) {
       probe.remove();
     },
   };
+}
+
+/** Round once, carrying minutes into the next sign just like formatPosition. */
+export function formatGlyphPosition(longitude: number): string {
+  const minutes = Math.round(normalize(longitude) * 60) % 21600;
+  return `${Math.floor((minutes % 1800) / 60)}° ${SIGN_GLYPHS[Math.floor(minutes / 1800)]} ${String(minutes % 60).padStart(2, '0')}′`;
 }

@@ -37,6 +37,7 @@ export interface WheelGeometry {
     readonly outer: number;
     readonly ring: number;
     readonly label: number;
+    readonly cuspLabel?: number;
   };
   readonly anchor: number;
   readonly natal: BodyBand;
@@ -50,8 +51,8 @@ export function resolveWheelGeometry(
   transit = false,
   degrees = true,
 ): WheelGeometry {
-  if (layout !== 'default' && layout !== 'alternative')
-    throw new RangeError('Chart layout must be default or alternative.');
+  if (layout !== 'default' && layout !== 'alternative' && layout !== 'advanced')
+    throw new RangeError('Chart layout must be default, alternative, or advanced.');
   if (layout === 'default')
     return {
       layout,
@@ -87,6 +88,26 @@ export function resolveWheelGeometry(
       ],
     };
 
+  if (layout === 'advanced')
+    return {
+      layout,
+      extent: 490,
+      axis: 458,
+      zodiac: { inner: 362, outer: 400, label: 381 },
+      house: { inner: 80, outer: 362, ring: 108, label: 94, cuspLabel: 426 },
+      anchor: 80,
+      natal: transit
+        ? { inner: 116, outer: 214, marker: 236, preferred: 174, bounds: [214] }
+        : { inner: 116, outer: 342, marker: 362, preferred: 286, bounds: [342] },
+      transit: { inner: 244, outer: 342, marker: 362, preferred: 302, bounds: [342] },
+      scales: transit
+        ? [
+            { id: 'transit', edge: 362, start: 360, direction: -1, label: 344 },
+            { id: 'natal', edge: 236, start: 234, direction: -1, label: 218 },
+          ]
+        : [{ id: 'natal', edge: 362, start: 360, direction: -1, label: 344 }],
+    };
+
   // Both source bands fit inside the zodiac. Their equal widths leave a
   // separate central aspect disk; a single chart gets one expanded band.
   return {
@@ -109,7 +130,7 @@ export function resolveWheelGeometry(
   };
 }
 
-/** Actual cusp sectors; the alternative's hit area has an empty center. */
+/** Actual cusp sectors, excluding the center for layouts with annular houses. */
 export function housePolygon(
   geometry: WheelGeometry,
   longitude: number,

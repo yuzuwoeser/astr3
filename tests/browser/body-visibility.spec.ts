@@ -21,7 +21,7 @@ async function point(page: Page, position: { x: number; y: number }, layout: Cha
   };
 }
 
-for (const layout of ['default', 'alternative'] as const) {
+for (const layout of ['default', 'alternative', 'advanced'] as const) {
   test(`hides individual bodies, connectors and pick targets in the ${layout} layout`, async ({
     page,
     isMobile,

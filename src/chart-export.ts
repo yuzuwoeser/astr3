@@ -88,7 +88,7 @@ export function renderSvg(snapshot: ExportSnapshot): string {
     ...snapshot,
     measure: createExportMeasurer(
       snapshot.options.chartWeight,
-      snapshot.geometry.layout === 'alternative',
+      snapshot.geometry.layout !== 'default',
     ),
   });
   const project = (point: { x: number; y: number }) => projectWheel(point, drawing.view);

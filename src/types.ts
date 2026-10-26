@@ -34,7 +34,7 @@ export type ThemeOptions = Partial<Omit<ChartTheme, 'aspects'>> & {
   aspects?: Partial<ChartTheme['aspects']>;
 };
 export type ChartWeight = 'light' | 'regular' | 'bold';
-export type ChartLayout = 'default' | 'alternative';
+export type ChartLayout = 'default' | 'alternative' | 'advanced';
 /** Omitted body IDs are visible; runtime patches merge by ID. */
 export type BodyVisibility = Readonly<Record<string, boolean>>;
 export interface ChartOptions extends ModelOptions {

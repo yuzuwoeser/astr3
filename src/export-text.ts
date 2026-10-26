@@ -53,7 +53,7 @@ export function exportTextStroke(weight: ChartWeight | undefined, symbol: boolea
   // shipping separate font files. Symbols also retain their explicit stroke.
   return (profile.fontWeight - 400) / 1000 + (symbol ? profile.symbolStroke : 0);
 }
-export function createExportMeasurer(weight: ChartWeight | undefined, alternative: boolean) {
+export function createExportMeasurer(weight: ChartWeight | undefined, innerBands: boolean) {
   const cache = new Map<string, TextSize>();
   return (spec: TextSpec): TextSize => {
     const key = JSON.stringify([
@@ -84,9 +84,9 @@ export function createExportMeasurer(weight: ChartWeight | undefined, alternativ
       height += 2 + Math.max(captionSize * 1.15, caption.bottom - caption.top);
     }
     if (spec.body) {
-      const compactAlternative = alternative && spec.compact;
-      width = Math.max(spec.compact ? 0 : 34, width + (compactAlternative ? 4 : 8));
-      height += compactAlternative ? 2 : 6;
+      const tight = innerBands && spec.compact;
+      width = Math.max(spec.compact ? 0 : 34, width + (tight ? 4 : 8));
+      height += tight ? 2 : 6;
     }
     const result = { width, height };
     cache.set(key, result);

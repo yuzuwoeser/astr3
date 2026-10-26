@@ -83,7 +83,7 @@ async function downloads(page: Page, mode: 'natal' | 'transit') {
   }
 }
 
-for (const layout of ['default', 'alternative'] as const) {
+for (const layout of ['default', 'alternative', 'advanced'] as const) {
   test(`calculates, selects, and downloads natal/transit charts in ${layout} layout`, async ({
     page,
     isMobile,
