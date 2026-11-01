@@ -180,6 +180,9 @@
         "chartWeight": {
           "enum": ["light", "regular", "bold"]
         },
+        "transparent": {
+          "type": "boolean"
+        },
         "theme": {
           "$ref": "#/$defs/theme"
         },
@@ -263,6 +266,9 @@
         },
         "chartWeight": {
           "enum": ["light", "regular", "bold"]
+        },
+        "transparent": {
+          "type": "boolean"
         },
         "theme": {
           "$ref": "#/$defs/theme"

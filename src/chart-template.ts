@@ -7,6 +7,7 @@ type PresentationKey =
   | 'layout'
   | 'chartWeight'
   | 'theme'
+  | 'transparent'
   | 'glyphs'
   | 'layers'
   | 'bodyVisibility'
@@ -143,6 +144,7 @@ const layerFields = {
 const optionFields = {
   layout: choice('default', 'alternative', 'advanced'),
   chartWeight: choice('light', 'regular', 'bold'),
+  transparent: boolean,
   theme: fields({
     background: color,
     foreground: color,

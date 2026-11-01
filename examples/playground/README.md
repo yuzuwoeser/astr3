@@ -3,6 +3,8 @@
 Explore supplied teaching data, or calculate documented public reference charts
 locally with Astronomy Engine. Try natal/transit views, three layouts, body and
 aspect controls, selection, zoom, and SVG/PNG downloads.
+Enable **Transparent background** to preview the wheel on a checkerboard and
+download SVG/PNG files with transparency. Labels retain theme backgrounds.
 
 ### Run from this checkout
 

@@ -410,6 +410,12 @@ $('theme-toggle').addEventListener('click', () => {
   $('theme-toggle').replaceChildren(document.createTextNode(light ? '☾ Dark' : '☼ Light'));
   document.querySelector('.wheel-panel')?.classList.toggle('light', light);
 });
+$<HTMLInputElement>('transparent-background').addEventListener('change', (event) => {
+  const transparent = (event.currentTarget as HTMLInputElement).checked;
+  chart.setOptions({ transparent });
+  transitChart?.setOptions({ transparent });
+  document.querySelector('.wheel-panel')?.classList.toggle('transparent', transparent);
+});
 $<HTMLSelectElement>('chart-layout').addEventListener('change', (event) => {
   const layout = (event.currentTarget as HTMLSelectElement).value as ChartLayout;
   chart.setOptions({ layout });
@@ -580,6 +586,7 @@ $('chart-view').addEventListener('change', () => {
       layout: $<HTMLSelectElement>('chart-layout').value as ChartLayout,
       chartWeight: $<HTMLSelectElement>('chart-weight').value as ChartWeight,
       theme: light ? LIGHT_THEME : DARK_THEME,
+      transparent: $<HTMLInputElement>('transparent-background').checked,
       orbs: orbLimits,
       enabledAspects: enabledAspectTypes,
       layers,

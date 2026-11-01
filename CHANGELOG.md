@@ -4,6 +4,10 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 ## Unreleased
 
+- Add an optional transparent background to natal and transit charts, JSON
+  templates, and the playground. SVG/PNG downloads inherit the chart setting,
+  with per-export overrides; labels and controls retain theme backgrounds.
+
 - Align Advanced planet and point symbols with their full position captions in
   radial clock hands perpendicular to the ring, with every individual character
   upright and spaced to avoid overlaps. Keep zodiac ring symbols upright and

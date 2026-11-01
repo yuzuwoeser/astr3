@@ -171,6 +171,7 @@ than DOM custom events. Read [events and details](#events-and-details) for paylo
 - `layout`: `'default'` (library and demo default), `'alternative'`, or `'advanced'`, typed as `ChartLayout`. Both constructors and `setOptions` accept it. Invalid values throw `RangeError` before changing live state. See [Layout presets](#layout-presets).
 - `chartWeight`: `light` (library default), `regular`, or `bold`. Changes chart strokes, label weight, and symbol strokes. Crowded labels may choose a smaller font to fit the measured weight. The demo starts at Regular and provides a Chart weight selector. Invalid values throw `RangeError`; invalid option updates leave the previous settings intact.
 - `theme`: patch background, foreground, muted, ring, accent, group, the four element colors (fire, earth, air, water), and per-type aspect colors. Defaults to `DARK_THEME`; exported `DARK_THEME` and `LIGHT_THEME` provide complete palettes.
+- `transparent`: defaults to `false`. Set `true` to show the host background through the wheel. Both constructors and `setOptions` accept it; invalid non-boolean values throw `TypeError` before changing the chart. Labels, cluster badges, controls, and the accessible list retain theme backgrounds for legibility. SVG/PNG exports inherit this setting unless overridden per export. The playground's **Transparent background** checkbox previews transparency on a checkerboard and applies to downloads.
 - `glyphs`: body-ID-to-text overrides, falling back to the body's glyph, built-in symbol, or two name characters. Strings are text, never injected HTML. Use short glyphs.
 - `layers`: patch `zodiac`, `bodies`, `houses`, `axes`, `aspects`, `groups`, `degrees`; all default true. Hidden layers remain available in the model and accessible list.
 - `bodyVisibility`: a `BodyVisibility` record mapping original body IDs to booleans, for example `{ moon: false, 'north-node': false }`. Omitted IDs are visible. Constructor options are copied; `setOptions` merges patches by ID, and `true` restores a hidden body. Unknown IDs retain their setting for future data updates. Invalid records/values throw before changing the chart. Hiding a body removes its glyph, markers, leaders, and wheel pick targets, plus aspects and group outlines involving it. Model data, relationships, house occupancy, selection, and accessible entries remain available; hidden body entries say “hidden on wheel.” AC/MC axis guides remain controlled by `layers.axes`, but their captions no longer select a hidden point. Visibility changes never request new ephemeris calculations.
@@ -192,6 +193,7 @@ import type { ChartWeight } from '@yuzuwoeser/astr3';
 const chartWeight: ChartWeight = 'bold';
 chart.setOptions({ chartWeight });
 chart.setOptions({ chartWeight: 'regular', glyphs: { sun: '☉' } });
+chart.setOptions({ transparent: true });
 ```
 
 ## JSON templates
@@ -239,13 +241,13 @@ object is valid; every omitted setting retains its existing renderer default
 `ChartTemplate` and `TransitChartTemplate` type the envelopes. The returned option
 types pick presentation fields from `ChartOptions` and `TransitChartOptions`:
 
-| Options                                                                            | Natal                                       | Transit                                                                                                             |
-| ---------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `layout`, `chartWeight`, `theme`, `lineStyles`, `selectionEffects`, `dimUnrelated` | Same shapes as [renderer options](#options) | Same shapes as natal                                                                                                |
-| `glyphs`                                                                           | Body-ID-to-string record                    | `{ natal?: record, transit?: record }`                                                                              |
-| `bodyVisibility`                                                                   | Body-ID-to-boolean record                   | `{ natal?: record, transit?: record }`                                                                              |
-| `layers`                                                                           | Partial `ChartLayers`                       | Partial `TransitLayers`, including `natalBodies`, `transitBodies`, `natalAspects`, `crossAspects`, `transitAspects` |
-| `transitColor`                                                                     | Unavailable                                 | Color string; omitted uses the theme's group color                                                                  |
+| Options                                                                                           | Natal                                       | Transit                                                                                                             |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `layout`, `chartWeight`, `theme`, `transparent`, `lineStyles`, `selectionEffects`, `dimUnrelated` | Same shapes as [renderer options](#options) | Same shapes as natal                                                                                                |
+| `glyphs`                                                                                          | Body-ID-to-string record                    | `{ natal?: record, transit?: record }`                                                                              |
+| `bodyVisibility`                                                                                  | Body-ID-to-boolean record                   | `{ natal?: record, transit?: record }`                                                                              |
+| `layers`                                                                                          | Partial `ChartLayers`                       | Partial `TransitLayers`, including `natalBodies`, `transitBodies`, `natalAspects`, `crossAspects`, `transitAspects` |
+| `transitColor`                                                                                    | Unavailable                                 | Color string; omitted uses the theme's group color                                                                  |
 
 Colors must be opaque `#rgb`/`#rrggbb`, a Three.js named color (case insensitive),
 or the renderer's comma-separated `rgb()` or `hsl()` syntax. Alpha channels, CSS
@@ -322,12 +324,12 @@ const pngOptions: ChartPngExportOptions = { size: 1024, pixelRatio: 2 };
 const png = await chart.exportPng(pngOptions); // image/png, 2048 × 2048
 ```
 
-| Option        | Default  | Behavior                                                                                                                                                                                                  |
-| ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`        | `'full'` | Fit the complete wheel and omit selection effects. `'current'` preserves the current camera and selection, uses the viewport aspect ratio, and scales the result to `size` wide. Hover is always ignored. |
-| `size`        | `1024`   | Output width in pixels. Full exports are square; packing and text tiers use this size. Current-view exports lay out at the mounted viewport dimensions before scaling.                                    |
-| `transparent` | `false`  | Omit the overall background. Body labels and cluster badges retain theme-colored backgrounds for legibility.                                                                                              |
-| `pixelRatio`  | `2`      | PNG only: multiply SVG output dimensions when rasterizing.                                                                                                                                                |
+| Option        | Default                            | Behavior                                                                                                                                                                                                  |
+| ------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`        | `'full'`                           | Fit the complete wheel and omit selection effects. `'current'` preserves the current camera and selection, uses the viewport aspect ratio, and scales the result to `size` wide. Hover is always ignored. |
+| `size`        | `1024`                             | Output width in pixels. Full exports are square; packing and text tiers use this size. Current-view exports lay out at the mounted viewport dimensions before scaling.                                    |
+| `transparent` | Chart setting (`false` by default) | Omit the overall background. Body labels and cluster badges retain theme-colored backgrounds for legibility. Explicit `true`/`false` overrides the chart setting for this export.                         |
+| `pixelRatio`  | `2`                                | PNG only: multiply SVG output dimensions when rasterizing.                                                                                                                                                |
 
 Current theme, chart weight, layout, layers, body visibility, glyph overrides,
 line styles and aspect settings are retained. Export includes count badges and

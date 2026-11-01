@@ -44,6 +44,8 @@ export interface ChartOptions extends ModelOptions {
   /** Visual stroke/text weight. Defaults to light for existing integrations. */
   chartWeight?: ChartWeight;
   theme?: ThemeOptions;
+  /** Omit the wheel background; labels and controls retain theme backgrounds. Defaults to false. */
+  transparent?: boolean;
   glyphs?: Readonly<Record<string, string>>;
   layers?: Partial<ChartLayers>;
   /** Hide individual bodies and their connectors without removing model data. */
@@ -64,7 +66,7 @@ export interface ChartExportOptions {
   view?: 'full' | 'current';
   /** Output width in pixels. Full exports are square. Defaults to 1024. */
   size?: number;
-  /** Omit the canvas background; label backgrounds remain for legibility. */
+  /** Omit the canvas background; labels retain theme backgrounds. Defaults to the chart setting. */
   transparent?: boolean;
 }
 export interface ChartPngExportOptions extends ChartExportOptions {

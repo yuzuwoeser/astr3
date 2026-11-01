@@ -28,6 +28,7 @@ const complete: ChartTemplate = {
   options: {
     layout: 'alternative',
     chartWeight: 'bold',
+    transparent: true,
     theme: {
       background: '#101827',
       foreground: 'White',
@@ -91,6 +92,9 @@ const invalid: [unknown, string][] = [
   [natal([]), 'options'],
   [natal({ layout: 'custom' }), 'options.layout'],
   [natal({ chartWeight: 'heavy' }), 'options.chartWeight'],
+  [natal({ transparent: 'true' }), 'options.transparent'],
+  [natal({ transparent: null }), 'options.transparent'],
+  [transit({ transparent: 1 }), 'options.transparent'],
   [natal({ data: { bodies: [] } }), 'options.data'],
   [natal({ orbs: {} }), 'options.orbs'],
   [natal({ enabledAspects: {} }), 'options.enabledAspects'],
@@ -186,6 +190,8 @@ describe('JSON chart templates', () => {
       natal({ chartWeight: 'regular', lineStyles: { trine: {} } }),
       natal({ layout: 'advanced' }),
       transit({ layout: 'advanced' }),
+      natal({ transparent: false }),
+      transit({ transparent: false }),
       transit({ glyphs: {}, bodyVisibility: { transit: {} }, layers: { bodies: false } }),
       ...['midnight', 'paper', 'transit'].map((file) =>
         JSON.parse(
@@ -259,6 +265,7 @@ describe('JSON chart templates', () => {
       { ...natal(), [Symbol('extra')]: true },
       natal({ theme: new Date() }),
       natal({ layout: undefined }),
+      natal({ transparent: undefined }),
       { ...natal(), name: undefined },
       natal({ dimUnrelated: () => true }),
     ])

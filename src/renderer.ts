@@ -94,7 +94,7 @@ const LAYERS: ChartLayers = {
   degrees: true,
 };
 const STYLE = `
-.astr3{position:relative;isolation:isolate;font-family:system-ui,sans-serif;color:var(--astr3-fg);background:var(--astr3-bg);width:100%;min-width:0;border-radius:inherit}
+.astr3{position:relative;isolation:isolate;font-family:system-ui,sans-serif;color:var(--astr3-fg);background:var(--astr3-surface);width:100%;min-width:0;border-radius:inherit}
 .astr3 *{box-sizing:border-box}.astr3-stage{position:relative;width:100%;height:100%;min-height:280px;overflow:hidden;touch-action:none;border-radius:inherit;outline-offset:-3px}
 .astr3-stage:focus-visible,.astr3 button:focus-visible,.astr3 summary:focus-visible{outline:2px solid var(--astr3-accent);outline-offset:3px}
 .astr3 canvas{display:block;position:absolute;inset:0;width:100%;height:100%}.astr3-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
@@ -119,6 +119,11 @@ const STYLE = `
 @media(prefers-reduced-motion:no-preference){.astr3-body{transition:border-color .12s,box-shadow .12s}}
 `;
 
+function validateTransparency(transparent: boolean | undefined): void {
+  if (transparent !== undefined && typeof transparent !== 'boolean')
+    throw new TypeError('Chart transparent must be a boolean.');
+}
+
 /** Mounts a wheel. All DOM and GPU work is deferred until this call. */
 export function createChart(container: HTMLElement, initialOptions: ChartOptions): Chart {
   return createWheel(container, initialOptions);
@@ -133,6 +138,7 @@ export function createWheel(
   const doc = container.ownerDocument;
   const win = doc.defaultView;
   if (!win) throw new Error('createChart requires a browser document.');
+  validateTransparency(initialOptions.transparent);
   let options = {
     ...initialOptions,
     bodyVisibility: resolveBodyVisibility(initialOptions.bodyVisibility),
@@ -254,6 +260,7 @@ export function createWheel(
     const colors = theme();
     for (const [name, value] of Object.entries({
       bg: colors.background,
+      surface: options.transparent ? 'transparent' : colors.background,
       fg: colors.foreground,
       muted: colors.muted,
       ring: colors.ring,
@@ -264,7 +271,7 @@ export function createWheel(
     }))
       root.style.setProperty(`--astr3-${name}`, value);
     access.setAttribute('aria-label', options.ariaLabel ?? model.title);
-    scene.background = new Color(colors.background);
+    scene.background = options.transparent ? null : new Color(colors.background);
   }
   function describe(selection: Selection): string {
     if (selection.kind === 'body') {
@@ -795,7 +802,7 @@ export function createWheel(
         : undefined,
       outputWidth: size,
       outputHeight,
-      transparent: settings.transparent ?? false,
+      transparent: settings.transparent ?? options.transparent ?? false,
     };
   }
   function requestDraw(): void {
@@ -963,7 +970,7 @@ export function createWheel(
     requestDraw();
   }) as EventListener);
   try {
-    renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
   } catch (cause) {
     chartError = {
       code: 'WEBGL_UNAVAILABLE',
@@ -1044,6 +1051,7 @@ export function createWheel(
         lineStyles: { ...options.lineStyles, ...patch.lineStyles },
         selectionEffects: { ...options.selectionEffects, ...patch.selectionEffects },
       };
+      validateTransparency(nextOptions.transparent);
       const nextWeight = weightProfile(nextOptions.chartWeight);
       const nextGeometry = resolveWheelGeometry(
         nextOptions.layout,
