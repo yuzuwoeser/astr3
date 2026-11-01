@@ -96,6 +96,31 @@ TypeScript declarations. The four release-preflight tests and site build require
 newer Node TypeScript execution support; they are not minimum-runtime consumer
 checks. The package's published Node engine requirement remains `>=22.12.0`.
 
+### Browser test correction follow-up (2026-11-01)
+
+All three development-browser failures recorded above also reproduced on Node
+24.22.1. The Advanced transit template represented its five visible bodies with
+two individual symbols and three selectable cluster badges. Its test now checks
+every body and source, cluster selection, and complete captions on individual
+symbols. A spacious template case still requires all five individual symbols and
+captions. The animation test targets the transiting Mars cluster and chooser
+entry explicitly, retaining its selection, timing, and pause/resume assertions.
+These corrections change tests only; Node 26.13.0 and renderer behavior remain
+unchanged.
+
+The full browser run also exposed a detached-label measurement race in the
+Advanced radial-layout test. It now uses the existing atomic `labelPoint` helper
+for symbol and caption picking. Forced redraws on both desktop and mobile made
+all 20 stale-handle measurements per project return `null`, while all 20 atomic
+measurements and body selections per project passed.
+
+Follow-up validation on Node 26.13.0 passed the full core/package check (266
+tests), all 189 development-browser tests with one intentional desktop pinch
+skip, all 84 Pages tests, and formatting. The template and animation files passed
+all 30 focused tests. Temporary missing-body, missing-caption, and wrong-source
+faults were each detected on desktop and mobile (six expected failures). The
+local PHP recipe syntax check was skipped because the PHP binary was unavailable.
+
 ## Documentation and publication
 
 - Confirm README examples, API/transit contracts and calculation limits match the

@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import type { ChartInput } from '../../src/index.js';
 import { polar } from '../../src/layout.js';
 import { resolveWheelGeometry } from '../../src/wheel-geometry.js';
+import { labelPoint } from './label-point.js';
 
 const fixture: ChartInput = {
   title: 'Synthetic advanced layout study',
@@ -179,15 +180,11 @@ for (const transit of [false, true]) {
         }),
       ),
     ).toBe(true);
-    const moon = root.locator(
-      transit
-        ? '.astr3-body[data-chart=natal][data-body-id=moon]'
-        : '.astr3-body[data-object="body:moon"]',
-    );
+    const moon = transit
+      ? '#radial-fixture .astr3-body[data-chart=natal][data-body-id=moon]'
+      : '#radial-fixture .astr3-body[data-object="body:moon"]';
     for (const part of ['.astr3-symbol', 'small']) {
-      const rect = (await moon.locator(part).boundingBox())!;
-      const x = rect.x + rect.width / 2,
-        y = rect.y + rect.height / 2;
+      const { x, y } = await labelPoint(page, `${moon} ${part}`);
       if (isMobile) await page.touchscreen.tap(x, y);
       else await page.mouse.click(x, y);
       await expect

@@ -60,8 +60,8 @@ for (const layout of ['default', 'alternative', 'advanced'] as const) {
       await page.mouse.click(at.x, at.y);
     } else {
       const cluster = page
-        .locator('#transit-chart')
-        .getByRole('button', { name: /clustered bodies:.*Mars/ });
+        .locator('#transit-chart .astr3-cluster[data-chart=transit]')
+        .and(page.getByRole('button', { name: /clustered bodies:.*Transiting Mars/ }));
       if (await cluster.count()) await cluster.click();
       else {
         // Tiny bands can retain only exact dots and accessible entries.
@@ -81,7 +81,7 @@ for (const layout of ['default', 'alternative', 'advanced'] as const) {
       }
     }
     const chooser = page.locator('#transit-chart .astr3-chooser button');
-    if (await chooser.count()) await chooser.filter({ hasText: 'Mars' }).click();
+    if (await chooser.count()) await chooser.filter({ hasText: 'Transiting Mars' }).click();
     await expect(page.locator('#inspector-heading')).toHaveText('Transiting Mars');
     await page.locator('#transit-pause').click();
     const duration = await page.evaluate(() => window.astr3TransitAnimation!.state.durationMs);
