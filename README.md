@@ -21,7 +21,7 @@ to see how chart events drive your own UI.
 
 Choose an installation route in the [installation guide](docs/installation.md):
 npm package, a browser ZIP without build tools, or an installable WordPress
-plugin. Use Node.js 24 LTS (minimum 22.12.0) for bundled applications:
+plugin. Use Node.js 26.13.0 LTS (minimum 22.12.0) for bundled applications:
 
 ```sh
 npm install @yuzuwoeser/astr3 three

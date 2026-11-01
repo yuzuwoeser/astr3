@@ -47,7 +47,7 @@ data detector: review dates, coordinates and images separately.
 
 ## Validate the release candidate
 
-Use Node 24 LTS and the committed lockfile:
+Use Node 26.13.0 LTS and the committed lockfile:
 
 ```sh
 npm ci
@@ -74,6 +74,27 @@ its file list: only built ESM/types/maps, public docs, metadata, license and not
 belong there. Tests, demo source, private configuration and local agent data do not.
 Extract the tarball into a temporary directory for scanning; do not rely on
 scanning the compressed file alone. Scan `site-dist/` before hosting the demo.
+
+### Node 26 migration validation (2026-11-01)
+
+Local macOS Apple Silicon validation on Node 26.13.0 passed a fresh locked install,
+formatting, the full core/package check (266 tests), all 84 Pages tests, release
+builds, all seven extracted starter install/build/render checks, all six release
+browser tests, and WordPress 6.5 / PHP 8.0 plus latest / PHP 8.3 integration checks.
+No package was published and no website was deployed.
+
+The development browser suite has three existing failures: advanced transit
+templates expect five body elements but render two on desktop and mobile;
+the desktop advanced-animation Mars selector matches both natal and transit
+clusters. The suite recorded 184 passes and one intentional desktop pinch skip.
+All three failures also reproduced on the previous Node 26.10.0 runtime with
+unchanged source. These failures still block a fully passing release candidate.
+
+An isolated Node 22.12.0 run passed all 262 core tests and the actual packed-package
+consumer check, including ESM/SSR imports, optional adapter, JSON Schema, and
+TypeScript declarations. The four release-preflight tests and site build require
+newer Node TypeScript execution support; they are not minimum-runtime consumer
+checks. The package's published Node engine requirement remains `>=22.12.0`.
 
 ## Documentation and publication
 
@@ -131,7 +152,7 @@ No token is stored in this repository. Do not silently switch package names agai
 
 Configure an [npm trusted publisher](https://docs.npmjs.com/trusted-publishers/)
 for GitHub repository `yuzuwoeser/astr3`, workflow `release.yml`, allowing direct
-publication. GitHub-hosted Node 24 runners provide OIDC through `id-token: write`.
+publication. GitHub-hosted Node 26 runners provide OIDC through `id-token: write`.
 Use npm 11.5.1 or newer. Review npm's current setup requirements when bootstrapping
 a new package. Publication generates provenance for this public repository.
 

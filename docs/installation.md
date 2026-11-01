@@ -56,7 +56,7 @@ are planned, not currently supported.
 
 JavaScript, TypeScript, React, Vue, Svelte, Angular and Rails browser starters
 include the local ASTR3 tarball and their own application/compiler files. Extract,
-run `npm install`, then `npm run dev` using Node.js 24 LTS. PHP includes browser
+run `npm install`, then `npm run dev` using Node.js 26.13.0 LTS. PHP includes browser
 assets and runs through your PHP server. Framework components contain host sizing;
 demo styles and rotate/remount controls are optional when copying a component.
 

@@ -13,7 +13,9 @@ copyright/license notices together.
 
 ## Setup and checks
 
-Use Node.js 24 LTS (supported minimum: 22.12.0) and npm. From the repository root:
+Use Node.js 26.13.0 LTS, pinned in `.node-version` and shared with CI, and npm.
+The published package supports Node 22.12.0 or newer; repository build and release
+scripts require the newer runtime's TypeScript support. From the repository root:
 
 ```sh
 npm ci

@@ -6,8 +6,9 @@ Do not include private birth information in reports, screenshots or fixtures.
 
 ## Start locally
 
-Use **Node.js 24 LTS**, matching CI. Node 22.12.0 or newer is supported by the
-package. npm and Git are required; `tar`, `zip`, and `unzip` are needed for website
+Use **Node.js 26.13.0 LTS**, pinned in `.node-version` and shared with CI.
+The published package supports Node 22.12.0 or newer; repository build and release
+scripts require the newer runtime's TypeScript support. npm and Git are required; `tar`, `zip`, and `unzip` are needed for website
 builds/tests (included on typical macOS/Linux setups). Python and an ephemeris service are not required.
 
 ```sh

@@ -7,7 +7,7 @@ in `site/`; canonical example code and guides live in `examples/`. Only built
 
 ## Build and preview
 
-Use Node.js 24 LTS and the committed lockfile:
+Use Node.js 26.13.0 LTS and the committed lockfile:
 
 ```sh
 npm ci
@@ -40,7 +40,7 @@ self-hostable. Framework dependencies remain development/example dependencies.
 
 ## Capture demo media
 
-Use Node.js 24 LTS and installed Playwright Chromium. Build the website at the
+Use Node.js 26.13.0 LTS and installed Playwright Chromium. Build the website at the
 root base before capturing the focused selection demonstration:
 
 ```sh
