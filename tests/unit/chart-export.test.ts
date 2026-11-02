@@ -103,8 +103,21 @@ describe('outlined chart exports', () => {
     expect(svg).toContain('stroke-dasharray="7 2"');
     expect(svg).toContain('height="1024" fill="#111c20"');
     input.transparent = true;
-    expect(renderSvg(input)).not.toContain('height="1024" fill="#111c20"');
+    expect(renderSvg(input)).not.toContain('fill="#111c20"');
   });
+  it.each(['default', 'alternative', 'advanced'] as const)(
+    'keeps selected %s labels transparent while retaining their outlines and text',
+    (layout) => {
+      const input = snapshot(layout);
+      input.transparent = true;
+      input.selected = { kind: 'body', id: 'sun' };
+      const svg = renderSvg(input);
+      expect(drawing(input).labels.some((label) => label.body && label.active)).toBe(true);
+      expect(svg).not.toMatch(/<rect[^>]*fill="(?!none")[^"]+"/);
+      expect(svg).toContain(`rx="7" fill="none" stroke="${DARK_THEME.accent}"`);
+      expect(svg).toContain('<path transform=');
+    },
+  );
   for (const layout of ['default', 'alternative', 'advanced'] as const) {
     it(`packs outlined ${layout} labels inside their band without moving anchors`, () => {
       const input = snapshot(layout);
@@ -400,6 +413,9 @@ describe('outlined chart exports', () => {
     expect(result.notice).toContain('Houses unknown');
     expect(result.notice).toContain('cluster');
     expect(() => renderSvg(input)).not.toThrow();
+    input.transparent = true;
+    expect(renderSvg(input)).not.toMatch(/<rect[^>]*fill="(?!none")[^"]+"/);
+    expect(renderSvg(input)).toContain(`fill="none" stroke="${DARK_THEME.ring}"`);
   });
   it('never emits external paint references or XML attribute injection', () => {
     expect(() => exportColor('url(https://example.com/paint)')).toThrow();

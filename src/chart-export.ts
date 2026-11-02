@@ -62,9 +62,9 @@ function labelSvg(label: WheelLabel, snapshot: ExportSnapshot): string {
   const accent = snapshot.options.selectionEffects?.color ?? snapshot.colors.accent;
   let result = `<g opacity="${number(label.opacity)}"${label.rotation !== undefined ? ` transform="rotate(${number(label.rotation)} ${number(x)} ${number(y)})"` : ''}>`;
   if (body) {
-    if (label.active)
+    if (label.active && !snapshot.transparent)
       result += `<rect x="${number(x - box.width / 2 - 2)}" y="${number(y - box.height / 2 - 2)}" width="${number(box.width + 4)}" height="${number(box.height + 4)}" rx="9" fill="${exportColor(accent)}" opacity="0.18"/>`;
-    result += `<rect x="${number(x - box.width / 2)}" y="${number(y - box.height / 2)}" width="${number(box.width)}" height="${number(box.height)}" rx="7" fill="${exportColor(snapshot.colors.background)}"${label.active ? ` stroke="${exportColor(accent)}"` : ''}/>`;
+    result += `<rect x="${number(x - box.width / 2)}" y="${number(y - box.height / 2)}" width="${number(box.width)}" height="${number(box.height)}" rx="7" fill="${snapshot.transparent ? 'none' : exportColor(snapshot.colors.background)}"${label.active ? ` stroke="${exportColor(accent)}"` : ''}/>`;
   }
   if (label.radialText) {
     for (const run of label.radialText.runs) {
@@ -145,7 +145,7 @@ export function renderSvg(snapshot: ExportSnapshot): string {
   for (const label of drawing.labels) parts.push(labelSvg(label, snapshot));
   for (const badge of drawing.badges) {
     parts.push(
-      `<g opacity="${number(badge.opacity)}"><rect x="${number(badge.x - badge.width / 2)}" y="${number(badge.y - badge.height / 2)}" width="${number(badge.width)}" height="${number(badge.height)}" rx="7" fill="${exportColor(colors.background)}" stroke="${exportColor(badge.active ? (snapshot.options.selectionEffects?.color ?? colors.accent) : colors.ring)}"/>${textPaths(String(badge.bodyIds.length), 12, badge.x, badge.y, badge.color, snapshot.options.chartWeight)}</g>`,
+      `<g opacity="${number(badge.opacity)}"><rect x="${number(badge.x - badge.width / 2)}" y="${number(badge.y - badge.height / 2)}" width="${number(badge.width)}" height="${number(badge.height)}" rx="7" fill="${snapshot.transparent ? 'none' : exportColor(colors.background)}" stroke="${exportColor(badge.active ? (snapshot.options.selectionEffects?.color ?? colors.accent) : colors.ring)}"/>${textPaths(String(badge.bodyIds.length), 12, badge.x, badge.y, badge.color, snapshot.options.chartWeight)}</g>`,
     );
   }
   if (drawing.notice) {

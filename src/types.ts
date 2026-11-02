@@ -44,7 +44,7 @@ export interface ChartOptions extends ModelOptions {
   /** Visual stroke/text weight. Defaults to light for existing integrations. */
   chartWeight?: ChartWeight;
   theme?: ThemeOptions;
-  /** Omit the wheel background; labels and controls retain theme backgrounds. Defaults to false. */
+  /** Omit wheel, label and cluster badge backgrounds. Defaults to false. */
   transparent?: boolean;
   glyphs?: Readonly<Record<string, string>>;
   layers?: Partial<ChartLayers>;
@@ -66,7 +66,7 @@ export interface ChartExportOptions {
   view?: 'full' | 'current';
   /** Output width in pixels. Full exports are square. Defaults to 1024. */
   size?: number;
-  /** Omit the canvas background; labels retain theme backgrounds. Defaults to the chart setting. */
+  /** Omit canvas, label and cluster badge backgrounds. Defaults to the chart setting. */
   transparent?: boolean;
 }
 export interface ChartPngExportOptions extends ChartExportOptions {

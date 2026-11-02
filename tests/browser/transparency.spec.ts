@@ -75,7 +75,7 @@ for (const kind of ['natal', 'transit'] as const) {
     await expect(root).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(root.locator('.astr3-body').first()).toHaveCSS(
       'background-color',
-      'rgb(17, 28, 32)',
+      'rgba(0, 0, 0, 0)',
     );
     await expect(root.locator('.astr3-access')).toHaveCSS('background-color', 'rgb(17, 28, 32)');
     const transparent = await frame(page, kind);
@@ -109,6 +109,10 @@ for (const kind of ['natal', 'transit'] as const) {
     expect(validation.updates).toBe(0);
     expect(validation.intact).toBe(true);
     await expect(root).toHaveCSS('background-color', 'rgb(38, 56, 73)');
+    await expect(root.locator('.astr3-body').first()).toHaveCSS(
+      'background-color',
+      'rgb(38, 56, 73)',
+    );
     expect((await frame(page, kind)).corner).toEqual([38, 56, 73, 255]);
     await page.evaluate((kind) => {
       const chart = kind === 'natal' ? window.astr3 : window.astr3Transit!;
@@ -118,9 +122,30 @@ for (const kind of ['natal', 'transit'] as const) {
     await expect(root).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(root.locator('.astr3-body').first()).toHaveCSS(
       'background-color',
-      'rgb(38, 56, 73)',
+      'rgba(0, 0, 0, 0)',
     );
     expect((await frame(page, kind)).corner[3]).toBe(0);
+    await page.evaluate((kind) => {
+      const data = {
+        bodies: Array.from({ length: 55 }, (_, i) => ({
+          id: `point-${i}`,
+          name: `Point ${i}`,
+          longitude: i / 100,
+          glyph: '☉',
+        })),
+        aspects: [],
+      };
+      if (kind === 'natal') window.astr3.update(data);
+      else window.astr3Transit!.update({ natal: data, transit: data });
+    }, kind);
+    const badge = root.locator('.astr3-cluster').first();
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await page.evaluate((kind) => {
+      const chart = kind === 'natal' ? window.astr3 : window.astr3Transit!;
+      chart.setOptions({ transparent: false });
+    }, kind);
+    await expect(badge).toHaveCSS('background-color', 'rgb(38, 56, 73)');
   });
 
   test(`${kind} SVG and PNG inherit transparency, allow overrides, and capture it at call time`, async ({
@@ -136,6 +161,10 @@ for (const kind of ['natal', 'transit'] as const) {
           .parseFromString(svg, 'image/svg+xml')
           .querySelector('svg > g > rect')
           ?.getAttribute('fill') ?? null;
+      const labelFills = (svg: string) =>
+        [
+          ...new DOMParser().parseFromString(svg, 'image/svg+xml').querySelectorAll('rect[rx="7"]'),
+        ].map((rect) => rect.getAttribute('fill'));
       const alpha = async (blob: Blob) => {
         const image = await createImageBitmap(blob);
         try {
@@ -151,7 +180,8 @@ for (const kind of ['natal', 'transit'] as const) {
       };
       const opaqueDefault = background(await chart.exportSvg({ size: 256 }));
       chart.setOptions({ transparent: true });
-      const capturedSvg = chart.exportSvg({ size: 256 });
+      // Keep enough room for transit labels; small exports can use exact dots only.
+      const capturedSvg = chart.exportSvg({ size: 1024 });
       const capturedPng = chart.exportPng({ size: 256, pixelRatio: 1 });
       chart.setOptions({ transparent: false });
       const transparentOverride = background(
@@ -159,6 +189,8 @@ for (const kind of ['natal', 'transit'] as const) {
       );
       chart.setOptions({ transparent: true });
       const opaqueOverride = background(await chart.exportSvg({ size: 256, transparent: false }));
+      const transparentLabels = labelFills(await capturedSvg);
+      const opaqueLabels = labelFills(await chart.exportSvg({ size: 1024, transparent: false }));
       return {
         opaqueDefault,
         opaqueOverride,
@@ -169,6 +201,9 @@ for (const kind of ['natal', 'transit'] as const) {
         overriddenPng: await alpha(
           await chart.exportPng({ size: 256, pixelRatio: 1, transparent: false }),
         ),
+        transparentLabels:
+          transparentLabels.length > 0 && transparentLabels.every((fill) => fill === 'none'),
+        opaqueLabels: opaqueLabels.length > 0 && opaqueLabels.every((fill) => fill === '#111c20'),
       };
     }, kind);
     expect(result).toEqual({
@@ -179,6 +214,8 @@ for (const kind of ['natal', 'transit'] as const) {
       capturedPng: 0,
       inherited: null,
       overriddenPng: 255,
+      transparentLabels: true,
+      opaqueLabels: true,
     });
   });
 }

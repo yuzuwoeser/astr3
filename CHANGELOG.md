@@ -6,7 +6,8 @@ User-visible changes are recorded here. The API is experimental until 1.0.
 
 - Add an optional transparent background to natal and transit charts, JSON
   templates, and the playground. SVG/PNG downloads inherit the chart setting,
-  with per-export overrides; labels and controls retain theme backgrounds.
+  with per-export overrides. Transparent charts also omit text-label and
+  cluster-badge backgrounds while retaining selection outlines.
 
 - Align Advanced planet and point symbols with their full position captions in
   radial clock hands perpendicular to the ring, with every individual character
